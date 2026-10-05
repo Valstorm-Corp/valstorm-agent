@@ -347,7 +347,7 @@ def _get_provider_instance(
 def _build_server_tool_registry(
     valstorm_token: Optional[str] = None,
     override_base_url: Optional[str] = None,
-    valstorm_env: str = "local",
+    valstorm_env: Optional[str] = None,
     memory_store: Optional[MemoryStore] = None,
     session_store: Optional[SessionStore] = None,
 ) -> ToolRegistry:

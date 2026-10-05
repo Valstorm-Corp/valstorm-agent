@@ -1,6 +1,6 @@
 [project]
 name = "valstorm-agent"
-version = "3.2.0"
+version = "3.2.1"
 description = "Valstorm Autonomous AI Agent Runtime & CLI"
 readme = "README.md"
 license = "Apache-2.0"

@@ -96,7 +96,7 @@ def save_tokens_to_auth_file(
     access_token: str,
     refresh_token: Optional[str] = None,
 ) -> bool:
-    """Atomically persists refreshed tokens into ~/.valstorm auth profile JSON file."""
+    """Atomically persists refreshed tokens into ~/.valstorm auth profile JSON file or desktop tokens.json."""
     try:
         auth_file_path = Path(auth_file_path)
         creds: Dict[str, Any] = {}
@@ -108,15 +108,40 @@ def save_tokens_to_auth_file(
                         creds = content
             except Exception:
                 creds = {}
-        creds["access_token"] = access_token
-        if refresh_token:
-            creds["refresh_token"] = refresh_token
+        
+        is_desktop_file = "com.valstorm.app" in str(auth_file_path)
+        if is_desktop_file:
+            creds["accessToken"] = access_token
+            if refresh_token:
+                creds["refreshToken"] = refresh_token
+        else:
+            creds["access_token"] = access_token
+            if refresh_token:
+                creds["refresh_token"] = refresh_token
+
         auth_file_path.parent.mkdir(parents=True, exist_ok=True)
         temp_file = auth_file_path.with_suffix(".tmp")
         with open(temp_file, "w", encoding="utf-8") as f:
             json.dump(creds, f, indent=2)
         temp_file.replace(auth_file_path)
         log_auth_debug(f"Saved refreshed tokens back to {auth_file_path}")
+
+        # Also sync to default ~/.valstorm CLI profile if desktop tokens were updated
+        try:
+            valstorm_cli_default = Path.home() / ".valstorm" / "auth_prod_default.json"
+            if is_desktop_file and valstorm_cli_default.exists():
+                c_data = {}
+                try:
+                    c_data = json.loads(valstorm_cli_default.read_text())
+                except Exception:
+                    pass
+                c_data["access_token"] = access_token
+                if refresh_token:
+                    c_data["refresh_token"] = refresh_token
+                valstorm_cli_default.write_text(json.dumps(c_data, indent=2))
+        except Exception:
+            pass
+
         return True
     except Exception as e:
         log_auth_debug(f"Failed saving tokens to {auth_file_path}: {e}")
@@ -272,6 +297,23 @@ def resolve_valstorm_auth_context(
                 if extra_path not in candidate_cli_files:
                     candidate_cli_files.append(extra_path)
 
+        # Fallback to local desktop app storage (macOS, Linux, Windows)
+        desktop_token_candidates = [
+            Path.home() / "Library/Application Support/com.valstorm.app/tokens.json",
+            Path.home() / "Library/Application Support/com.valstorm.app/tokens_dev.json",
+            Path.home() / ".config/com.valstorm.app/tokens.json",
+            Path.home() / ".config/com.valstorm.app/tokens_dev.json",
+        ]
+        app_data_env = os.environ.get("APPDATA")
+        if app_data_env:
+            desktop_token_candidates.extend([
+                Path(app_data_env) / "com.valstorm.app/tokens.json",
+                Path(app_data_env) / "com.valstorm.app/tokens_dev.json",
+            ])
+        for dt_path in desktop_token_candidates:
+            if dt_path not in candidate_cli_files:
+                candidate_cli_files.append(dt_path)
+
         for cli_path in candidate_cli_files:
             log_auth_debug(f"Checking CLI auth file: {cli_path} (exists={cli_path.is_file()})")
             if cli_path.is_file():
@@ -281,13 +323,24 @@ def resolve_valstorm_auth_context(
                         if isinstance(creds, dict):
                             t = (
                                 creds.get("access_token")
+                                or creds.get("accessToken")
                                 or creds.get("token")
                                 or creds.get("jwt")
                                 or creds.get("pat")
                             )
                             if t and str(t).strip():
-                                token = str(t).strip()
-                                refresh_token = creds.get("refresh_token")
+                                candidate_tok = str(t).strip()
+                                candidate_ref = creds.get("refresh_token") or creds.get("refreshToken")
+
+                                # If token is expired and has no refresh token to heal it, skip to next candidate file
+                                if is_jwt_expired(candidate_tok) and not candidate_ref:
+                                    log_auth_debug(
+                                        f"Token in {cli_path} is expired and has no refresh_token. Skipping..."
+                                    )
+                                    continue
+
+                                token = candidate_tok
+                                refresh_token = candidate_ref
                                 auth_file_path = cli_path
                                 token_source = str(cli_path)
                                 # If env was not explicitly passed, infer base_url from auth file name
