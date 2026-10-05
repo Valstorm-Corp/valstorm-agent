@@ -7,6 +7,7 @@ Discovers project rules, architecture guidelines, repository manifests, and agen
 - Attached Procedural Skills (~/.valstorm/skills/<category>/<slug>/SKILL.md)
 """
 
+import contextvars
 import json
 import os
 from datetime import datetime, timezone
@@ -14,6 +15,21 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from core.memory import MemoryStore
+
+
+_current_active_profile: contextvars.ContextVar[Optional[Dict[str, Any]]] = contextvars.ContextVar(
+    "_current_active_profile", default=None
+)
+
+
+def set_current_profile(prof: Optional[Dict[str, Any]]) -> contextvars.Token:
+    """Sets the active profile for the current async execution context."""
+    return _current_active_profile.set(prof)
+
+
+def get_current_profile() -> Optional[Dict[str, Any]]:
+    """Returns the active profile in the current async execution context."""
+    return _current_active_profile.get()
 
 
 BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -659,21 +675,26 @@ def format_attached_skills_context(skill_slugs: List[str]) -> str:
 
 
 def format_persona_scope_context(prof_data: Optional[Dict[str, Any]]) -> str:
-    """Formats knowledge vaults, knowledge files, and scoped local paths from an active profile."""
+    """Formats knowledge graph tags, knowledge vaults, knowledge files, and scoped local paths from an active profile."""
     if not prof_data or not isinstance(prof_data, dict):
         return ""
 
+    tags = prof_data.get("tag") or prof_data.get("tags") or []
     vaults = prof_data.get("knowledge_vaults") or []
     files = prof_data.get("knowledge_files") or []
     paths = prof_data.get("scoped_paths") or []
 
-    if not vaults and not files and not paths:
+    if not tags and not vaults and not files and not paths:
         return ""
 
     lines = ["\n# 🧭 Persona Domain & Scoped Knowledge:"]
     persona_name = prof_data.get("name") or "Specialist"
     persona_api = prof_data.get("api_name") or "agent"
     lines.append(f"- Active Persona: {persona_name} (`{persona_api}`)")
+
+    if tags:
+        tag_list_str = ", ".join(f"`{t}`" for t in tags)
+        lines.append(f"- Knowledge Graph Tags: {tag_list_str}")
 
     if vaults:
         lines.append("- Primary Knowledge Vaults:")
@@ -700,7 +721,10 @@ def format_persona_scope_context(prof_data: Optional[Dict[str, Any]]) -> str:
         for p in paths:
             lines.append(f"  * `{p}`")
 
-    lines.append("- Tool Scoping Directive: Prioritize searching, reading, and mutating within these assigned vaults, files, and repository paths before inspecting global workspace files.")
+    if tags:
+        lines.append("- Dynamic Knowledge Graph Directive: VFS files and vaults tagged with matching Knowledge Graph topics represent your authoritative domain knowledge.")
+    if paths:
+        lines.append("- Tool Scoping Directive: Prioritize searching, reading, and mutating within these assigned repository paths before inspecting global workspace files.")
 
     return "\n".join(lines)
 
@@ -784,8 +808,10 @@ class WorkspaceContextManager:
             prof_data = load_profile(profile)
 
         if prof_data:
+            set_current_profile(prof_data)
             role = prof_data.get("system_prompt") or base_role or f"You are the {prof_data.get('name', 'Agent')}."
         else:
+            set_current_profile(None)
             role = base_role or (
                 "You are Valstorm Agent, a highly skilled, pragmatic senior software engineering AI agent running on the Valstorm Agent Runtime engine (Port 8650). "
                 "You have direct access to development tools (execute_code, terminal_exec, patch_file, write_file, "

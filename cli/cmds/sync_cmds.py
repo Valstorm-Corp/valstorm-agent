@@ -235,6 +235,8 @@ def load_local_agents_catalog(
                     "is_active": meta.get("is_active", True),
                     "allowed_tools": meta.get("allowed_tools", []),
                     "skills": meta.get("skills", []),
+                    "tag": meta.get("tag", []),
+                    "scoped_paths": meta.get("scoped_paths", []),
                     "system_prompt": body,
                     "file_path": md_file,
                     "meta": meta,
@@ -470,6 +472,8 @@ def build_profiles_cmd(
             "skills": a["skills"],
             "attached_skill_slugs": a["skills"],
             "system_prompt": a["system_prompt"],
+            "tag": a.get("tag", []),
+            "scoped_paths": a.get("scoped_paths", []),
         }
         out_json = target_dir / f"{slug}.json"
         out_json.write_text(json.dumps(prof_doc, indent=2), encoding="utf-8")
@@ -588,6 +592,8 @@ async def _async_push_catalog(
             "system_prompt": a["system_prompt"],
             "allowed_tools": a["allowed_tools"],
             "ai_skills": resolved_skill_ids,
+            "tag": a.get("tag", []),
+            "scoped_paths": a.get("scoped_paths", []),
             "is_active": a["is_active"],
         }
         match_a = remote_agent_map.get(a["api_name"].lower().strip()) or remote_agent_map.get(slug.lower())
@@ -731,7 +737,7 @@ async def _async_pull_catalog(
             pulled_skills += 1
 
         res_agents = await client.sql_query(
-            "SELECT id, name, api_name, description, visibility, model_tier, model, provider, allowed_tools, ai_skills, system_prompt, is_active FROM ai_agent"
+            "SELECT id, name, api_name, description, visibility, model_tier, model, provider, allowed_tools, ai_skills, system_prompt, tag, scoped_paths, is_active FROM ai_agent"
         )
         remote_agents = res_agents if isinstance(res_agents, list) else res_agents.get("records", [])
 
@@ -765,6 +771,8 @@ async def _async_pull_catalog(
                 "is_active": a.get("is_active", True),
                 "allowed_tools": a.get("allowed_tools", []),
                 "skills": attached_slugs,
+                "tag": a.get("tag", []),
+                "scoped_paths": a.get("scoped_paths", []),
             }
             prompt = a.get("system_prompt", "")
             content = _dump_frontmatter(fm) + "\n" + prompt.strip() + "\n"

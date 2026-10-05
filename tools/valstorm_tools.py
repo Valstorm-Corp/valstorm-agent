@@ -64,6 +64,81 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         return json.dumps(formatted_hits, indent=2, default=str)
 
     @tool
+    async def valstorm_vfs_discover_knowledge(
+        tags: Optional[Union[str, List[str]]] = None,
+        query: Optional[str] = None,
+        limit: int = 25,
+    ) -> str:
+        """Discovers canonical SOPs, Playbooks, Specs, and knowledge files matching Knowledge Graph domain tags.
+
+        Args:
+            tags: Optional list of Knowledge Graph tags (e.g. ['SOP', 'Engineering']) or comma-separated string. If omitted, uses active persona tags or discovers canonical knowledge.
+            query: Optional search keyword to filter matching file names or locations.
+            limit: Maximum number of knowledge files to return (default: 25).
+        """
+        tag_list: List[str] = []
+        if isinstance(tags, str):
+            clean_str = tags.strip()
+            if clean_str.startswith("[") and clean_str.endswith("]"):
+                try:
+                    tag_list = json.loads(clean_str)
+                except Exception:
+                    tag_list = [t.strip().strip("'\"") for t in clean_str.strip("[]").split(",") if t.strip()]
+            else:
+                tag_list = [t.strip().strip("'\"") for t in clean_str.split(",") if t.strip()]
+        elif isinstance(tags, list):
+            tag_list = [str(t).strip() for t in tags if str(t).strip()]
+
+        if not tag_list:
+            from core.context import get_current_profile
+            prof = get_current_profile()
+            if prof:
+                prof_tags = prof.get("tag") or prof.get("tags") or []
+                if isinstance(prof_tags, list):
+                    tag_list = [str(t).strip() for t in prof_tags if str(t).strip()]
+
+        where_clauses: List[str] = []
+        if tag_list:
+            tag_conditions = ", ".join(f"'{t}'" for t in tag_list)
+            where_clauses.append(f"tag IN ({tag_conditions})")
+        if query and query.strip():
+            safe_q = query.strip().replace("'", "''")
+            where_clauses.append(f"name LIKE '%{safe_q}%'")
+
+        where_str = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+        sql = f"SELECT id, name, file_size, location, link, vault_paths, tag FROM file {where_str} ORDER BY name ASC LIMIT {limit}"
+
+        res = await api_client.sql_query(sql, bypass_cache=True)
+        records = res if isinstance(res, list) else (res.get("records", []) if isinstance(res, dict) else [])
+
+        if not records:
+            scope_desc = f"with tags {tag_list}" if tag_list else "in VFS"
+            return f"No knowledge documents or SOP files found {scope_desc}."
+
+        lines = [f"### 📚 Discovered Knowledge Documents ({len(records)} found):"]
+        if tag_list:
+            lines.append(f"*Active Knowledge Graph Tags Filter:* {', '.join(f'`{t}`' for t in tag_list)}\n")
+        lines.append("| Document Name | File ID | Tags | Size |")
+        lines.append("| :--- | :--- | :--- | :--- |")
+
+        for r in records:
+            doc_name = r.get("name") or "Untitled"
+            f_id = r.get("id") or "-"
+            f_size = r.get("file_size")
+            size_str = f"{f_size} B" if f_size else "-"
+            if f_size and isinstance(f_size, (int, float)):
+                if f_size >= 1024 * 1024:
+                    size_str = f"{f_size / (1024 * 1024):.1f} MB"
+                elif f_size >= 1024:
+                    size_str = f"{f_size / 1024:.1f} KB"
+            r_tags = r.get("tag") or []
+            tag_str = ", ".join(r_tags) if isinstance(r_tags, list) else str(r_tags)
+            lines.append(f"| **{doc_name}** | `{f_id}` | {tag_str} | {size_str} |")
+
+        lines.append("\n*Tip: Use `valstorm_vfs_get_file(file_id='<id>')` to inspect the full contents of any document.*")
+        return "\n".join(lines)
+
+    @tool
     async def valstorm_record_cud(
         api_name: str,
         action: Literal["create", "update", "delete"],
@@ -640,6 +715,7 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         valstorm_sql_query,
         valstorm_mongo_query,
         valstorm_vfs_search,
+        valstorm_vfs_discover_knowledge,
         valstorm_vfs_browse,
         valstorm_vfs_get_file,
         valstorm_vfs_write_file,

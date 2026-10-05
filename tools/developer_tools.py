@@ -313,7 +313,30 @@ async def search_files(
         file_glob: Optional filter for filenames when target='content' (e.g. '*.py', '*.ts').
         limit: Maximum number of matches to return (default: 50).
     """
-    return await asyncio.to_thread(_search_files_sync, pattern, target, str(resolve_agent_path(path)), file_glob, limit)
+    resolved_path = resolve_agent_path(path)
+
+    # Scoped path prioritization when searching root/current working directory
+    if path in (".", "", "./"):
+        try:
+            from core.context import get_current_profile
+            prof = get_current_profile()
+            scoped_paths = prof.get("scoped_paths") if prof else None
+            if scoped_paths and isinstance(scoped_paths, list):
+                scoped_hits = []
+                for sp in scoped_paths:
+                    clean_sp = sp.split("/*")[0].strip()
+                    cand_dir = resolved_path / clean_sp
+                    if cand_dir.is_dir():
+                        sub_res = await asyncio.to_thread(_search_files_sync, pattern, target, str(cand_dir), file_glob, limit)
+                        if sub_res and not sub_res.startswith("No ") and not sub_res.startswith("Error:"):
+                            scoped_hits.append(f"### [Scoped: {sp}]\n{sub_res}")
+
+                if scoped_hits:
+                    return "\n\n".join(scoped_hits)
+        except Exception:
+            pass
+
+    return await asyncio.to_thread(_search_files_sync, pattern, target, str(resolved_path), file_glob, limit)
 
 
 # =====================================================================

@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import json
 import os
+import re
 import time
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
 
@@ -22,6 +23,14 @@ TRUNCATED_NUDGE = (
 MALFORMED_CALL_NUDGE = (
     "[System Notice: Your previous tool call was malformed and could not be parsed. Retry the tool call with valid, "
     "complete JSON arguments. For very large content, split it across multiple smaller calls.]"
+)
+ACTION_INTENT_NUDGE = (
+    "[System Directive: You stated your intent to perform an action, but did not execute a tool call. "
+    "Please invoke the tool directly now to complete the action.]"
+)
+_ACTION_INTENT_RE = re.compile(
+    r"\b(i will|i'll|let me|now i will|i am going to)\s+(write|create|modify|patch|edit|run|execute|read|search|inspect)\b",
+    re.IGNORECASE,
 )
 
 
@@ -161,6 +170,7 @@ class ReActEngine:
         max_empty_retries = 2
         truncation_retries = 0
         malformed_retries = 0
+        action_nudge_retries = 0
         turn_tool_calls = 0
 
         for iteration in range(iter_limit):
@@ -349,6 +359,28 @@ class ReActEngine:
                         fallback_text = "(Model concluded turn without text response)"
                         assistant_msg.content = fallback_text
                         yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=f"\n\033[93m⚠️ {fallback_text}\033[0m\n")
+
+                # Action intent safeguard: if the model explicitly stated it will execute an action
+                # but omitted the tool call, nudge it once to invoke the tool directly instead of ending prematurely.
+                if (
+                    can_continue
+                    and action_nudge_retries < 1
+                    and assistant_msg.content
+                    and _ACTION_INTENT_RE.search(assistant_msg.content)
+                ):
+                    action_nudge_retries += 1
+                    nudge_msg = Message(
+                        role="user",
+                        content=ACTION_INTENT_NUDGE,
+                        model=target_model,
+                        provider=assistant_msg.provider,
+                    )
+                    session.add_message(nudge_msg)
+                    yield StreamEvent(
+                        event_type=StreamEventType.TEXT_CHUNK,
+                        delta="\n\033[93m↻ [Prompting model to execute stated action tool call]\033[0m\n",
+                    )
+                    continue
 
                 # No tool calls: final answer reached
                 if assistant_msg and assistant_msg.content:

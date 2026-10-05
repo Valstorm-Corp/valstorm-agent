@@ -367,6 +367,8 @@ class ValstormApiClient:
         env: Optional[str] = None,
         timeout: float = 20.0,
         client: Optional[httpx.AsyncClient] = None,
+        refresh_token: Optional[str] = None,
+        auth_file_path: Optional[Union[str, Path]] = None,
     ):
         resolved_token, resolved_base_url, refresh_tok, auth_file = resolve_valstorm_auth_context(
             override_token=token,
@@ -375,8 +377,8 @@ class ValstormApiClient:
         )
         self.token = resolved_token
         self.base_url = resolved_base_url.rstrip("/") + "/"
-        self.refresh_token = refresh_tok
-        self.auth_file_path = auth_file
+        self.refresh_token = refresh_token or refresh_tok
+        self.auth_file_path = auth_file_path or auth_file
         self.timeout = timeout
 
         if client is not None:

@@ -79,6 +79,8 @@ def test_custom_profile_from_disk():
             "provider": "gemini",
             "system_prompt": "Audit code for security vulnerabilities.",
             "allowed_tools": ["read_file", "search_files", "execute_code"],
+            "tag": ["Security & Compliance", "SOP"],
+            "scoped_paths": ["apps/api/**", "k8s/**"],
             "max_turns": 15,
         }
         custom_file.write_text(json.dumps(custom_data))
@@ -89,6 +91,8 @@ def test_custom_profile_from_disk():
             loaded = load_profile("sec-auditor")
             assert loaded["name"] == "Security Auditor"
             assert loaded["allowed_tools"] == ["read_file", "search_files", "execute_code"]
+            assert loaded["tag"] == ["Security & Compliance", "SOP"]
+            assert loaded["scoped_paths"] == ["apps/api/**", "k8s/**"]
 
             # Verify resolution by id or alias
             custom_data_with_id = dict(custom_data)
@@ -133,10 +137,11 @@ def test_format_persona_scope_context():
     assert format_persona_scope_context(None) == ""
     assert format_persona_scope_context({}) == ""
 
-    # Case 2: Full persona scoping
+    # Case 2: Full persona scoping with Knowledge Graph tags
     prof = {
         "name": "Marketing Specialist",
         "api_name": "marketing-specialist",
+        "tag": ["Marketing", "SOP", "Playbook"],
         "knowledge_vaults": ["vaul_brand_01", {"id": "vaul_campaigns_02", "name": "Q4 Campaigns"}],
         "knowledge_files": ["file_sop_1", {"id": "file_sop_2", "name": "Copywriting_SOP.md"}],
         "scoped_paths": ["apps/marketing-v3/**", "packages/ui/**"],
@@ -145,6 +150,7 @@ def test_format_persona_scope_context():
 
     assert "# 🧭 Persona Domain & Scoped Knowledge:" in formatted
     assert "Marketing Specialist (`marketing-specialist`)" in formatted
+    assert "Knowledge Graph Tags: `Marketing`, `SOP`, `Playbook`" in formatted
     assert "Primary Knowledge Vaults:" in formatted
     assert "`vaul_brand_01`" in formatted
     assert "Q4 Campaigns (`vaul_campaigns_02`)" in formatted
@@ -154,6 +160,7 @@ def test_format_persona_scope_context():
     assert "Prioritized Repository Paths:" in formatted
     assert "`apps/marketing-v3/**`" in formatted
     assert "`packages/ui/**`" in formatted
+    assert "Dynamic Knowledge Graph Directive:" in formatted
     assert "Tool Scoping Directive:" in formatted
 
 

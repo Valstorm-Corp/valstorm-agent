@@ -32,6 +32,12 @@ def _normalize_gemini_finish(raw: Any) -> Optional[str]:
 
 _GEMINI_RE = re.compile(r"^(google/)?gemini-[a-z0-9.\-]+$", re.IGNORECASE)
 
+VERTEX_MODEL_MAP: Dict[str, str] = {
+    "gemini-flash-latest": "gemini-3.8-flash",
+    "gemini-flash-lite-latest": "gemini-2.5-flash-lite",
+    "gemini-pro-latest": "gemini-2.5-pro",
+}
+
 def is_gemini_model(model_name: Optional[str]) -> bool:
     """True if the model name belongs to the Gemini family."""
     if not model_name:
@@ -615,8 +621,8 @@ class GeminiProvider(BaseProvider):
         """Stream response chunks from Gemini, yielding StreamEvents and final (Message, UsageMetadata) with retry."""
         model_name = model or self.default_model or "gemini-flash-latest"
         use_vertex = self.backend == "vertex" or (self.backend != "aistudio" and self.is_enterprise_mode())
-        if use_vertex and model_name.lower() == "gemini-flash-lite-latest":
-            model_name = "gemini-2.5-flash-lite"
+        if use_vertex:
+            model_name = VERTEX_MODEL_MAP.get(model_name.lower(), model_name)
 
         # Intelligent routing for Valstorm Gateway backend (GEAP/Partner models)
         if self.backend == "valstorm" and not is_gemini_model(model_name):
@@ -769,8 +775,8 @@ class GeminiProvider(BaseProvider):
         """Generate response non-streaming from Gemini with exponential backoff retry."""
         model_name = model or self.default_model or "gemini-flash-latest"
         use_vertex = self.backend == "vertex" or (self.backend != "aistudio" and self.is_enterprise_mode())
-        if use_vertex and model_name.lower() == "gemini-flash-lite-latest":
-            model_name = "gemini-2.5-flash-lite"
+        if use_vertex:
+            model_name = VERTEX_MODEL_MAP.get(model_name.lower(), model_name)
 
         # Intelligent routing for Valstorm Gateway backend (GEAP/Partner models)
         if self.backend == "valstorm" and not is_gemini_model(model_name):

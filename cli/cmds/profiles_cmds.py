@@ -109,11 +109,17 @@ def show_profile(
     provider = prof.get("provider", "Gemini")
     tools = prof.get("allowed_tools", ["<all>"])
     skills = prof.get("ai_skills", []) or prof.get("attached_skill_slugs", [])
+    tags = prof.get("tag", [])
+    paths = prof.get("scoped_paths", [])
     system_prompt = prof.get("system_prompt", "Default role prompt")
 
     console.print(f"\n[bold cyan]Profile: {name}[/bold cyan] ([dim]{slug}[/dim])")
     console.print(f"[bold]Description:[/bold] {desc}")
     console.print(f"[bold]Tier:[/bold] {tier} | [bold]Provider:[/bold] {provider} | [bold]Model:[/bold] {model}")
+    if tags:
+        console.print(f"[bold]Knowledge Graph Tags ({len(tags)}):[/bold] {', '.join(tags)}")
+    if paths:
+        console.print(f"[bold]Scoped Paths ({len(paths)}):[/bold] {', '.join(paths)}")
     console.print(f"[bold]Allowed Tools ({len(tools)}):[/bold] {', '.join(tools)}")
     console.print(f"[bold]Attached Skills ({len(skills)}):[/bold] {', '.join(skills) if skills else 'None'}")
     console.print("\n[bold]System Prompt:[/bold]")
@@ -123,7 +129,7 @@ def show_profile(
 async def _fetch_remote_agents(client: ValstormApiClient) -> Dict[str, Dict[str, Any]]:
     """Helper to query all remote ai_agent records indexed by api_name and ID."""
     res = await client.sql_query(
-        "SELECT id, name, api_name, model_tier, model, provider, allowed_tools, description, system_prompt, ai_skills FROM ai_agent",
+        "SELECT id, name, api_name, model_tier, model, provider, allowed_tools, description, system_prompt, ai_skills, tag, scoped_paths FROM ai_agent",
         bypass_cache=True,
     )
     records = res if isinstance(res, list) else res.get("records", [])
@@ -229,6 +235,8 @@ def push_profiles(
             loc_skills = lp.get("ai_skills", [])
             loc_prompt = lp.get("system_prompt", "")
             loc_name = lp.get("name") or slug.title()
+            loc_tag = lp.get("tag", [])
+            loc_scoped_paths = lp.get("scoped_paths", [])
 
             remote = remote_map.get(slug)
             if remote:
@@ -236,8 +244,10 @@ def push_profiles(
                 rem_tier = remote.get("model_tier")
                 rem_model = remote.get("model")
                 rem_prov = _normalize_provider(remote.get("provider"))
+                rem_tag = remote.get("tag", []) or []
+                rem_scoped_paths = remote.get("scoped_paths", []) or []
 
-                if rem_model != loc_model or rem_prov != loc_prov or rem_tier != loc_tier:
+                if rem_model != loc_model or rem_prov != loc_prov or rem_tier != loc_tier or rem_tag != loc_tag or rem_scoped_paths != loc_scoped_paths:
                     console.print(f"  • [yellow]Update[/yellow] [bold]{loc_name}[/bold] ({slug}): {rem_tier}/{rem_model} -> [bold green]{loc_tier}/{loc_model} ({loc_prov})[/bold green]")
                     updates.append({
                         "id": rem_id,
@@ -250,6 +260,8 @@ def push_profiles(
                         "allowed_tools": loc_tools,
                         "ai_skills": loc_skills,
                         "system_prompt": loc_prompt,
+                        "tag": loc_tag,
+                        "scoped_paths": loc_scoped_paths,
                         "is_active": True,
                     })
             else:
@@ -264,6 +276,8 @@ def push_profiles(
                     "allowed_tools": loc_tools,
                     "ai_skills": loc_skills,
                     "system_prompt": loc_prompt,
+                    "tag": loc_tag,
+                    "scoped_paths": loc_scoped_paths,
                     "is_active": True,
                 })
 
@@ -341,6 +355,8 @@ def pull_profiles(
                     "allowed_tools": record.get("allowed_tools") or existing_data.get("allowed_tools"),
                     "ai_skills": record.get("ai_skills") or existing_data.get("ai_skills", []),
                     "system_prompt": record.get("system_prompt") or existing_data.get("system_prompt"),
+                    "tag": record.get("tag") or existing_data.get("tag", []),
+                    "scoped_paths": record.get("scoped_paths") or existing_data.get("scoped_paths", []),
                     "is_active": record.get("is_active", True),
                 })
                 dest_file.write_text(json.dumps(existing_data, indent=2), encoding="utf-8")

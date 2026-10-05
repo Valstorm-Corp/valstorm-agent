@@ -121,6 +121,37 @@ async def test_search_files_content_and_file_modes(tmp_path):
     assert "main.py" not in file_res
 
 
+@pytest.mark.asyncio
+async def test_search_files_prioritizes_scoped_paths(tmp_path):
+    from core.context import set_current_profile
+    from core.sandbox import HostSandbox, set_current_sandbox
+
+    # Setup directories: apps/marketing and apps/backend
+    (tmp_path / "apps" / "marketing").mkdir(parents=True)
+    (tmp_path / "apps" / "backend").mkdir(parents=True)
+
+    (tmp_path / "apps" / "marketing" / "copy.txt").write_text("launch winter marketing campaign\n")
+    (tmp_path / "apps" / "backend" / "worker.py").write_text("process campaign database records\n")
+
+    set_current_sandbox(HostSandbox(base_dir=str(tmp_path)))
+
+    # 1. Without profile: searches root
+    try:
+        res_global = await search_files("campaign", target="content")
+        assert "copy.txt" in res_global
+        assert "worker.py" in res_global
+
+        # 2. With scoped_paths profile: prioritizes scoped path
+        set_current_profile({"name": "Marketer", "scoped_paths": ["apps/marketing/**"]})
+        res_scoped = await search_files("campaign", target="content")
+        assert "Scoped: apps/marketing/**" in res_scoped
+        assert "copy.txt" in res_scoped
+        assert "worker.py" not in res_scoped
+    finally:
+        set_current_profile(None)
+        set_current_sandbox(None)
+
+
 def test_register_developer_tools_in_registry():
     registry = ToolRegistry()
     register_developer_tools(registry)

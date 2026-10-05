@@ -46,6 +46,7 @@ async def test_valstorm_tools_registration_and_execution(mock_api_client):
     assert "valstorm_sql_query" in tool_names
     assert "valstorm_mongo_query" in tool_names
     assert "valstorm_vfs_search" in tool_names
+    assert "valstorm_vfs_discover_knowledge" in tool_names
     assert "valstorm_vfs_browse" in tool_names
     assert "valstorm_vfs_get_file" in tool_names
     assert "valstorm_vfs_write_file" in tool_names
@@ -92,3 +93,44 @@ async def test_valstorm_tools_registration_and_execution(mock_api_client):
     )
     assert not schema_res.is_error
     assert "contact" in schema_res.output
+
+
+@pytest.mark.asyncio
+async def test_valstorm_vfs_discover_knowledge_execution():
+    from core.context import set_current_profile
+    mock_file_resp = httpx.Response(
+        status_code=200,
+        json={"records": [
+            {"id": "file_sop_101", "name": "Frontend_Testing_SOP.md", "file_size": 2048, "tag": ["SOP", "Engineering"]},
+            {"id": "file_spec_202", "name": "Architecture_Spec.md", "file_size": 1048576, "tag": ["Architecture Spec", "Engineering"]},
+        ]},
+        request=httpx.Request("POST", "http://localhost:8000/query"),
+    )
+    mock_transport = AsyncMock()
+    mock_transport.handle_async_request = AsyncMock(return_value=mock_file_resp)
+    client = ValstormApiClient(token="mock", client=httpx.AsyncClient(transport=mock_transport, base_url="http://localhost:8000"))
+
+    registry = ToolRegistry()
+    register_valstorm_tools(registry=registry, client=client)
+
+    # 1. Discover with explicit tags
+    res = await registry.execute_async(
+        "valstorm_vfs_discover_knowledge",
+        {"tags": ["SOP", "Engineering"], "limit": 10}
+    )
+    assert not res.is_error
+    assert "Discovered Knowledge Documents (2 found)" in res.output
+    assert "Frontend_Testing_SOP.md" in res.output
+    assert "file_sop_101" in res.output
+    assert "2.0 KB" in res.output
+    assert "1.0 MB" in res.output
+
+    # 2. Discover inferring tags from active profile context
+    set_current_profile({"name": "Engineer", "tag": ["Engineering"]})
+    res_ctx = await registry.execute_async(
+        "valstorm_vfs_discover_knowledge",
+        {}
+    )
+    assert not res_ctx.is_error
+    assert "Frontend_Testing_SOP.md" in res_ctx.output
+    set_current_profile(None)
