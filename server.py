@@ -191,6 +191,7 @@ class RunRequestPayload(BaseModel):
     valstorm_token: Optional[str] = None
     valstorm_base_url: Optional[str] = None
     user_context: Optional[Dict[str, Any]] = None
+    user_message_id: Optional[str] = None
 
 
 class RunResponse(BaseModel):
@@ -318,6 +319,17 @@ def _get_provider_instance(
     keystore = KeyStore()
     model_str, p_name = resolve_model_and_provider(model_name, provider_name, profile_slug=profile_slug)
 
+    # Auto-route uncredentialed clients to Valstorm managed provider:
+    # If provider resolved to gemini/google/aistudio but user has no personal Google AI Studio key,
+    # route seamlessly to 'valstorm' so Valstorm's AI gateway handles authenticated token metering.
+    has_direct_gemini_key = bool(
+        keystore.get_api_key("gemini")
+        or os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+    )
+    if (p_name in ("gemini", "google", "aistudio") or not p_name) and not has_direct_gemini_key:
+        p_name = "valstorm"
+
     prof_cfg = load_profile(profile_slug) if profile_slug else None
     from providers import build_fallback_chain, infer_cascade_tier
 
@@ -406,19 +418,22 @@ async def _sync_turn_to_valstorm(
     error: Optional[str] = None,
     message_id: Optional[str] = None,
     cached_input_tokens: Optional[int] = None,
+    user_text: Optional[str] = None,
+    user_message_id: Optional[str] = None,
 ):
     """Directly synchronizes terminal turn execution state, messages, and token telemetry to Valstorm backend.
     
     This ensures that even if UI tabs close, WebSocket connections drop, or the client navigates away,
     the background runtime daemon autonomously persists the assistant message and updates token counters.
     """
-    if not chat_id or not valstorm_token or not valstorm_base_url:
+    effective_base_url = valstorm_base_url or os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL")
+    if not chat_id or not valstorm_token or not effective_base_url:
         logger.debug(
-            f"[{run_id}] Direct Valstorm sync skipped (chat_id={chat_id}, has_token={bool(valstorm_token)}, has_url={bool(valstorm_base_url)})"
+            f"[{run_id}] Direct Valstorm sync skipped (chat_id={chat_id}, has_token={bool(valstorm_token)}, has_url={bool(effective_base_url)})"
         )
         return
 
-    base = valstorm_base_url.rstrip("/")
+    base = effective_base_url.rstrip("/")
     if not base.endswith("/v1") and "/v1" not in base:
         base = f"{base}/v1"
     endpoint = f"{base}/ai/chat/{chat_id}/desktop-sync"
@@ -435,6 +450,10 @@ async def _sync_turn_to_valstorm(
         "provider": provider,
         "device_pid": os.getpid(),
     }
+    if user_text:
+        payload["user_text"] = user_text
+    if user_message_id:
+        payload["user_message_id"] = user_message_id
     if error:
         payload["error"] = error[:4000]
     if message_id:
@@ -650,11 +669,11 @@ async def _execute_agent_run(
             elif raw_m.lower() in ("chief-of-staff", "orchestrator", "developer", "architect", "slack-agent", "default"):
                 profile_slug = raw_m.lower()
             elif exec_env in ("host", "device"):
-                profile_slug = "developer"
+                profile_slug = "software-engineer"
             else:
                 profile_slug = "chief-of-staff"
 
-        profile_cfg = load_profile(profile_slug) if profile_slug else load_profile("developer" if exec_env in ("host", "device") else "chief-of-staff")
+        profile_cfg = load_profile(profile_slug) if profile_slug else load_profile("software-engineer" if exec_env in ("host", "device") else "chief-of-staff")
 
         provider_inst, target_model, resolved_provider = _get_provider_instance(
             payload.provider,
@@ -895,6 +914,8 @@ async def _execute_agent_run(
             subagents=subagents_list if subagents_list else None,
             message_id=last_asst_msg_id,
             cached_input_tokens=cached_input_tokens or None,
+            user_text=payload.input,
+            user_message_id=getattr(payload, "user_message_id", None),
         )
 
         # Smart Context & Memory: Asynchronously extract and reconcile persistent facts (Zero latency overhead)
@@ -939,6 +960,8 @@ async def _execute_agent_run(
             valstorm_token=valstorm_token,
             valstorm_base_url=valstorm_base_url,
             session_id=payload.session_id or effective_chat_id,
+            user_text=payload.input,
+            user_message_id=getattr(payload, "user_message_id", None),
         )
     except Exception as e:
         logger.error(f"[{run_id}] Run failed with exception: {e}", exc_info=True)
@@ -967,6 +990,8 @@ async def _execute_agent_run(
             valstorm_base_url=valstorm_base_url,
             session_id=payload.session_id or effective_chat_id,
             error=str(e),
+            user_text=payload.input,
+            user_message_id=getattr(payload, "user_message_id", None),
         )
     finally:
         try:
@@ -1086,6 +1111,8 @@ async def create_run(
     v_base_url = x_valstorm_api_url or getattr(payload, "valstorm_base_url", None)
     if not v_base_url and payload.user_context and isinstance(payload.user_context, dict):
         v_base_url = payload.user_context.get("sync_url") or payload.user_context.get("api_url")
+    if not v_base_url:
+        v_base_url = os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL")
 
     task = asyncio.create_task(
         _execute_agent_run(

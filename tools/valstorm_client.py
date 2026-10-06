@@ -260,6 +260,11 @@ def resolve_valstorm_auth_context(
         base_url = override_base_url.rstrip("/")
         if not base_url.endswith("/v1") and "/v1" not in base_url:
             base_url = f"{base_url}/v1"
+    elif os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL"):
+        env_base = (os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL", "")).rstrip("/")
+        if not env_base.endswith("/v1") and "/v1" not in env_base:
+            env_base = f"{env_base}/v1"
+        base_url = env_base
     else:
         base_url = ENV_URL_MAP.get(
             detected_env,

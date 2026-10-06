@@ -212,6 +212,34 @@ Root
         ],
         "max_turns": 40,
     },
+    "software-engineer": {
+        "id": "aia_software_engineer",
+        "name": "Software Engineer",
+        "api_name": "software-engineer",
+        "description": "Generalist software engineer specialized in monorepo development, testing, and debugging on a local computer/codebase.",
+        "provider": "valstorm",
+        "model": "gemini-flash-latest",
+        "model_tier": "tier_2",
+        "system_prompt": (
+            "You are a Staff Software Engineer running directly on the user's computer via Valstorm Agent Runtime.\n"
+            "Your domain expertise includes frontend (React, Next.js, Vite, Tailwind), backend (FastAPI, Python, Go, Rust), and monorepo workflows.\n\n"
+            "Core Directives:\n"
+            "1. Always prioritize Testing and Verification (TDD). Run commands and tests using terminal_exec to verify your changes.\n"
+            "2. Code Discovery: Use find_symbols for project-wide declaration lookup, code_outline for file structures, and read_file/search_files to inspect code before modifying.\n"
+            "3. Use patch_file and write_file for precise code modifications. Never guess file contents.\n"
+            "4. Always work until verified — never hand verification back to the user when you can run it yourself.\n"
+        ),
+        "allowed_tools": [
+            "terminal_exec", "execute_code", "read_file", "write_file", "patch_file",
+            "search_files", "find_symbols", "code_outline", "package_blast_radius",
+            "read_local_file", "process_manage", "subagent_manage", "delegate_task",
+            "clarify", "confirmation_required", "valstorm_sql_query", "valstorm_mongo_query",
+            "valstorm_record_cud", "valstorm_vfs_search", "valstorm_vfs_browse",
+            "valstorm_vfs_get_file", "valstorm_vfs_write_file", "web_scrape", "web_search",
+            "memory_manage", "session_search", "calculator", "mock_db_lookup"
+        ],
+        "max_turns": 50,
+    },
     "developer": {
         "name": "Valstorm Developer",
         "api_name": "developer",
@@ -581,6 +609,7 @@ def load_profile(profile_name_or_slug: str) -> Dict[str, Any]:
                 pass
 
     KNOWN_AGENT_ID_MAP = {
+        "aia_software_engineer": "software-engineer",
         "aia_s0a637uhmn1ndwjp": "developer",
         "aia_s0a637umhn1ndwjp": "developer",
         "aia_cmkgl0dqewqudyvz": "developer",

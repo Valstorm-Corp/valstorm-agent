@@ -197,7 +197,9 @@ class GeminiProvider(BaseProvider):
         if self._compat_provider is None:
             from providers.openai import OpenAIProvider
 
-            base = self.valstorm_base_url or "https://api.valstorm.com/v1/ai/gemini"
+            env_base = os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL")
+            default_gemini_base = f"{env_base.rstrip('/')}/ai/gemini" if env_base else "https://api.valstorm.com/v1/ai/gemini"
+            base = self.valstorm_base_url or default_gemini_base
             compat_base = base[: -len("/gemini")] if base.endswith("/gemini") else base
             self._compat_provider = OpenAIProvider(
                 api_key=self.api_key,
@@ -239,7 +241,9 @@ class GeminiProvider(BaseProvider):
         if self.backend == "valstorm":
             from google.genai import types
 
-            base = self.valstorm_base_url or "https://api.valstorm.com/v1/ai/gemini"
+            env_base = os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL")
+            default_gemini_base = f"{env_base.rstrip('/')}/ai/gemini" if env_base else "https://api.valstorm.com/v1/ai/gemini"
+            base = self.valstorm_base_url or default_gemini_base
             token = self.api_key or ""
             auth_header = token if token.startswith("Bearer ") else f"Bearer {token}"
             self._client = genai.Client(

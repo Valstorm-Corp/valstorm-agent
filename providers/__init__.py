@@ -185,7 +185,16 @@ def resolve_provider_instance(
                 tb = f"{tb}/v1"
             target_base_url = f"{tb}/ai"
         else:
-            target_base_url = "https://api.valstorm.com/v1/ai"
+            env_base = os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL")
+            if env_base:
+                tb = env_base.rstrip("/")
+                if tb.endswith("/ai"):
+                    tb = tb[:-3].rstrip("/")
+                if not tb.endswith("/v1") and "/v1" not in tb:
+                    tb = f"{tb}/v1"
+                target_base_url = f"{tb}/ai"
+            else:
+                target_base_url = "https://api.valstorm.com/v1/ai"
         chosen_model = model or "gemini-flash-latest"
         compat = OpenAIProvider(
             api_key=target_token or "valstorm_managed",
