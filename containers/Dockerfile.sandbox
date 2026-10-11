@@ -1,0 +1,38 @@
+# Hardened Ephemeral Docker Sandbox for Valstorm Agent Runtime
+FROM python:3.11-slim-bookworm
+
+# Label metadata
+LABEL maintainer="Valstorm Engineering <engineering@valstorm.com>"
+LABEL description="Hardened Ephemeral Sandbox Container for Valstorm Autonomous Agent Workflows"
+
+# Install core CLI tools & utilities
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    curl \
+    git \
+    jq \
+    ripgrep \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pre-baked high-performance Python data libraries to avoid runtime pip delays
+RUN pip install --no-cache-dir \
+    pandas \
+    numpy \
+    matplotlib \
+    openpyxl \
+    requests \
+    pydantic
+
+# Create non-root user and group
+RUN groupadd -g 1000 valstorm && \
+    useradd -u 1000 -g valstorm -s /bin/bash -m valstorm
+
+# Create and configure ephemeral workspace directory
+RUN mkdir -p /workspace && chown -R valstorm:valstorm /workspace
+
+WORKDIR /workspace
+USER valstorm
+
+# Keep container alive idling for exec commands
+CMD ["tail", "-f", "/dev/null"]

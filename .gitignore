@@ -1,0 +1,38 @@
+# Environment and Virtual Environments
+.env
+.env.*
+.venv
+venv
+ENV/
+env/
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+__pycache__/
+*.pyd
+*.so
+
+# Distribution / Packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing and Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.nox/
+
+# Logs and Documentation
+*.log
+docs/_build/
+
+# IDE and Editor Files
+# VS Code
+.vscode/
+# PyCharm/IntelliJ
+.idea/
+
+# OS/System files
+.DS_Store
