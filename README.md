@@ -1,7 +1,7 @@
 # Valstorm Agent Runtime (`vsagent`)
 
 [![Release](https://img.shields.io/github/v/release/Valstorm-Corp/valstorm-agent?color=blue&label=version)](https://github.com/Valstorm-Corp/valstorm-agent/releases)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-purple.svg)](LICENSE.md)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
 [![Valstorm Enterprise](https://img.shields.io/badge/Enterprise-Valstorm%20Cloud-emerald)](https://www.valstorm.com/register?utm_source=github&utm_medium=readme&utm_campaign=vsagent_repo&utm_content=badge)
@@ -205,9 +205,13 @@ vsagent keys set anthropic <your-anthropic-key>
 
 ---
 
-## Contributing & Local Development
+## Contributing & Development
 
-We welcome contributions! To set up the agent runtime locally:
+Valstorm Agent Runtime is developed and maintained exclusively by the core engineering team at **Valstorm LLC** to preserve strict architectural security and unified copyright ownership. 
+
+While external pull requests are not accepted, community feedback, bug reports, and discussions are welcome! Please see **[CONTRIBUTING.md](CONTRIBUTING.md)** for details on how to report issues and participate.
+
+To set up the agent runtime locally for development or testing:
 
 ```bash
 # Clone the repository
@@ -223,18 +227,20 @@ uv run pytest tests/
 
 ---
 
-## License
+## License & Commercial Terms
 
-Valstorm Agent Runtime is open-source software licensed under the **[Apache License, Version 2.0](LICENSE)**.
+Valstorm Agent Runtime is distributed under a **Dual License** model:
+
+- **Noncommercial Use (Community & Academic)**: Licensed under the **[PolyForm Noncommercial License 1.0.0](LICENSE.md)**. You are free to run, inspect, and evaluate the software for personal, hobby, or educational purposes without fees.
+- **Commercial & Enterprise Use**: Any commercial use—including running internal business operations, powering SaaS backends, managed hosting, or client consulting deliverables—requires a commercial agreement.
+
+For commercial licensing, enterprise BYOC terms, or official partner programs:
+- **Email:** licensing@valstorm.com
+- **Website:** [Valstorm Pricing](https://valstorm.com/pricing)
+- **Enterprise Portal:** [Valstorm Enterprise](https://valstorm.com/enterprise)
 
 ```
-Copyright 2026 Valstorm Corp.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
+Copyright (c) 2026 Valstorm LLC. All rights reserved.
 ```
 
 ---
