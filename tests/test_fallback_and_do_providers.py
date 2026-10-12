@@ -528,3 +528,35 @@ def test_gemini_format_messages_preserves_signed_tool_calls():
     assert len(fc_parts) == 1
     assert fc_parts[0].function_call.name == "search_files"
     assert fc_parts[0].thought_signature == b"crypto_sig"
+
+
+def test_valstorm_gateway_managed_do_fallback_when_no_local_do_key(monkeypatch):
+    """Verify that when no local DO key is present, fallback cascade routes DO tiers through Valstorm Gateway."""
+    from providers import build_fallback_chain
+    from core.keystore import KeyStore
+
+    class MockEmptyKeyStore:
+        def get_api_key(self, name):
+            return None
+        def get_api_key_with_source(self, name):
+            return None, None
+
+    chain = build_fallback_chain(
+        tier="reasoner",
+        primary_provider="valstorm",
+        primary_model="gemini-flash-latest",
+        api_key="pat_test_valstorm_token",
+        keystore=MockEmptyKeyStore(),
+    )
+
+    # Primary tier is Valstorm Primary
+    assert chain.tiers[0].provider_name == "valstorm"
+    assert chain.tiers[0].model == "gemini-flash-latest"
+
+    # DO tiers should be present and routed via Valstorm Gateway
+    do_tiers = [t for t in chain.tiers if "DO" in t.label]
+    assert len(do_tiers) >= 1
+    for t in do_tiers:
+        assert t.provider_name == "valstorm"
+        assert "Valstorm DO" in t.label
+

@@ -235,7 +235,7 @@ Valstorm Agent Runtime is distributed under a **Dual License** model:
 - **Commercial & Enterprise Use**: Any commercial use—including running internal business operations, powering SaaS backends, managed hosting, or client consulting deliverables—requires a commercial agreement.
 
 For commercial licensing, enterprise BYOC terms, or official partner programs:
-- **Email:** licensing@valstorm.com
+- **Email:** team@valstorm.com
 - **Website:** [Valstorm Pricing](https://valstorm.com/pricing)
 - **Enterprise Portal:** [Valstorm Enterprise](https://valstorm.com/enterprise)
 

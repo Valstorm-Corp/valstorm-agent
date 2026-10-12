@@ -23,7 +23,7 @@ You **must** obtain a Valstorm Commercial / Enterprise License if you:
 
 ### How to Obtain a Commercial License
 For commercial licensing, enterprise BYOC terms, partner implementation agreements, or SLA support contracts, please contact:
-- **Email:** licensing@valstorm.com
+- **Email:** team@valstorm.com
 - **Website:** https://valstorm.com/pricing
 - **Enterprise Portal:** https://valstorm.com/enterprise
 

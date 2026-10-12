@@ -32,4 +32,4 @@ While we do not accept external code patches, community feedback, discussions, a
 
 If your organization requires custom development sprints, enterprise BYOC deployments, specialized connectors, or an official implementation partnership, please reach out directly:
 - **Partnerships:** partners@valstorm.com
-- **Licensing & Support:** licensing@valstorm.com
+- **Licensing & Support:** team@valstorm.com

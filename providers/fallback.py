@@ -640,6 +640,14 @@ def build_fallback_chain(
                     if api_key:
                         break
 
+            # If no local DO key is configured, but primary provider is valstorm (or has primary Valstorm key),
+            # route DigitalOcean models through Valstorm Gateway's server-managed DO integration.
+            if not api_key and spec_p in ("do", "digitalocean") and p_norm == "valstorm" and primary_key:
+                spec_p = "valstorm"
+                api_key = primary_key
+                key_source = f"{primary_source} (Valstorm Gateway)"
+                label = f"Valstorm DO ({target_model})"
+
             if not api_key:
                 logger.debug(f"Skipping tier '{label}' - no API key configured for '{spec_p}'.")
                 continue
@@ -653,12 +661,17 @@ def build_fallback_chain(
                 )
                 continue
 
+            tier_kwargs = dict(kwargs)
+            if spec_p != "valstorm":
+                tier_kwargs.pop("base_url", None)
+                tier_kwargs.pop("valstorm_base_url", None)
+
             try:
                 inst, resolved_model, resolved_p_name = resolve_provider_instance(
                     provider_name=spec_p,
                     api_key=api_key,
                     model=target_model,
-                    **kwargs,
+                    **tier_kwargs,
                 )
                 active_tiers.append(
                     FallbackTier(
