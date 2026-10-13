@@ -134,3 +134,49 @@ async def test_valstorm_vfs_discover_knowledge_execution():
     assert not res_ctx.is_error
     assert "Frontend_Testing_SOP.md" in res_ctx.output
     set_current_profile(None)
+
+
+@pytest.mark.asyncio
+async def test_valstorm_tools_with_async_valstorm_client():
+    from valstorm import AsyncValstormClient, UserJwtAuth
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/query":
+            return httpx.Response(200, json=[{"id": "lead_1", "name": "Tech Corp"}])
+        if request.url.path == "/v1/object/lead":
+            if request.method == "POST":
+                return httpx.Response(200, json=[{"id": "lead_2", "name": "Acme Corp"}])
+            if request.method == "DELETE":
+                return httpx.Response(200, json={"deleted_count": 1})
+        if request.url.path == "/v1/search":
+            return httpx.Response(200, json=[{"file_id": "f_1", "filename": "doc.md"}])
+        return httpx.Response(404, json={"error": "not found"})
+
+    transport = httpx.MockTransport(mock_handler)
+    http_client = httpx.AsyncClient(transport=transport)
+    sdk_client = AsyncValstormClient(
+        base_url="http://localhost:8010/v1",
+        auth=UserJwtAuth("token_abc"),
+        http_client=http_client,
+    )
+
+    registry = ToolRegistry()
+    register_valstorm_tools(registry=registry, client=sdk_client)
+
+    # 1. Test SQL query delegation via SDK
+    res = await registry.execute_async("valstorm_sql_query", {"query": "SELECT * FROM lead"})
+    assert not res.is_error
+    assert "Tech Corp" in res.output
+
+    # 2. Test record creation delegation via SDK
+    c_res = await registry.execute_async(
+        "valstorm_record_cud",
+        {"api_name": "lead", "action": "create", "records": [{"name": "Acme Corp"}]}
+    )
+    assert not c_res.is_error
+    assert "lead_2" in c_res.output
+
+    # 3. Test VFS search delegation via SDK
+    v_res = await registry.execute_async("valstorm_vfs_search", {"query": "doc"})
+    assert not v_res.is_error
+    assert "doc.md" in v_res.output

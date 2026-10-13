@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
     VALSTORM_DEFAULT_SANDBOX=cloud \
     PORT=8660
 
-WORKDIR /app
+WORKDIR /workspace
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,12 +20,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv package manager for fast dependency management
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Copy monorepo dependencies referenced by [tool.uv.sources]
+COPY packages/valstorm-sanitizer /workspace/packages/valstorm-sanitizer
+COPY packages/client-python /workspace/packages/client-python
+
 # Copy dependency specification and install Python packages
-COPY pyproject.toml /app/
+COPY apps/agent-runtime/pyproject.toml /workspace/apps/agent-runtime/
+WORKDIR /workspace/apps/agent-runtime
 RUN uv pip install --system --no-cache -r pyproject.toml
 
 # Copy application source code
-COPY . /app
+COPY apps/agent-runtime /workspace/apps/agent-runtime
 
 # Expose cloud runtime port
 EXPOSE 8660

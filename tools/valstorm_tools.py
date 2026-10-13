@@ -29,8 +29,11 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         if "limit" not in clean_q.lower() and limit:
             clean_q += f" LIMIT {limit}"
 
-        res = await api_client.sql_query(query=clean_q, bypass_cache=bypass_cache)
-        records = res.get("records", [])
+        if hasattr(api_client, "query") and api_client.query is not None and hasattr(api_client.query, "sql"):
+            records = await api_client.query.sql(query=clean_q, bypass_cache=bypass_cache)
+        else:
+            res = await api_client.sql_query(query=clean_q, bypass_cache=bypass_cache)
+            records = res.get("records", []) if isinstance(res, dict) else res
         if not records:
             return "Query executed successfully: 0 records found."
 
@@ -45,8 +48,18 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
             limit: Number of top blended hits to return (default: 10).
             enable_rag: Whether to trigger RAG synthesis and return cited excerpts.
         """
-        res = await api_client.vfs_search(query=query, limit=limit, enable_rag=enable_rag)
-        results = res.get("results", [])
+        if hasattr(api_client, "vfs") and api_client.vfs is not None and hasattr(api_client.vfs, "search"):
+            res = await api_client.vfs.search(query=query, limit=limit, enable_rag=enable_rag)
+            results = res if isinstance(res, list) else (res.get("results", []) if isinstance(res, dict) else [])
+        elif hasattr(api_client, "vfs_search"):
+            res = await api_client.vfs_search(query=query, limit=limit, enable_rag=enable_rag)
+            results = res.get("results", []) if isinstance(res, dict) else res
+        elif hasattr(api_client, "transport") or hasattr(api_client, "_transport"):
+            t = getattr(api_client, "transport", None) or getattr(api_client, "_transport", None)
+            res = await t.request("POST", "search", json={"query": query, "limit": limit, "enable_rag": enable_rag})
+            results = res.data if isinstance(res.data, list) else (res.data.get("results", []) if isinstance(res.data, dict) else [])
+        else:
+            results = []
         if not results:
             return f"No matching files or document chunks found for query: '{query}'"
 
@@ -166,10 +179,16 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
             return "Error: records must be a list of dictionaries."
 
         if action == "create":
-            res = await api_client.records_create(api_name=api_name, records=data_records)
+            if hasattr(api_client, "records") and api_client.records is not None and hasattr(api_client.records, "create"):
+                res = await api_client.records.create(api_name=api_name, records=data_records)
+            else:
+                res = await api_client.records_create(api_name=api_name, records=data_records)
             return json.dumps(res, indent=2, default=str)
         elif action == "update":
-            res = await api_client.records_update(api_name=api_name, records=data_records)
+            if hasattr(api_client, "records") and api_client.records is not None and hasattr(api_client.records, "update"):
+                res = await api_client.records.update(api_name=api_name, records=data_records)
+            else:
+                res = await api_client.records_update(api_name=api_name, records=data_records)
             return json.dumps(res, indent=2, default=str)
         elif action == "delete":
             ids = [str(r.get("id")) for r in data_records if isinstance(r, dict) and r.get("id")]
@@ -177,7 +196,11 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
                 ids = [str(x) for x in data_records]
             if not ids:
                 return "Error: delete action requires a list containing 'id' fields."
-            res = await api_client.records_delete(api_name=api_name, ids=ids)
+            if hasattr(api_client, "records") and api_client.records is not None and hasattr(api_client.records, "delete"):
+                deleted_cnt = await api_client.records.delete(api_name=api_name, ids=ids)
+                res = {"deleted_count": deleted_cnt, "status": "success"}
+            else:
+                res = await api_client.records_delete(api_name=api_name, ids=ids)
             return json.dumps(res, indent=2, default=str)
         else:
             return f"Error: Unsupported action '{action}'. Choose 'create', 'update', or 'delete'."
@@ -194,13 +217,22 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
             browse_type: 'vault' to inspect by Vault ID, 'path' to resolve human folder path, or 'tree' for full vault hierarchy.
         """
         if browse_type == "tree":
-            res = await api_client.vfs_get_tree()
+            if hasattr(api_client, "vfs") and api_client.vfs is not None and hasattr(api_client.vfs, "tree"):
+                res = await api_client.vfs.tree()
+            else:
+                res = await api_client.vfs_get_tree()
             return json.dumps(res, indent=2, default=str)
         elif browse_type == "path":
-            res = await api_client.vfs_browse_path(string_path=target)
+            if hasattr(api_client, "vfs") and api_client.vfs is not None and hasattr(api_client.vfs, "resolve_path"):
+                res = await api_client.vfs.resolve_path(target)
+            else:
+                res = await api_client.vfs_browse_path(string_path=target)
             return json.dumps(res, indent=2, default=str)
         else:
-            res = await api_client.vfs_browse_vault(vault_id=target)
+            if hasattr(api_client, "vfs") and api_client.vfs is not None and hasattr(api_client.vfs, "get_vault"):
+                res = await api_client.vfs.get_vault(target)
+            else:
+                res = await api_client.vfs_browse_vault(vault_id=target)
             return json.dumps(res, indent=2, default=str)
 
     @tool
@@ -211,7 +243,13 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
             api_name: Optional object API name to inspect (e.g. 'contact', 'task'). If omitted or empty, lists all schemas in the org.
         """
         clean_name = api_name.strip() if api_name else None
-        res = await api_client.schema_get(api_name=clean_name)
+        if hasattr(api_client, "schemas") and api_client.schemas is not None and hasattr(api_client.schemas, "get"):
+            if clean_name:
+                res = await api_client.schemas.get(clean_name)
+            else:
+                res = await api_client.schemas.list()
+        else:
+            res = await api_client.schema_get(api_name=clean_name)
         if not clean_name and isinstance(res, dict):
             # Return high-level summary of object names and titles
             summary = [
@@ -256,7 +294,10 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
             file_id: The ID of the file (e.g. 'file_123' or document ID).
         """
         clean_id = file_id.strip()
-        res = await api_client.vfs_get_file(file_id=clean_id)
+        if hasattr(api_client, "vfs") and api_client.vfs is not None and hasattr(api_client.vfs, "get_file"):
+            res = await api_client.vfs.get_file(file_id=clean_id)
+        else:
+            res = await api_client.vfs_get_file(file_id=clean_id)
         return json.dumps(res, indent=2, default=str)
 
     @tool
@@ -308,7 +349,10 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         if not isinstance(id_list, list):
             return "Error: ids must be a list of string IDs."
 
-        res = await api_client.records_hydrate_batch(ids=id_list)
+        if hasattr(api_client, "records") and api_client.records is not None and hasattr(api_client.records, "hydrate_batch"):
+            res = await api_client.records.hydrate_batch(ids=id_list)
+        else:
+            res = await api_client.records_hydrate_batch(ids=id_list)
         return json.dumps(res, indent=2, default=str)
 
     @tool
@@ -341,11 +385,18 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         if not isinstance(duplicates, list) or not duplicates:
             return "Error: duplicate_record_ids must be a non-empty list of IDs or a single ID string."
 
-        res = await api_client.records_merge(
-            master_id=master_record_id,
-            duplicate_ids=duplicates,
-            schema_api_name=schema_api_name.strip() if schema_api_name else None,
-        )
+        if hasattr(api_client, "records") and api_client.records is not None and hasattr(api_client.records, "merge"):
+            res = await api_client.records.merge(
+                master_id=master_record_id,
+                duplicate_ids=duplicates,
+                schema_api_name=schema_api_name or None,
+            )
+        else:
+            res = await api_client.records_merge(
+                master_id=master_record_id,
+                duplicate_ids=duplicates,
+                schema_api_name=schema_api_name.strip() if schema_api_name else None,
+            )
         return json.dumps(res, indent=2, default=str)
 
     @tool

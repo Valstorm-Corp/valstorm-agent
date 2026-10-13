@@ -1,10 +1,10 @@
 [project]
 name = "valstorm-agent"
-version = "3.3.0"
+version = "3.4.0"
 description = "Valstorm Autonomous AI Agent Runtime & CLI"
 readme = "README.md"
 license = "PolyForm-Noncommercial-1.0.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "typer>=0.12.0",
     "rich>=13.0.0",
@@ -22,7 +22,13 @@ dependencies = [
     "docker>=7.0.0",
     "e2b-code-interpreter>=2.9.1",
     "pyyaml>=6.0.3",
+    "valstorm-sanitizer",
+    "valstorm-client>=0.1.0",
 ]
+
+[tool.uv.sources]
+valstorm-sanitizer = { path = "../../packages/valstorm-sanitizer", editable = true }
+valstorm-client = { path = "../../packages/client-python", editable = true }
 
 [project.scripts]
 vsagent = "cli.main:app"
