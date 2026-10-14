@@ -1,6 +1,6 @@
 [project]
 name = "valstorm-agent"
-version = "3.4.0"
+version = "3.5.0"
 description = "Valstorm Autonomous AI Agent Runtime & CLI"
 readme = "README.md"
 license = "PolyForm-Noncommercial-1.0.0"
@@ -25,10 +25,6 @@ dependencies = [
     "valstorm-sanitizer",
     "valstorm-client>=0.1.0",
 ]
-
-[tool.uv.sources]
-valstorm-sanitizer = { path = "../../packages/valstorm-sanitizer", editable = true }
-valstorm-client = { path = "../../packages/client-python", editable = true }
 
 [project.scripts]
 vsagent = "cli.main:app"
