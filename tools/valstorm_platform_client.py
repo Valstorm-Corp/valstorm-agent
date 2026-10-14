@@ -114,7 +114,7 @@ class RemoteQueryContext(RemoteBaseContext):
         return _make_sync_async_callable(_run)()
 
     def mongo(self, collection: str, pipeline: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Execute a direct MongoDB aggregation pipeline."""
+        """Execute a structured document aggregation pipeline."""
         async def _run():
             res = await self.client.mongo_query(collection=collection, pipeline=pipeline)
             return res.get("records", [])

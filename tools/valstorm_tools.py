@@ -266,11 +266,11 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         collection: str,
         pipeline: Union[str, List[Dict[str, Any]]],
     ) -> str:
-        """Executes a MongoDB aggregation pipeline directly against the tenant database.
+        """Executes a document aggregation pipeline directly against the tenant database.
 
         Args:
             collection: The collection API name (e.g. 'contact', 'task', 'deal').
-            pipeline: List of MongoDB aggregation pipeline stages (e.g. [{"$match": {"status": "Active"}}, {"$limit": 10}]). Can be a JSON string.
+            pipeline: List of aggregation pipeline stages (e.g. [{"$match": {"status": "Active"}}, {"$limit": 10}]). Can be a JSON string.
         """
         data_pipeline = pipeline
         if isinstance(pipeline, str):
@@ -735,7 +735,7 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         """Sends an SMS or MMS text message to a contact, phone number, or conversation via Twilio Conversations.
 
         Automatically resolves or initializes a 1-on-1 or group conversation with proper contact linkage,
-        enforces E.164 phone formatting, self-heals author participation errors, and tracks message delivery in MongoDB.
+        enforces E.164 phone formatting, self-heals author participation errors, and tracks message delivery in the database.
 
         Args:
             message: Text message content to send.
