@@ -243,3 +243,123 @@ async def test_valstorm_passthrough_falls_back_to_openai_gateway_on_404():
     assert p._passthrough_unavailable is True
     assert p.backend_label() == "valstorm-compat"
     assert any(getattr(i, "message", None) and i.message.content == "via compat" for i in items)
+
+
+@pytest.mark.asyncio
+async def test_action_intent_nudge_handles_adverbs_and_resets_after_tool_calls():
+    from core.react import _has_unfulfilled_action_intent
+
+    assert _has_unfulfilled_action_intent("I will now write the Connecticut Market Research script at x.py.") is True
+    assert _has_unfulfilled_action_intent("I will now query the Google Ads Keyword Planner API.") is True
+    # Should not false-trigger when asking a question or quoting in a markdown table
+    assert _has_unfulfilled_action_intent("I will write a script. Would you like me to proceed?") is False
+    assert _has_unfulfilled_action_intent("Summary:\n\n| Turn | Text |\n| --- | --- |\n| 1 | I will write a script |") is False
+
+    provider = _Provider([
+        Message(role="assistant", content="I will now write the research script."),
+        Message(role="assistant", tool_calls=[ToolCall(id="c1", name="terminal_exec", arguments={"command": "echo 1"})]),
+        Message(role="assistant", content="I will now run the second step."),
+        Message(role="assistant", content="All steps completed."),
+    ])
+    engine = ReActEngine(provider=provider, tools=_Registry())
+    session, _ = await _run(engine, "Execute research")
+    assert len(provider.seen) == 4
+    assert session.messages[-1].content == "All steps completed."
+
+
+def test_resolve_default_workdir_avoids_filesystem_root(monkeypatch, tmp_path):
+    from pathlib import Path
+    from core.sandbox import HostSandbox, resolve_default_workdir
+
+    monkeypatch.setenv("VALSTORM_WORKSPACE_DIR", "")
+    monkeypatch.setattr(Path, "cwd", classmethod(lambda cls: Path("/")))
+    resolved = resolve_default_workdir()
+    assert resolved != Path("/")
+    sb = HostSandbox()
+    assert sb.cwd != Path("/")
+
+
+@pytest.mark.asyncio
+async def test_vfs_search_does_not_double_prefix_v1(monkeypatch):
+    from tools.valstorm_client import ValstormApiClient
+
+    called_endpoints = []
+
+    async def fake_req(self, method, endpoint, **kwargs):
+        called_endpoints.append(endpoint)
+
+        class _Resp:
+            def json(self):
+                return {"results": []}
+
+        return _Resp()
+
+    monkeypatch.setattr(ValstormApiClient, "_request_with_retry", fake_req)
+    client = ValstormApiClient(token="fake_tok", base_url="https://api.valstorm.com/v1")
+    await client.vfs_search("marketing")
+    assert called_endpoints == ["/search"]
+
+
+@pytest.mark.asyncio
+async def test_valstorm_truncated_sse_stream_recovers_via_generate_content():
+    from providers.gemini import GeminiProvider
+
+    class _TruncatedChunk:
+        text = "I will now write the research script."
+        candidates = []
+        usage_metadata = None
+        model_version = None
+
+    async def _truncated_stream():
+        yield _TruncatedChunk()
+        # Stream closes prematurely without finish_reason, tool_calls, or usage_metadata
+
+    class _RecoveredFC:
+        id = "call_rec_1"
+        name = "write_file"
+        args = {"path": "run_ct_market_research.py", "content": "print('ok')"}
+
+    class _RecoveredPart:
+        thought = False
+        text = "I will now write the research script."
+        function_call = _RecoveredFC()
+        thought_signature = b"sig_bytes"
+
+    class _RecoveredCandidate:
+        finish_reason = "STOP"
+        content = type("Content", (), {"parts": [_RecoveredPart()]})()
+
+    class _RecoveredUsage:
+        prompt_token_count = 45000
+        candidates_token_count = 600
+        total_token_count = 45600
+        cached_content_token_count = 0
+        thoughts_token_count = 100
+
+    class _RecoveredResp:
+        candidates = [_RecoveredCandidate()]
+        usage_metadata = _RecoveredUsage()
+        model_version = "gemini-4-argon"
+
+    class _Models:
+        async def generate_content_stream(self, **kw):
+            return _truncated_stream()
+
+        async def generate_content(self, **kw):
+            return _RecoveredResp()
+
+    class _Client:
+        aio = type("Aio", (), {"models": _Models()})()
+
+    p = GeminiProvider(api_key="tok", backend="valstorm", client=_Client())
+    items = [i async for i in p.generate_stream(messages=[Message(role="user", content="go")])]
+    tool_events = [i for i in items if getattr(i, "event_type", None) == StreamEventType.TOOL_CALL_DETECTED]
+    assert len(tool_events) == 1
+    assert tool_events[0].tool_call.name == "write_file"
+    final_tuple = [i for i in items if isinstance(i, tuple)]
+    assert len(final_tuple) == 1
+    msg, usage = final_tuple[0]
+    assert msg.tool_calls and msg.tool_calls[0].name == "write_file"
+    assert usage.prompt_tokens == 45000
+
+

@@ -604,7 +604,7 @@ class ValstormApiClient:
         if vault_ids:
             payload["vault_ids"] = vault_ids
 
-        endpoint = "/search" if self.base_url.endswith("/v1") else "/v1/search"
+        endpoint = "/search" if self.base_url.rstrip("/").endswith("/v1") else "/v1/search"
         log_auth_debug(f"Sending POST {endpoint}: {payload}")
         resp = await self._request_with_retry("POST", endpoint, json=payload)
         return resp.json()

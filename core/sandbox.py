@@ -117,11 +117,37 @@ class BaseSandbox(ABC):
         return p.resolve()
 
 
+def resolve_default_workdir(base_dir: Optional[str] = None) -> Path:
+    """Resolves a safe default working directory for HostSandbox and WorkspaceContextManager.
+
+    When launched by a desktop GUI wrapper (macOS LaunchServices / Finder), the process
+    working directory is frequently `/` (filesystem root), which breaks relative paths
+    and causes `search_files` to scan the entire OS root. If `base_dir` is omitted and
+    `Path.cwd()` is `/`, falls back to `VALSTORM_WORKSPACE_DIR`, `~/Documents/Code/monorepo`
+    (if present), or `Path.home()`.
+    """
+    if base_dir:
+        return Path(base_dir).expanduser().resolve()
+    env_dir = os.environ.get("VALSTORM_WORKSPACE_DIR", "").strip()
+    if env_dir:
+        p = Path(env_dir).expanduser().resolve()
+        if p.is_dir():
+            return p
+    cwd = Path.cwd().resolve()
+    if cwd != Path("/"):
+        return cwd
+    home = Path.home().resolve()
+    monorepo_cand = home / "Documents" / "Code" / "monorepo"
+    if monorepo_cand.is_dir():
+        return monorepo_cand
+    return home if home.is_dir() else cwd
+
+
 class HostSandbox(BaseSandbox):
     """Local host execution environment for Valstorm Desktop and local developer mode."""
 
     def __init__(self, base_dir: Optional[str] = None):
-        self.base_dir = Path(base_dir).expanduser().resolve() if base_dir else Path.cwd().resolve()
+        self.base_dir = resolve_default_workdir(base_dir)
         # Session working directory: starts at base_dir and follows `cd` in terminal_exec.
         self.cwd = self.base_dir
         self._is_active = True

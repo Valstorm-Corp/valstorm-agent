@@ -31,6 +31,7 @@ RUN uv pip install --system --no-cache -r pyproject.toml
 
 # Copy application source code
 COPY apps/agent-runtime /workspace/apps/agent-runtime
+RUN ln -s /workspace/apps/agent-runtime /app
 
 # Expose cloud runtime port
 EXPOSE 8660

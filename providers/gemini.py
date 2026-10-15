@@ -736,6 +736,40 @@ class GeminiProvider(BaseProvider):
                     all_text_parts.append(chunk.text)
                     yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=chunk.text)
 
+            # Detect premature SSE stream truncation (e.g. proxy keepalive timeout during long functionCall
+            # generation where the stream closes before functionCall, finishReason, or usageMetadata arrive).
+            if (
+                finish_reason is None
+                and last_usage_metadata is None
+                and not collected_tool_calls
+                and self.backend == "valstorm"
+            ):
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Valstorm SSE stream closed without finish_reason or usage_metadata; recovering via non-streaming generateContent"
+                )
+                try:
+                    client = self._get_client()
+                    config = self._build_config(system_instruction, gemini_tools, {**kwargs, "model": model_name})
+                    full_resp = await client.aio.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=config,
+                    )
+                    recovered_msg, recovered_usage = self._parse_response(full_resp, model_name)
+                    if recovered_msg.tool_calls:
+                        for tc in recovered_msg.tool_calls:
+                            yield StreamEvent(event_type=StreamEventType.TOOL_CALL_DETECTED, tool_call=tc)
+                    elif recovered_msg.content and not all_text_parts:
+                        yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=recovered_msg.content)
+                    yield (recovered_msg, recovered_usage)
+                    return
+                except Exception as rec_exc:
+                    logging.getLogger(__name__).warning(
+                        "Non-streaming recovery after truncated SSE failed: %s", rec_exc
+                    )
+                    finish_reason = "length"
+
             usage = UsageMetadata()
             if last_usage_metadata is not None:
                 usage.prompt_tokens = getattr(last_usage_metadata, "prompt_token_count", 0) or 0

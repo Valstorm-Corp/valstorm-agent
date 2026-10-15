@@ -29,9 +29,29 @@ ACTION_INTENT_NUDGE = (
     "Please invoke the tool directly now to complete the action.]"
 )
 _ACTION_INTENT_RE = re.compile(
-    r"\b(i will|i'll|let me|now i will|i am going to)\s+(write|create|modify|patch|edit|run|execute|read|search|inspect)\b",
+    r"\b(i will|i'll|let me|now i will|i am going to)\s+(?:now\s+|next\s+|first\s+|also\s+)?(write|create|modify|patch|edit|run|execute|read|search|inspect|query|fetch|check|test|build|update|install)\b",
     re.IGNORECASE,
 )
+
+
+def _has_unfulfilled_action_intent(content: Optional[str]) -> bool:
+    """True when an assistant response is an unfulfilled action preamble rather than a completed answer.
+
+    Checks the final non-empty paragraph (ignoring markdown tables/code blocks) and avoids
+    false-triggering when the assistant ends with a question asking the user for confirmation.
+    """
+    if not content:
+        return False
+    stripped = content.strip()
+    if not stripped or stripped.endswith("?"):
+        return False
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", stripped) if p.strip()]
+    if not paragraphs:
+        return False
+    last_para = paragraphs[-1]
+    if len(last_para) > 600 or last_para.startswith(("|", "```", "#", ">", "-", "*")):
+        return False
+    return bool(_ACTION_INTENT_RE.search(last_para))
 
 
 class ReActEngine:
@@ -290,6 +310,9 @@ class ReActEngine:
             # Process tool calls (executed concurrently in parallel)
             if assistant_msg.tool_calls and len(assistant_msg.tool_calls) > 0:
                 empty_retries = 0
+                truncation_retries = 0
+                malformed_retries = 0
+                action_nudge_retries = 0
                 turn_tool_calls += len(assistant_msg.tool_calls)
                 for tool_call in assistant_msg.tool_calls:
                     yield StreamEvent(
@@ -361,12 +384,12 @@ class ReActEngine:
                         yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=f"\n\033[93m⚠️ {fallback_text}\033[0m\n")
 
                 # Action intent safeguard: if the model explicitly stated it will execute an action
-                # but omitted the tool call, nudge it once to invoke the tool directly instead of ending prematurely.
+                # (or its stream was cut off right after the preamble before emitting the tool call),
+                # nudge it to invoke the tool directly instead of ending prematurely.
                 if (
                     can_continue
-                    and action_nudge_retries < 1
-                    and assistant_msg.content
-                    and _ACTION_INTENT_RE.search(assistant_msg.content)
+                    and action_nudge_retries < 2
+                    and _has_unfulfilled_action_intent(assistant_msg.content)
                 ):
                     action_nudge_retries += 1
                     nudge_msg = Message(

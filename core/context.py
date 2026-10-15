@@ -764,7 +764,9 @@ class WorkspaceContextManager:
     RULE_FILENAMES = ["AGENTS.md", "CLAUDE.md", ".cursorrules"]
 
     def __init__(self, workdir: Optional[str] = None, memory_store: Optional[MemoryStore] = None):
-        self.workdir = Path(workdir).expanduser().resolve() if workdir else Path.cwd().resolve()
+        from .sandbox import resolve_default_workdir
+
+        self.workdir = resolve_default_workdir(workdir)
         self.memory_store = memory_store or MemoryStore()
 
     def discover_rule_files(self) -> Dict[str, str]:
