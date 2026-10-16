@@ -232,14 +232,24 @@ class OpenAIProvider(BaseProvider):
         return formatted
 
     def _apply_valstorm_headers(self, req_kwargs: Dict[str, Any]) -> None:
-        """Tags Valstorm gateway calls with the chat id so metered charges map back to the ai_chat."""
-        if self.provider_name != "valstorm":
-            return
-        chat_id = (getattr(self, "_request_context", None) or {}).get("chat_id")
-        if chat_id:
+        """Tags Valstorm gateway calls with the chat id and thinking level so metered charges and reasoning effort apply."""
+        ctx = getattr(self, "_request_context", None) or {}
+        raw_effort = req_kwargs.pop("reasoning_effort", None) or ctx.get("reasoning_effort")
+        if self.provider_name == "valstorm":
+            chat_id = ctx.get("chat_id")
             headers = dict(req_kwargs.get("extra_headers") or {})
-            headers["X-Valstorm-Chat-Id"] = str(chat_id)
-            req_kwargs["extra_headers"] = headers
+            if chat_id:
+                headers["X-Valstorm-Chat-Id"] = str(chat_id)
+            if raw_effort:
+                norm_effort = "medium" if str(raw_effort).strip().lower() == "med" else str(raw_effort).strip().lower()
+                headers["X-Valstorm-Thinking-Level"] = norm_effort
+            if headers:
+                req_kwargs["extra_headers"] = headers
+        elif raw_effort:
+            norm_effort = "medium" if str(raw_effort).strip().lower() == "med" else str(raw_effort).strip().lower()
+            low_model = str(req_kwargs.get("model") or "").lower()
+            if norm_effort in ("low", "medium", "high") and any(p in low_model for p in ("gpt-5.6-sol", "o1", "o3")):
+                req_kwargs["reasoning_effort"] = norm_effort
 
     def _parse_response(
         self, response: Any, model_name: str
@@ -343,11 +353,11 @@ class OpenAIProvider(BaseProvider):
 
         if formatted_tools:
             req_kwargs["tools"] = formatted_tools
-        self._apply_valstorm_headers(req_kwargs)
 
         for k, v in kwargs.items():
             if k not in ("max_retries", "initial_delay", "backoff_factor", "max_delay", "jitter"):
                 req_kwargs[k] = v
+        self._apply_valstorm_headers(req_kwargs)
 
         max_retries = kwargs.get("max_retries", self.max_retries)
         initial_delay = kwargs.get("initial_delay", self.initial_delay)
@@ -400,11 +410,11 @@ class OpenAIProvider(BaseProvider):
         }
         if formatted_tools:
             req_kwargs["tools"] = formatted_tools
-        self._apply_valstorm_headers(req_kwargs)
 
         for k, v in kwargs.items():
             if k not in ("max_retries", "initial_delay", "backoff_factor", "max_delay", "jitter"):
                 req_kwargs[k] = v
+        self._apply_valstorm_headers(req_kwargs)
 
         async def _stream_call() -> AsyncIterator[StreamEvent]:
             nonlocal client

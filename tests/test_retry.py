@@ -44,9 +44,15 @@ class TestRetryErrorClassification:
         assert is_retryable_error(Exception("529 Overloaded")) is True
 
     def test_network_and_timeout_errors(self):
+        import httpx
+
         assert is_retryable_error(TimeoutError("Connection timed out")) is True
         assert is_retryable_error(ConnectionError("Connection reset by peer")) is True
         assert is_retryable_error(ConnectionRefusedError("Connection refused")) is True
+        assert is_retryable_error(httpx.ReadError("")) is True
+        assert is_retryable_error(httpx.WriteError("")) is True
+        assert is_retryable_error(httpx.ConnectError("")) is True
+        assert is_retryable_error(httpx.RemoteProtocolError("")) is True
 
     def test_status_code_attribute(self):
         class CustomApiError(Exception):

@@ -88,6 +88,7 @@ class GeminiProvider(BaseProvider):
     ) -> None:
         super().__init__(api_key=api_key, default_model=default_model, **kwargs)
         self._client = client
+        self._injected_client = client is not None
         self.backend = (backend or "").strip().lower() or None
         self.valstorm_base_url = valstorm_base_url.rstrip("/") if valstorm_base_url else None
         self._compat_provider = compat_provider
@@ -137,8 +138,12 @@ class GeminiProvider(BaseProvider):
         return "vertex" if self.is_enterprise_mode() else "aistudio"
 
     # ------------------------------------------------------------------ thinking
-    def _thinking_config(self, model_name: Optional[str] = None) -> Optional[Any]:
-        """Explicit thinking level (VALSTORM_THINKING_LEVEL, default "medium"; "off" to omit).
+    def _thinking_config(
+        self,
+        model_name: Optional[str] = None,
+        reasoning_effort: Optional[str] = None,
+    ) -> Optional[Any]:
+        """Explicit thinking level (reasoning_effort or VALSTORM_THINKING_LEVEL, default "high"; "off" to omit).
 
         Backends apply different defaults when none is sent, which is one reason agent effort
         changed between AI Studio and Vertex. Falls back to HIGH if the SDK lacks MEDIUM, and the
@@ -151,9 +156,15 @@ class GeminiProvider(BaseProvider):
             return None
         if model_name and "lite" in str(model_name).lower():
             return None
-        level = (os.getenv("VALSTORM_THINKING_LEVEL") or "medium").strip().upper()
-        if level in ("", "OFF", "NONE", "DEFAULT", "AUTO"):
+        ctx_effort = (getattr(self, "_request_context", None) or {}).get("reasoning_effort")
+        raw_effort = reasoning_effort if reasoning_effort is not None else (ctx_effort or os.getenv("VALSTORM_THINKING_LEVEL") or "high")
+        level = str(raw_effort).strip().upper()
+        if level == "MED":
+            level = "MEDIUM"
+        if level in ("", "OFF", "NONE", "DISABLED", "0", "FALSE", "DEFAULT", "AUTO"):
             return None
+        if level == "MINIMAL":
+            level = "LOW"
         for candidate in (level, "HIGH"):
             try:
                 return types.ThinkingConfig(thinking_level=candidate)
@@ -179,17 +190,26 @@ class GeminiProvider(BaseProvider):
         for k in ("temperature", "top_p", "top_k", "max_output_tokens"):
             if k in kwargs:
                 config_args[k] = kwargs[k]
-        thinking = self._thinking_config(model_name=kwargs.get("model"))
+        thinking = self._thinking_config(
+            model_name=kwargs.get("model"),
+            reasoning_effort=kwargs.get("reasoning_effort"),
+        )
         if thinking is not None:
             config_args["thinking_config"] = thinking
         if self.backend == "valstorm":
-            chat_id = (getattr(self, "_request_context", None) or {}).get("chat_id")
-            if chat_id:
+            ctx = getattr(self, "_request_context", None) or {}
+            chat_id = ctx.get("chat_id")
+            effort = kwargs.get("reasoning_effort") or ctx.get("reasoning_effort")
+            if chat_id or effort:
                 token = self.api_key or ""
                 auth_header = token if token.startswith("Bearer ") else f"Bearer {token}"
-                config_args["http_options"] = types.HttpOptions(
-                    headers={"Authorization": auth_header, "X-Valstorm-Chat-Id": str(chat_id)}
-                )
+                hdrs: Dict[str, str] = {"Authorization": auth_header}
+                if chat_id:
+                    hdrs["X-Valstorm-Chat-Id"] = str(chat_id)
+                if effort:
+                    norm_eff = "medium" if str(effort).strip().lower() == "med" else str(effort).strip().lower()
+                    hdrs["X-Valstorm-Thinking-Level"] = norm_eff
+                config_args["http_options"] = types.HttpOptions(headers=hdrs)
         return types.GenerateContentConfig(**config_args) if config_args else None
 
     # ------------------------------------------------------------------ valstorm helpers
@@ -667,6 +687,8 @@ class GeminiProvider(BaseProvider):
                     )
                 except Exception as exc:
                     status = _error_status(exc)
+                    if not getattr(self, "_injected_client", False) and is_retryable_error(exc):
+                        self._client = None
                     if attempts > 3:
                         raise
                     if not self._thinking_disabled and self._is_thinking_error(exc):
@@ -851,6 +873,8 @@ class GeminiProvider(BaseProvider):
                     return self._parse_response(response, model_name)
                 except Exception as exc:
                     status = _error_status(exc)
+                    if not getattr(self, "_injected_client", False) and is_retryable_error(exc):
+                        self._client = None
                     if attempts > 3:
                         raise
                     if not self._thinking_disabled and self._is_thinking_error(exc):

@@ -40,6 +40,13 @@ RETRYABLE_PHRASES = (
     "connection reset",
     "connection error",
     "connection refused",
+    "connection closed",
+    "peer closed",
+    "server disconnected",
+    "incomplete chunked read",
+    "read error",
+    "write error",
+    "stream closed",
     "timed out",
     "timeout",
 )
@@ -74,9 +81,36 @@ def is_retryable_error(exc: BaseException) -> bool:
     if isinstance(exc, (TimeoutError, ConnectionError, ConnectionResetError, ConnectionRefusedError, BrokenPipeError)):
         return True
 
-    # Check for httpx timeout/network errors if httpx is present
-    exc_type_name = type(exc).__name__
-    if any(k in exc_type_name for k in ("Timeout", "ConnectError", "NetworkError", "RemoteProtocolError", "RateLimitError", "InternalServerError")):
+    # Check for httpx/httpcore timeout, transport, and network errors across class hierarchy
+    mro_names = tuple(cls.__name__ for cls in type(exc).__mro__)
+    if any(
+        any(
+            k in name
+            for k in (
+                "Timeout",
+                "ConnectError",
+                "NetworkError",
+                "TransportError",
+                "ReadError",
+                "WriteError",
+                "CloseError",
+                "ProxyError",
+                "ProtocolError",
+                "RemoteProtocolError",
+                "LocalProtocolError",
+                "StreamError",
+                "ChunkedEncodingError",
+                "RateLimitError",
+                "InternalServerError",
+                "APIConnectionError",
+                "APITimeoutError",
+                "ServiceUnavailableError",
+                "BadGatewayError",
+                "GatewayTimeoutError",
+            )
+        )
+        for name in mro_names
+    ):
         return True
 
     status_code = extract_status_code(exc)

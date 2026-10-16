@@ -40,11 +40,45 @@ def is_provider_failover_candidate(exc: BaseException) -> bool:
         return True
 
     exc_str = (str(exc) + " " + repr(exc)).lower()
-    if any(p in exc_str for p in ("thought_signature", "thought signature", "quota", "rate limit", "unavailable")):
+    if any(
+        p in exc_str
+        for p in (
+            "thought_signature",
+            "thought signature",
+            "quota",
+            "rate limit",
+            "unavailable",
+            "payload too large",
+            "413",
+            "model not found",
+            "not_found_error",
+            "overloaded",
+        )
+    ):
         return True
 
-    exc_type = type(exc).__name__
-    if any(k in exc_type for k in ("API", "ClientError", "ServerError", "HTTP", "GenAI")):
+    mro_names = tuple(cls.__name__ for cls in type(exc).__mro__)
+    if any(
+        any(
+            k in name
+            for k in (
+                "API",
+                "ClientError",
+                "ServerError",
+                "HTTP",
+                "GenAI",
+                "TransportError",
+                "NetworkError",
+                "RequestError",
+                "ProtocolError",
+                "ReadError",
+                "WriteError",
+                "ConnectError",
+                "Timeout",
+            )
+        )
+        for name in mro_names
+    ):
         return True
 
     # Pure Python built-in exceptions indicate monorepo code or schema bugs; raise immediately
@@ -65,7 +99,7 @@ DEFAULT_REASONER_CASCADE_SPECS = [
     {"provider": "deepseek", "model": "deepseek-chat", "label": "DeepSeek Direct"},
     {"provider": "kimi", "model": "moonshot-v1-128k", "label": "Kimi Direct"},
     {"provider": "openai", "model": "gpt-4o", "label": "OpenAI Direct (Emergency)"},
-    {"provider": "anthropic", "model": "claude-3-7-sonnet-20250219", "label": "Anthropic Direct (Emergency)"},
+    {"provider": "anthropic", "model": "claude-sonnet-5-5", "label": "Anthropic Direct (Emergency)"},
 ]
 
 # Default Tier 1 (Heavy Thinker / Architecture / RFC) Cascade Hierarchy
@@ -146,6 +180,15 @@ def permanent_tier_failure_reason(exc: BaseException) -> Optional[str]:
     name = type(exc).__name__
     if name in _PERMANENT_FAILURE_TYPES:
         return name
+    msg = str(exc).strip()
+    for perm_code in _PERMANENT_FAILURE_STATUS:
+        if (
+            msg.startswith(f"{perm_code}:")
+            or msg.startswith(f"HTTP {perm_code}")
+            or f'"status_code":{perm_code}' in msg
+            or f'"status_code": {perm_code}' in msg
+        ):
+            return f"HTTP {perm_code}"
     return None
 
 
@@ -257,8 +300,9 @@ class ChainedFallbackProvider(BaseProvider):
 
         now = time.time()
         start_index = 0
-        # If no explicit model override was requested, skip tiers currently in failure cooldown
-        if not model:
+        # If no explicit non-primary model override was requested, skip tiers currently in failure cooldown
+        is_explicit_override = bool(model and self.tiers and model != self.tiers[0].model)
+        if not is_explicit_override:
             while start_index < len(self.tiers) - 1 and (
                 self._tier_cooldowns.get(start_index, 0) > now or start_index in self._dead_tiers
             ):

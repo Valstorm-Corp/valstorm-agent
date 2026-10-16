@@ -37,7 +37,7 @@ class AnthropicProvider(BaseProvider):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        default_model: str = "claude-haiku-4.5",
+        default_model: str = "claude-haiku-5-5",
         client: Optional[Any] = None,
         use_vertex_ai: bool = False, # ADDED
         region: Optional[str] = None, # ADDED
@@ -191,7 +191,7 @@ class AnthropicProvider(BaseProvider):
         """Generate response from Anthropic with exponential backoff retry."""
         import anthropic
 
-        target_model = model or self.default_model or "claude-haiku-4.5"
+        target_model = model or self.default_model or "claude-haiku-5-5"
 
         if self.use_vertex_ai:
             # AnthropicVertex builds .../publishers/anthropic/models/{model}:rawPredict itself,
@@ -214,6 +214,22 @@ class AnthropicProvider(BaseProvider):
         if anthropic_tools:
             req_kwargs["tools"] = anthropic_tools
 
+        ctx_effort = (getattr(self, "_request_context", None) or {}).get("reasoning_effort")
+        raw_effort = str(kwargs.get("reasoning_effort") or ctx_effort or "").strip().lower()
+        thinking_budgets = {
+            "minimal": 2048,
+            "low": 2048,
+            "med": 8192,
+            "medium": 8192,
+            "high": 16384,
+            "max": 16384,
+        }
+        if raw_effort in thinking_budgets:
+            budget = thinking_budgets[raw_effort]
+            req_kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+            if req_kwargs["max_tokens"] <= budget:
+                req_kwargs["max_tokens"] = budget + 4096
+
         max_retries = kwargs.get("max_retries", self.max_retries)
         initial_delay = kwargs.get("initial_delay", self.initial_delay)
         backoff_factor = kwargs.get("backoff_factor", self.backoff_factor)
@@ -221,15 +237,25 @@ class AnthropicProvider(BaseProvider):
         jitter = kwargs.get("jitter", True)
 
         async def _call():
-            response = await client.messages.create(**req_kwargs)
+            try:
+                response = await client.messages.create(**req_kwargs)
+            except Exception as err:
+                if "thinking" in req_kwargs and "thinking" in str(err).lower():
+                    req_kwargs.pop("thinking", None)
+                    response = await client.messages.create(**req_kwargs)
+                else:
+                    raise
 
             # Extract text and tool calls
             text_parts = []
+            thinking_parts = []
             tool_calls: List[ToolCall] = []
 
             for block in response.content:
                 if block.type == "text":
                     text_parts.append(block.text)
+                elif getattr(block, "type", None) == "thinking":
+                    thinking_parts.append(getattr(block, "thinking", ""))
                 elif block.type == "tool_use":
                     tool_calls.append(ToolCall(
                         id=block.id,
@@ -249,7 +275,7 @@ class AnthropicProvider(BaseProvider):
                 cached_tokens=cached_tokens,
             )
 
-            raw_content = "\n".join(text_parts) if text_parts else None
+            raw_content = "\n".join(text_parts) if text_parts else ("\n".join(thinking_parts) if not tool_calls and thinking_parts else None)
             content = collapse_repeating_text(raw_content) if raw_content else None
             msg = Message(
                 role="assistant",

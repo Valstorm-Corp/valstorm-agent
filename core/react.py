@@ -160,10 +160,13 @@ class ReActEngine:
         images: Optional[List[str]] = None,
         model: Optional[str] = None,
         max_iterations: Optional[int] = None,
+        reasoning_effort: Optional[str] = None,
     ) -> AsyncIterator[StreamEvent]:
         """Executes a full ReAct loop turn with real-time streaming of tokens and tool execution events."""
         iter_limit = max_iterations if max_iterations is not None else DEFAULT_MAX_ITERATIONS
         target_model = model or session.active_model
+        if reasoning_effort is not None:
+            session.metadata["reasoning_effort"] = str(reasoning_effort).strip().lower()
         # Avoid duplicating user prompt if already hydrated in session
         if not session.messages or session.messages[-1].content != user_input or session.messages[-1].role != "user":
             user_msg = Message(role="user", content=user_input, images=images)
@@ -237,7 +240,13 @@ class ReActEngine:
 
             set_ctx = getattr(self.provider, "set_request_context", None)
             if callable(set_ctx):
-                set_ctx(chat_id=(session.metadata or {}).get("valstorm_chat_id") or session.session_id)
+                ctx_kwargs: Dict[str, Any] = {
+                    "chat_id": (session.metadata or {}).get("valstorm_chat_id") or session.session_id,
+                }
+                req_effort = (session.metadata or {}).get("reasoning_effort")
+                if req_effort:
+                    ctx_kwargs["reasoning_effort"] = req_effort
+                set_ctx(**ctx_kwargs)
 
             # Check if provider supports streaming
             if hasattr(self.provider, "generate_stream"):

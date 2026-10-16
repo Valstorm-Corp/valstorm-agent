@@ -65,6 +65,12 @@ def _truncate_output(text: str, max_bytes: int = MAX_OUTPUT_BYTES) -> str:
 # =====================================================================
 
 
+_MEDIA_CMD_RE = re.compile(
+    r"\b(?:ffmpeg|ffprobe|whisper|faster[-_]whisper|vsl_factory(?:\.py)?|moviepy|yt-dlp)\b|video/main\.py",
+    re.IGNORECASE,
+)
+
+
 @tool
 async def terminal_exec(
     command: str,
@@ -80,8 +86,11 @@ async def terminal_exec(
             A `cd` inside the command persists for later terminal_exec and file tool calls,
             like a normal shell session.
     """
+    effective_timeout = timeout
+    if timeout == 120 and command and _MEDIA_CMD_RE.search(command):
+        effective_timeout = 600
     sandbox = get_current_sandbox()
-    return await sandbox.exec_command(command=command, timeout_sec=timeout, workdir=workdir)
+    return await sandbox.exec_command(command=command, timeout_sec=effective_timeout, workdir=workdir)
 
 
 # =====================================================================
@@ -179,13 +188,34 @@ def _search_files_sync(
     import subprocess
 
     root_dir = Path(path).expanduser().resolve()
+    if root_dir == Path("/"):
+        from core.sandbox import resolve_default_workdir
+        root_dir = resolve_default_workdir()
     if not root_dir.is_dir():
         return f"Error: Search directory not found: {root_dir}"
+
+    effective_pattern = pattern
+    if target == "files" and pattern:
+        # Normalize common regex file patterns (e.g. 'main\.py$' or '^main\.py$') into glob/substring form
+        if "\\." in effective_pattern or effective_pattern.endswith("$") or effective_pattern.startswith("^"):
+            cleaned = effective_pattern
+            if cleaned.startswith("^"):
+                cleaned = cleaned[1:]
+            else:
+                cleaned = f"*{cleaned}"
+            if cleaned.endswith("$"):
+                cleaned = cleaned[:-1]
+            else:
+                cleaned = f"{cleaned}*"
+            cleaned = cleaned.replace("\\.", ".")
+            while "**" in cleaned:
+                cleaned = cleaned.replace("**", "*")
+            effective_pattern = cleaned
 
     # 0. Blazing-fast Native Rust search if available
     try:
         from core.native_bridge import native_search_files
-        native_matches = native_search_files(pattern=pattern, target=target, path=str(root_dir), file_glob=file_glob, limit=limit)
+        native_matches = native_search_files(pattern=effective_pattern, target=target, path=str(root_dir), file_glob=file_glob, limit=limit)
         if native_matches is not None:
             if not native_matches:
                 if target == "files":
@@ -207,8 +237,8 @@ def _search_files_sync(
                 cmd = [rg_bin, "--files", "--hidden"]
                 for ign in IGNORED_DIRECTORIES:
                     cmd.extend(["-g", f"!{ign}"])
-                if pattern and pattern != "*":
-                    cmd.extend(["-g", f"*{pattern}*" if not any(c in pattern for c in "*?[]") else pattern])
+                if effective_pattern and effective_pattern != "*":
+                    cmd.extend(["-g", f"*{effective_pattern}*" if not any(c in effective_pattern for c in "*?[]") else effective_pattern])
 
                 res = subprocess.run(cmd, cwd=str(root_dir), capture_output=True, text=True, timeout=10)
                 if res.returncode == 0 or res.stdout:
@@ -238,6 +268,11 @@ def _search_files_sync(
     matches: List[str] = []
 
     if target == "files":
+        file_regex = None
+        try:
+            file_regex = re.compile(pattern, re.IGNORECASE)
+        except Exception:
+            pass
         for root, dirs, files in os.walk(root_dir):
             dirs[:] = [d for d in dirs if d not in IGNORED_DIRECTORIES and not d.startswith(".")]
             for file_name in files:
@@ -245,7 +280,13 @@ def _search_files_sync(
                     continue
                 full_path = Path(root) / file_name
                 rel_path = full_path.relative_to(root_dir)
-                if fnmatch.fnmatch(file_name, pattern) or (pattern in file_name):
+                if (
+                    fnmatch.fnmatch(file_name, effective_pattern)
+                    or (effective_pattern in file_name)
+                    or fnmatch.fnmatch(file_name, pattern)
+                    or (pattern in file_name)
+                    or (file_regex is not None and bool(file_regex.search(file_name)))
+                ):
                     matches.append(str(rel_path))
                     if len(matches) >= limit:
                         break

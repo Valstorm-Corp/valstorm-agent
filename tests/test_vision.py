@@ -317,5 +317,36 @@ def test_gemini_vision_rejects_application_octet_stream(sample_image_file, monke
     assert parts[0].text == "Check this"
 
 
+def test_extract_and_resolve_images_ignores_local_video_paths(tmp_path):
+    """Verify local .mp4/.mov video files pasted in prompts or images list are never Base64-inlined."""
+    cam_video = tmp_path / "camera_2026-10-16 09-02-19.mp4"
+    screen_video = tmp_path / "screen_2026-10-16 09-02-19.mp4"
+    cam_video.write_bytes(b"\x00\x00\x00\x18ftypmp42" + b"0" * 1024)
+    screen_video.write_bytes(b"\x00\x00\x00\x18ftypmp42" + b"1" * 1024)
+
+    prompt = (
+        "I have these two movies files. One has the audio, the screen, the other is a camera of me.\n\n"
+        f"{cam_video}\n\n"
+        f"{screen_video}\n\n"
+        "I want you to leverage the video editor to turn this into a piece of content."
+    )
+    msg = Message(role="user", content=prompt, images=[str(cam_video)])
+    images = extract_and_resolve_images(msg)
+    assert images == []
+
+
+def test_resolve_image_source_enforces_max_inline_media_bytes(tmp_path, monkeypatch):
+    """Verify oversized local image files exceeding MAX_INLINE_MEDIA_BYTES are not read into memory."""
+    import providers.base as base_mod
+    from providers.base import resolve_image_source
+
+    monkeypatch.setattr(base_mod, "MAX_INLINE_MEDIA_BYTES", 512)
+    oversized_png = tmp_path / "huge.png"
+    oversized_png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * 1024)
+
+    assert resolve_image_source(str(oversized_png)) is None
+
+
+
 
 

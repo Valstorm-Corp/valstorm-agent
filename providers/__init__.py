@@ -148,7 +148,7 @@ def resolve_provider_instance(
         return GeminiProvider(api_key=api_key, default_model=chosen_model, backend=backend, **kwargs), chosen_model, "gemini"
 
     if p_norm in ("anthropic", "claude", "anthropic-geap"):
-        chosen_model = model or "claude-3-7-sonnet-20250219"
+        chosen_model = model or "claude-sonnet-5-5"
 
         # GEAP/Vertex AI detection for Anthropic
         use_vertex_ai = os.getenv("ANTHROPIC_USE_VERTEX_AI", "").lower() in ("true", "1", "yes")

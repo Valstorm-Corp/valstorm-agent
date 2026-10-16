@@ -617,3 +617,51 @@ async def test_openai_provider_captures_reasoning_content_when_content_null():
     stream_events = [e async for e in prov.generate_stream([Message(role="user", content="test")])]
     tc_event = next(e for e in stream_events if e.event_type == StreamEventType.TURN_COMPLETE)
     assert tc_event.message.content == "Streamed reasoning token."
+
+
+@pytest.mark.asyncio
+async def test_httpx_read_error_fails_over_and_cooldown_honored_with_primary_model():
+    import httpx
+    from providers.fallback import is_provider_failover_candidate
+
+    read_err = httpx.ReadError("")
+    assert is_provider_failover_candidate(read_err) is True
+
+    primary = ScriptedProvider("valstorm", error=read_err)
+    backup = ScriptedProvider("do", text="recovered from ReadError")
+    chain = ChainedFallbackProvider(
+        tiers=[_tier(primary, "primary"), _tier(backup, "backup")],
+        cooldown_sec=120.0,
+    )
+
+    # Turn 1: ReactEngine passes model=chain.tiers[0].model; primary raises ReadError(""), backup serves.
+    text1 = ""
+    async for item in chain.generate_stream(
+        messages=[Message(role="user", content="transcribe video")],
+        model="primary-model",
+    ):
+        if isinstance(item, StreamEvent) and item.event_type == StreamEventType.TURN_COMPLETE:
+            text1 = item.message.content
+    assert text1 == "recovered from ReadError"
+    assert primary.call_count == 1
+    assert backup.call_count == 1
+
+    # Turn 2: Even when model="primary-model" is passed again by ReactEngine, primary is in cooldown and skipped!
+    text2 = ""
+    async for item in chain.generate_stream(
+        messages=[Message(role="user", content="next step")],
+        model="primary-model",
+    ):
+        if isinstance(item, StreamEvent) and item.event_type == StreamEventType.TURN_COMPLETE:
+            text2 = item.message.content
+    assert text2 == "recovered from ReadError"
+    assert primary.call_count == 1
+    assert backup.call_count == 2
+
+
+def test_permanent_tier_failure_reason_detects_do_404_message():
+    err = RuntimeError(
+        '404: DigitalOcean upstream error: {"error":{"message":"model not found","type":"not_found_error"},"message":"model not found","status_code":404}'
+    )
+    assert permanent_tier_failure_reason(err) == "HTTP 404"
+

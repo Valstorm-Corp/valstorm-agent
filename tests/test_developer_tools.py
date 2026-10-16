@@ -172,3 +172,34 @@ def test_workspace_context_manager(tmp_path):
     assert "Working Directory:" in prompt
     assert "Environment='dev'" in prompt
     assert "Follow testing rules." in prompt
+
+
+@pytest.mark.asyncio
+async def test_search_files_regex_pattern_in_files_mode(tmp_path):
+    (tmp_path / "video").mkdir()
+    (tmp_path / "video" / "main.py").write_text("print('video pipeline')\n")
+
+    res = await search_files(r"main\.py$", target="files", path=str(tmp_path))
+    assert "main.py" in res
+
+
+@pytest.mark.asyncio
+async def test_terminal_exec_auto_extends_timeout_for_video_commands():
+    from unittest.mock import AsyncMock, MagicMock
+    from core.sandbox import set_current_sandbox
+
+    mock_sb = MagicMock()
+    mock_sb.exec_command = AsyncMock(return_value="ok")
+    set_current_sandbox(mock_sb)
+    try:
+        await terminal_exec("python /workspace/monorepo/video/main.py --input clip.mp4")
+        assert mock_sb.exec_command.call_args.kwargs["timeout_sec"] == 600
+
+        await terminal_exec("ffmpeg -i screen.mp4 -vn audio.wav")
+        assert mock_sb.exec_command.call_args.kwargs["timeout_sec"] == 600
+
+        await terminal_exec("git status")
+        assert mock_sb.exec_command.call_args.kwargs["timeout_sec"] == 120
+    finally:
+        set_current_sandbox(None)
+

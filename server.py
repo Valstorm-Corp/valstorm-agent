@@ -182,6 +182,7 @@ class RunRequestPayload(BaseModel):
     agent_id: Optional[str] = None
     profile: Optional[str] = None
     model: Optional[str] = None
+    reasoning_effort: Optional[str] = None
     provider: Optional[str] = None
     session_id: Optional[str] = None
     instructions: Optional[str] = None
@@ -736,6 +737,9 @@ async def _execute_agent_run(
         if effective_chat_id:
             # Metered billing attributes each Valstorm gateway call to this ai_chat (X-Valstorm-Chat-Id)
             session.metadata["valstorm_chat_id"] = effective_chat_id
+        effective_reasoning_effort = payload.reasoning_effort or (profile_cfg or {}).get("reasoning_effort")
+        if effective_reasoning_effort:
+            session.metadata["reasoning_effort"] = str(effective_reasoning_effort).strip().lower()
 
         effective_input = payload.input
         if effective_input and effective_input.strip().startswith("/memorize"):
@@ -762,6 +766,7 @@ async def _execute_agent_run(
             images=payload.images,
             model=target_model,
             max_iterations=payload.max_iterations,
+            reasoning_effort=effective_reasoning_effort,
         ):
             if event.event_type == StreamEventType.TEXT_CHUNK and event.delta:
                 if event.metadata.get("failover"):
@@ -1142,7 +1147,11 @@ async def stream_run_events(run_id: str):
     async def sse_generator():
         try:
             while True:
-                item = await queue.get()
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
                 if item is None:
                     # Stream completed
                     yield f"data: [DONE]\n\n"

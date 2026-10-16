@@ -41,6 +41,19 @@ IMAGE_EXT_MIME_MAP = {
     ".flac": "audio/flac",
 }
 
+INLINE_IMAGE_EXT_MIME_MAP = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".bmp": "image/bmp",
+    ".svg": "image/svg+xml",
+    ".heic": "image/heic",
+}
+
+MAX_INLINE_MEDIA_BYTES = int(os.environ.get("VALSTORM_MAX_INLINE_MEDIA_BYTES", str(15 * 1024 * 1024)))
+
 
 VALID_MULTIMODAL_MIME_TYPES = set(IMAGE_EXT_MIME_MAP.values())
 
@@ -102,10 +115,12 @@ def fetch_vfs_image(file_id: str) -> Optional[Tuple[bytes, str]]:
             # If presigned URL
             if data.get("url"):
                 img_resp = client.get(data["url"])
-                if img_resp.status_code == 200:
+                if img_resp.status_code == 200 and len(img_resp.content) <= MAX_INLINE_MEDIA_BYTES:
                     return img_resp.content, mime_type
             elif data.get("text_content") and ext == ".svg":
-                return data["text_content"].encode("utf-8"), mime_type
+                raw_svg = data["text_content"].encode("utf-8")
+                if len(raw_svg) <= MAX_INLINE_MEDIA_BYTES:
+                    return raw_svg, mime_type
     except Exception:
         pass
     return None
@@ -119,6 +134,8 @@ def fetch_http_image(url: str) -> Optional[Tuple[bytes, str]]:
         with httpx.Client(timeout=20.0, follow_redirects=True) as client:
             resp = client.get(url)
             if resp.status_code == 200:
+                if len(resp.content) > MAX_INLINE_MEDIA_BYTES:
+                    return None
                 ct = resp.headers.get("content-type", "").split(";")[0].strip().lower()
                 ext = Path(url.split("?")[0]).suffix.lower()
                 mime_type = IMAGE_EXT_MIME_MAP.get(ext) or ct
@@ -144,6 +161,8 @@ def resolve_image_source(src: str) -> Optional[Tuple[bytes, str]]:
             if not is_valid_multimodal_mime(mime_type):
                 mime_type = "image/png"
             raw_bytes = base64.b64decode(b64_part.strip())
+            if len(raw_bytes) > MAX_INLINE_MEDIA_BYTES:
+                return None
             return raw_bytes, mime_type
         except Exception:
             return None
@@ -162,6 +181,8 @@ def resolve_image_source(src: str) -> Optional[Tuple[bytes, str]]:
         p = Path(clean_path)
         ext = p.suffix.lower()
         if ext in IMAGE_EXT_MIME_MAP and p.exists() and p.is_file():
+            if p.stat().st_size > MAX_INLINE_MEDIA_BYTES:
+                return None
             mime_type = IMAGE_EXT_MIME_MAP[ext]
             raw_bytes = p.read_bytes()
             return raw_bytes, mime_type
@@ -199,13 +220,15 @@ def extract_and_resolve_images(message: Message) -> List[Tuple[bytes, str]]:
         for m in re.finditer(r"\b(cloud://file_[a-zA-Z0-9_-]+)\b", text):
             sources.append(m.group(1).strip())
 
-        # Pattern 5: Standalone local filesystem paths (e.g. pasted or drag-dropped into terminal)
+        # Pattern 5: Standalone local filesystem paths (e.g. pasted or drag-dropped into terminal).
+        # Only auto-inline still images (INLINE_IMAGE_EXT_MIME_MAP); local video/audio/PDF paths
+        # pasted in prompts are file paths for local CLI/editing tools and must not be Base64-inlined.
         for line in text.splitlines():
             cleaned_line = line.strip().strip("\"'")
             if cleaned_line.startswith(("/", "~")):
                 try:
                     p = Path(os.path.expanduser(cleaned_line))
-                    if p.suffix.lower() in IMAGE_EXT_MIME_MAP and p.is_file():
+                    if p.suffix.lower() in INLINE_IMAGE_EXT_MIME_MAP and p.is_file():
                         sources.append(str(p))
                 except Exception:
                     pass
@@ -216,6 +239,13 @@ def extract_and_resolve_images(message: Message) -> List[Tuple[bytes, str]]:
         seen_sources.add(src)
 
         try:
+            # Never inline local video/audio files into chat messages; local daemon tools process them on disk.
+            clean_src = (src or "").strip().strip("\"'")
+            if clean_src and not clean_src.startswith(("data:", "http://", "https://", "cloud://", "file_")):
+                local_ext = Path(os.path.expanduser(clean_src)).suffix.lower()
+                if local_ext and local_ext not in INLINE_IMAGE_EXT_MIME_MAP and local_ext != ".pdf":
+                    continue
+
             res = resolve_image_source(src)
             if res and is_valid_multimodal_mime(res[1]):
                 resolved.append(res)

@@ -363,3 +363,40 @@ async def test_valstorm_truncated_sse_stream_recovers_via_generate_content():
     assert usage.prompt_tokens == 45000
 
 
+def test_reasoning_effort_across_gemini_openai_and_anthropic_providers():
+    from providers.gemini import GeminiProvider
+    from providers.openai import OpenAIProvider
+    from providers.anthropic import AnthropicProvider
+
+    # 1. GeminiProvider honors reasoning_effort from request_context or kwargs and sets X-Valstorm-Thinking-Level
+    gp = GeminiProvider(api_key="tok", backend="valstorm")
+    gp.set_request_context(chat_id="aich_123", reasoning_effort="off")
+    cfg_off = gp._build_config("sys", None, {"model": "gemini-3.8-flash"})
+    assert cfg_off.thinking_config is None
+    assert cfg_off.http_options.headers["X-Valstorm-Thinking-Level"] == "off"
+
+    gp.set_request_context(chat_id="aich_123", reasoning_effort="med")
+    cfg_med = gp._build_config("sys", None, {"model": "gemini-3.8-flash"})
+    assert cfg_med.thinking_config is not None
+    assert cfg_med.http_options.headers["X-Valstorm-Thinking-Level"] == "medium"
+
+    # 2. OpenAIProvider sets X-Valstorm-Thinking-Level on valstorm gateway and reasoning_effort on gpt-5.6-sol
+    op_valstorm = OpenAIProvider(api_key="tok", base_url="http://x/v1/ai", provider_name="valstorm")
+    op_valstorm.set_request_context(chat_id="aich_123", reasoning_effort="high")
+    req_kw = {"model": "claude-sonnet-5-5", "messages": []}
+    op_valstorm._apply_valstorm_headers(req_kw)
+    assert req_kw["extra_headers"]["X-Valstorm-Chat-Id"] == "aich_123"
+    assert req_kw["extra_headers"]["X-Valstorm-Thinking-Level"] == "high"
+
+    op_direct = OpenAIProvider(api_key="tok", provider_name="openai")
+    op_direct.set_request_context(reasoning_effort="low")
+    req_kw2 = {"model": "gpt-5.6-sol", "messages": []}
+    op_direct._apply_valstorm_headers(req_kw2)
+    assert req_kw2["reasoning_effort"] == "low"
+
+    # 3. AnthropicProvider defaults to claude-haiku-5-5
+    ap = AnthropicProvider(api_key="tok")
+    assert ap.default_model == "claude-haiku-5-5"
+
+
+
