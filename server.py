@@ -14,7 +14,7 @@ import os
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 import httpx
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -58,6 +58,7 @@ from tools.valstorm_client import (
     set_current_valstorm_auth,
 )
 from tools.valstorm_tools import register_valstorm_tools
+from tools.ui_navigator_tools import register_ui_navigator_tools
 from tools import register_tier1_tools
 
 # Configure environment variables so Valstorm Agent identifies as Valstorm Agent Runtime
@@ -193,6 +194,8 @@ class RunRequestPayload(BaseModel):
     valstorm_base_url: Optional[str] = None
     user_context: Optional[Dict[str, Any]] = None
     user_message_id: Optional[str] = None
+    workdir: Optional[str] = None
+    workspace_dir: Optional[str] = None
 
 
 class RunResponse(BaseModel):
@@ -367,6 +370,7 @@ def _build_server_tool_registry(
     registry = get_default_registry()
     register_developer_tools(registry)
     register_tier1_tools(registry)
+    register_ui_navigator_tools(registry)
     register_memory_tools(registry, memory_store=memory_store, session_store=session_store)
 
     token, base_url, refresh_token, auth_file_path = resolve_valstorm_auth_context(
@@ -620,6 +624,10 @@ async def _execute_agent_run(
         f"[{run_id}] Run initiated | prompt='{payload.input[:80]}' | env={exec_env} | profile={payload.profile} | model={payload.model} | chat_id={effective_chat_id}"
     )
 
+    req_workdir = payload.workdir or payload.workspace_dir
+    if not req_workdir and isinstance(payload.user_context, dict):
+        req_workdir = payload.user_context.get("workspace_dir") or payload.user_context.get("workdir")
+
     t_sb_start = time.perf_counter()
     if exec_env in ("cloud", "e2b", "serverless"):
         try:
@@ -629,7 +637,7 @@ async def _execute_agent_run(
             logger.warning(
                 f"[{run_id}] Cloud microVM sandbox unavailable ({e}). Falling back to HostSandbox."
             )
-            sandbox = HostSandbox()
+            sandbox = HostSandbox(base_dir=req_workdir)
             await sandbox.start()
     elif exec_env in ("docker", "container"):
         if pool is not None:
@@ -639,7 +647,7 @@ async def _execute_agent_run(
             sandbox = DockerSandbox()
             await sandbox.start()
     else:
-        sandbox = HostSandbox()
+        sandbox = HostSandbox(base_dir=req_workdir)
         await sandbox.start()
 
     sb_latency_ms = (time.perf_counter() - t_sb_start) * 1000
@@ -709,7 +717,8 @@ async def _execute_agent_run(
                 active_model=target_model,
                 active_provider=resolved_provider,
             )
-            sys_prompt = payload.system_prompt or payload.instructions or WorkspaceContextManager(memory_store=memory_store).build_system_prompt(profile=profile_cfg, user_context=payload.user_context)
+            effective_workdir = str(sandbox.base_dir) if hasattr(sandbox, "base_dir") else req_workdir
+            sys_prompt = payload.system_prompt or payload.instructions or WorkspaceContextManager(workdir=effective_workdir, memory_store=memory_store).build_system_prompt(profile=profile_cfg, user_context=payload.user_context)
             if (payload.system_prompt or payload.instructions) and payload.user_context:
                 now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
                 ctx_lines = ["\n\nSystem Context:", f"- Current Date & Time: {now_str}"]
@@ -1750,6 +1759,55 @@ async def ollama_chat_endpoint(request: Request):
         "prompt_eval_count": usage.get("prompt_tokens", 0),
         "eval_count": usage.get("completion_tokens", 0),
     }
+
+
+class SystemOneEvaluateRequest(BaseModel):
+    state: Any
+    questions: Dict[str, Any]
+    backend: Literal["local", "jev", "auto"] = "auto"
+
+
+class SystemOneUINavigateRequest(BaseModel):
+    goal: str
+    ui_state: Dict[str, Any]
+    assertions: Optional[Dict[str, str]] = None
+    mode: Literal["step", "workflow"] = "step"
+    max_steps: int = 10
+    confidence_threshold: float = 0.55
+
+
+@app.post("/v1/system-one/evaluate")
+async def system_one_evaluate_endpoint(req: SystemOneEvaluateRequest):
+    """Evaluates a batch of System-1 questions (Choice, Score, Noul, Box) in parallel."""
+    from core.decision_model import SystemOneClient
+
+    client = SystemOneClient(backend=req.backend)
+    resp = await client.evaluate_async(state=req.state, questions=req.questions)
+    return resp.model_dump()
+
+
+@app.post("/v1/system-one/ui-navigate")
+async def system_one_ui_navigate_endpoint(req: SystemOneUINavigateRequest):
+    """Executes System-1 closed-set UI or 2D/3D Crafting Canvas navigation."""
+    from core.ui_navigator import SystemOneUINavigator
+
+    navigator = SystemOneUINavigator(confidence_threshold=req.confidence_threshold)
+    if req.mode == "step":
+        res = navigator.decide_step(
+            goal=req.goal,
+            ui_state=req.ui_state,
+            assertions=req.assertions,
+            confidence_threshold=req.confidence_threshold,
+        )
+        return res.model_dump()
+    traj = navigator.run_navigation_workflow(
+        goal=req.goal,
+        initial_state=req.ui_state,
+        assertions=req.assertions,
+        max_steps=req.max_steps,
+        confidence_threshold=req.confidence_threshold,
+    )
+    return traj.model_dump()
 
 
 def _save_active_port(port: int):

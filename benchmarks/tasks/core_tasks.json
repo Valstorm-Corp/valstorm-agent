@@ -1,0 +1,203 @@
+[
+    {
+        "id": "G-S01",
+        "complexity": "Simple",
+        "category": "gaia_math_io",
+        "goal": "Calculate (42 * 3.14159) / 7 rounded to four decimal places. Write the result into a new file named 'calculation_result.txt'.",
+        "tool_chain": [
+            "calculator",
+            "write_file"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "file": "calculation_result.txt",
+            "content_regex": "^18\\.8495$",
+            "cleanup": [
+                "calculation_result.txt"
+            ]
+        }
+    },
+    {
+        "id": "G-S02",
+        "complexity": "Simple",
+        "category": "code_generation",
+        "goal": "In the current directory, create a new file named 'index.js'. Write a single line of JavaScript to it: 'console.log(\"Hello Agent Runtime\");'. Verify the file contents.",
+        "tool_chain": [
+            "write_file",
+            "read_file"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "file": "index.js",
+            "content_regex": "console\\.log\\(\"Hello Agent Runtime\"\\);",
+            "cleanup": [
+                "index.js"
+            ]
+        }
+    },
+    {
+        "id": "G-S03",
+        "complexity": "Simple",
+        "category": "terminal_ops",
+        "goal": "Create two directories: 'src/' and 'test/'. Create one file inside each: 'src/main.py' and 'test/test_main.py'. Use the search tool to find all files ending in '.py' in the current directory and report the count.",
+        "tool_chain": [
+            "terminal_exec",
+            "write_file",
+            "search_files"
+        ],
+        "recommended_skills": [
+            "codebase-inspection"
+        ],
+        "success_criteria": {
+            "files_exist": [
+                "src/main.py",
+                "test/test_main.py"
+            ],
+            "terminal_exec_verify": "search_files(pattern='*.py', target='files', path='.') result must contain 2 matches.",
+            "verify_command": "test -f src/main.py && test -f test/test_main.py",
+            "cleanup": [
+                "src/main.py",
+                "test/test_main.py",
+                "src",
+                "test"
+            ]
+        }
+    },
+    {
+        "id": "G-M01",
+        "complexity": "Medium",
+        "category": "web_research",
+        "goal": "Use web_search to find the official documentation page for \"Python requests library basic usage\". Write the title and URL of the top result into a file named 'documentation_source.md'.",
+        "tool_chain": [
+            "web_search",
+            "write_file"
+        ],
+        "recommended_skills": [
+            "grounded-citations"
+        ],
+        "success_criteria": {
+            "file": "documentation_source.md",
+            "content_regex": "(?i)(requests|python).*http",
+            "cleanup": [
+                "documentation_source.md"
+            ]
+        }
+    },
+    {
+        "id": "G-M02",
+        "complexity": "Medium",
+        "category": "code_generation",
+        "goal": "Write a Python script named 'sum.py' that takes two command-line arguments (integers) and prints their sum. Execute the script via terminal_exec with inputs '15' and '30' and verify the output is '45'.",
+        "tool_chain": [
+            "write_file",
+            "terminal_exec"
+        ],
+        "recommended_skills": [
+            "python-testing"
+        ],
+        "success_criteria": {
+            "file": "sum.py",
+            "terminal_exec_verify": "Execution of 'python sum.py 15 30' must result in stdout '45'.",
+            "verify_command": "python3 sum.py 15 30",
+            "verify_stdout_regex": "^45$",
+            "cleanup": [
+                "sum.py"
+            ]
+        }
+    },
+    {
+        "id": "G-M03",
+        "complexity": "Medium",
+        "category": "patch_precision",
+        "goal": "Create a file named 'config.json' containing the text: '{\"url\": \"http://api.old.com/v1\"}'. Use patch_file to change the URL to '\"http://api.new.com/v2\"' in a single operation. Verify the change.",
+        "tool_chain": [
+            "write_file",
+            "patch_file",
+            "read_file"
+        ],
+        "recommended_skills": [
+            "code-modification-fallbacks"
+        ],
+        "success_criteria": {
+            "file": "config.json",
+            "content_regex": "http://api\\.new\\.com/v2",
+            "cleanup": [
+                "config.json"
+            ]
+        }
+    },
+    {
+        "id": "G-H01",
+        "complexity": "High",
+        "category": "tdd_loop",
+        "goal": "1. Write a failing Python unit test (in 'test/test_reverse.py') that expects a function 'reverse_string(s)' to return the reversed input. 2. Write the empty function stub (in 'src/utils.py'). 3. Execute the test using 'python -m pytest' (it must fail). 4. Implement the correct 'reverse_string' logic in 'src/utils.py'. 5. Re-run the test and verify success (exit code 0).",
+        "tool_chain": [
+            "write_file",
+            "terminal_exec"
+        ],
+        "recommended_skills": [
+            "test-driven-development",
+            "systematic-debugging"
+        ],
+        "success_criteria": {
+            "files_exist": [
+                "src/utils.py",
+                "test/test_reverse.py"
+            ],
+            "terminal_exec_verify": "Final test run must have exit code 0.",
+            "verify_command": "PYTHONPATH=. python3 -m pytest test/test_reverse.py",
+            "cleanup": [
+                "src/utils.py",
+                "test/test_reverse.py",
+                "src",
+                "test"
+            ]
+        }
+    },
+    {
+        "id": "G-H02",
+        "complexity": "High",
+        "category": "web_research",
+        "goal": "Use web_scrape on 'https://www.valstorm.com/' (a well-known, public website). Then, use the web_content_diff tool on the same URL to confirm whether the content has changed since the last known archive. Report the result (changed/unchanged).",
+        "tool_chain": [
+            "web_scrape",
+            "web_content_diff"
+        ],
+        "recommended_skills": [
+            "competitor-news-monitor"
+        ],
+        "success_criteria": {
+            "tool_output_verify": "The result of web_content_diff must be a structured result indicating 'diff_detected' or 'status' for comparison.",
+            "output_regex": "(?i)(unchanged|changed|diff|identical|no changes)",
+            "cleanup": []
+        }
+    },
+    {
+        "id": "G-H03",
+        "complexity": "High",
+        "category": "terminal_ops",
+        "goal": "Write a single shell script ('setup_env.sh') that does the following: 1. Creates a directory 'temp_proj'. 2. Changes directory into 'temp_proj'. 3. Initializes a new git repository. 4. Writes a '.gitignore' file with 'node_modules' and 'dist'. 5. Reports the current directory using 'pwd'. Execute the script with terminal_exec and verify all five steps were completed sequentially. (CRITICAL: Ensure executable permissions.)",
+        "tool_chain": [
+            "write_file",
+            "terminal_exec"
+        ],
+        "recommended_skills": [
+            "bash-scripting"
+        ],
+        "success_criteria": {
+            "file": "setup_env.sh",
+            "require_executable": true,
+            "files_exist": [
+                "setup_env.sh",
+                "temp_proj/.gitignore"
+            ],
+            "terminal_exec_verify": "The final execution output must show a path ending in 'temp_proj' and git must be initialized.",
+            "verify_command": "test -x setup_env.sh && test -d temp_proj/.git && grep -q 'node_modules' temp_proj/.gitignore && grep -q 'dist' temp_proj/.gitignore",
+            "cleanup": [
+                "setup_env.sh",
+                "temp_proj",
+                ".gitignore"
+            ]
+        }
+    }
+]

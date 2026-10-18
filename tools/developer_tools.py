@@ -27,6 +27,9 @@ IGNORED_DIRECTORIES = {
     "venv",
     "dist",
     "build",
+    "target",
+    "out",
+    "coverage",
     "__pycache__",
     ".pytest_cache",
     ".mypy_cache",
@@ -35,6 +38,21 @@ IGNORED_DIRECTORIES = {
     ".turbo",
     ".cache",
     ".hermes",
+    ".yarn",
+    ".npm",
+    ".cargo",
+    ".rustup",
+    ".local",
+    ".orbstack",
+    ".docker",
+    # OS & Sandboxed App Container directories (prevents macOS TCC "access data from other apps" popup storms)
+    "Library",
+    "Applications",
+    ".Trash",
+    "AppData",
+    "$Recycle.Bin",
+    "System Volume Information",
+    "Photos Library.photoslibrary",
 }
 
 MAX_OUTPUT_BYTES = 16 * 1024  # 16 KB output truncation budget
@@ -231,12 +249,22 @@ def _search_files_sync(
 
     # 1. High-speed Ripgrep path if installed
     rg_bin = shutil.which("rg")
+    is_home_root = False
+    try:
+        is_home_root = root_dir == Path.home().resolve()
+    except Exception:
+        pass
+
     if rg_bin:
         try:
             if target == "files":
-                cmd = [rg_bin, "--files", "--hidden"]
+                cmd = [rg_bin, "--files"]
+                if not is_home_root:
+                    cmd.append("--hidden")
                 for ign in IGNORED_DIRECTORIES:
                     cmd.extend(["-g", f"!{ign}"])
+                for bundle_ext in ("*.app", "*.photoslibrary", "*.bundle", "*.framework"):
+                    cmd.extend(["-g", f"!{bundle_ext}"])
                 if effective_pattern and effective_pattern != "*":
                     cmd.extend(["-g", f"*{effective_pattern}*" if not any(c in effective_pattern for c in "*?[]") else effective_pattern])
 
@@ -251,6 +279,8 @@ def _search_files_sync(
                 cmd = [rg_bin, "-n", "-i", "--max-count", str(limit)]
                 for ign in IGNORED_DIRECTORIES:
                     cmd.extend(["-g", f"!{ign}"])
+                for bundle_ext in ("*.app", "*.photoslibrary", "*.bundle", "*.framework"):
+                    cmd.extend(["-g", f"!{bundle_ext}"])
                 if file_glob:
                     cmd.extend(["-g", file_glob])
                 cmd.extend([pattern, "."])
@@ -267,6 +297,13 @@ def _search_files_sync(
     # 2. Python fallback traversal
     matches: List[str] = []
 
+    def _should_keep_dir(d: str) -> bool:
+        if d in IGNORED_DIRECTORIES or d.startswith("."):
+            return False
+        if d.endswith((".app", ".photoslibrary", ".bundle", ".framework")):
+            return False
+        return True
+
     if target == "files":
         file_regex = None
         try:
@@ -274,7 +311,7 @@ def _search_files_sync(
         except Exception:
             pass
         for root, dirs, files in os.walk(root_dir):
-            dirs[:] = [d for d in dirs if d not in IGNORED_DIRECTORIES and not d.startswith(".")]
+            dirs[:] = [d for d in dirs if _should_keep_dir(d)]
             for file_name in files:
                 if file_name.startswith("."):
                     continue
@@ -304,7 +341,7 @@ def _search_files_sync(
             return f"Error: Invalid regular expression '{pattern}': {e}"
 
         for root, dirs, files in os.walk(root_dir):
-            dirs[:] = [d for d in dirs if d not in IGNORED_DIRECTORIES and not d.startswith(".")]
+            dirs[:] = [d for d in dirs if _should_keep_dir(d)]
             for file_name in files:
                 if file_name.startswith("."):
                     continue

@@ -8,6 +8,10 @@
 
 **Valstorm Agent Runtime (`vsagent`)** is an enterprise-grade autonomous AI execution runtime and ReAct engine designed for developer workstations, continuous integration pipelines, and team-wide automation.
 
+- **Official Tool Page & Architecture Guide:** [https://www.valstorm.com/free-tools/valstorm-agent](https://www.valstorm.com/free-tools/valstorm-agent?utm_source=github&utm_medium=readme&utm_campaign=valstorm_agent)
+- **6-Axis Scientific Benchmark & Ablation Study:** [https://www.valstorm.com/research/agent-runtime-benchmark-harness](https://www.valstorm.com/research/agent-runtime-benchmark-harness?utm_source=github&utm_medium=readme&utm_campaign=valstorm_agent)
+- **All Valstorm Free & Open-Source Tools:** [https://www.valstorm.com/free-tools](https://www.valstorm.com/free-tools?utm_source=github&utm_medium=readme&utm_campaign=valstorm_agent)
+
 Run it locally from your command line, launch it as a background workstation daemon, or orchestrate it remotely from anywhere.
 
 ---

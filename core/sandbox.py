@@ -120,27 +120,51 @@ class BaseSandbox(ABC):
 def resolve_default_workdir(base_dir: Optional[str] = None) -> Path:
     """Resolves a safe default working directory for HostSandbox and WorkspaceContextManager.
 
-    When launched by a desktop GUI wrapper (macOS LaunchServices / Finder), the process
-    working directory is frequently `/` (filesystem root), which breaks relative paths
-    and causes `search_files` to scan the entire OS root. If `base_dir` is omitted and
-    `Path.cwd()` is `/`, falls back to `VALSTORM_WORKSPACE_DIR`, `~/Documents/Code/monorepo`
-    (if present), or `Path.home()`.
+    When launched by a desktop GUI wrapper (macOS LaunchServices / Finder / login shell),
+    the process working directory is frequently `/` (filesystem root) or `$HOME`, which
+    causes `search_files` to traverse the entire OS root or user home directory (including
+    `~/Library/Containers`, triggering repeated macOS TCC prompts).
+
+    Resolution order:
+    1. Explicit `base_dir` argument (e.g. from `/v1/runs` payload `workdir`).
+    2. `VALSTORM_WORKSPACE_DIR` environment variable.
+    3. Current working directory `Path.cwd()`, provided it is neither `/` nor `$HOME`.
+    4. `workspace_dir` configured in `~/.valstorm/config.json` (if present).
+    5. Isolated `~/.valstorm/workspace` directory (auto-created, zero macOS TCC prompts).
     """
-    if base_dir:
-        return Path(base_dir).expanduser().resolve()
+    if base_dir and str(base_dir).strip():
+        return Path(str(base_dir).strip()).expanduser().resolve()
     env_dir = os.environ.get("VALSTORM_WORKSPACE_DIR", "").strip()
     if env_dir:
         p = Path(env_dir).expanduser().resolve()
         if p.is_dir():
             return p
     cwd = Path.cwd().resolve()
-    if cwd != Path("/"):
-        return cwd
     home = Path.home().resolve()
-    monorepo_cand = home / "Documents" / "Code" / "monorepo"
-    if monorepo_cand.is_dir():
-        return monorepo_cand
-    return home if home.is_dir() else cwd
+    if cwd not in (Path("/"), home):
+        return cwd
+
+    # Check ~/.valstorm/config.json for a user-configured default workspace
+    try:
+        import json
+        cfg_path = home / ".valstorm" / "config.json"
+        if cfg_path.is_file():
+            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+            cfg_ws = (cfg.get("workspace_dir") or cfg.get("default_workdir") or "").strip()
+            if cfg_ws:
+                cand = Path(cfg_ws).expanduser().resolve()
+                if cand.is_dir() and cand not in (Path("/"), home):
+                    return cand
+    except Exception:
+        pass
+
+    # Universal safe sandbox directory outside macOS TCC-protected folders
+    safe_ws = home / ".valstorm" / "workspace"
+    try:
+        safe_ws.mkdir(parents=True, exist_ok=True)
+        return safe_ws
+    except Exception:
+        return home if home.is_dir() else cwd
 
 
 class HostSandbox(BaseSandbox):

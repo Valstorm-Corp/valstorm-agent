@@ -275,8 +275,61 @@ def test_resolve_default_workdir_avoids_filesystem_root(monkeypatch, tmp_path):
     monkeypatch.setattr(Path, "cwd", classmethod(lambda cls: Path("/")))
     resolved = resolve_default_workdir()
     assert resolved != Path("/")
+    assert resolved != Path.home().resolve()
     sb = HostSandbox()
     assert sb.cwd != Path("/")
+    assert sb.cwd != Path.home().resolve()
+
+
+def test_resolve_default_workdir_avoids_raw_home_dir(monkeypatch, tmp_path):
+    from pathlib import Path
+    from core.sandbox import HostSandbox, resolve_default_workdir
+
+    fake_home = tmp_path / "fake_user_home"
+    fake_home.mkdir()
+    monkeypatch.setenv("VALSTORM_WORKSPACE_DIR", "")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+    monkeypatch.setattr(Path, "cwd", classmethod(lambda cls: fake_home))
+
+    resolved = resolve_default_workdir()
+    assert resolved == (fake_home / ".valstorm" / "workspace").resolve()
+    assert resolved.is_dir()
+
+    custom_vault = tmp_path / "my_project"
+    custom_vault.mkdir()
+    sb = HostSandbox(base_dir=str(custom_vault))
+    assert sb.cwd == custom_vault.resolve()
+
+
+def test_search_files_ignores_macos_library_and_app_containers(tmp_path):
+    from tools.developer_tools import _search_files_sync, IGNORED_DIRECTORIES
+
+    assert "Library" in IGNORED_DIRECTORIES
+    assert "Applications" in IGNORED_DIRECTORIES
+    assert ".Trash" in IGNORED_DIRECTORIES
+
+    # Simulate a user directory containing Library/Containers and normal Documents
+    lib_container = tmp_path / "Library" / "Containers" / "com.apple.mail"
+    lib_container.mkdir(parents=True)
+    (lib_container / "secret_target.py").write_text("SECRET_TOKEN = '123'\n", encoding="utf-8")
+
+    app_bundle = tmp_path / "SomeApp.app" / "Contents"
+    app_bundle.mkdir(parents=True)
+    (app_bundle / "secret_target.py").write_text("SECRET_TOKEN = '456'\n", encoding="utf-8")
+
+    project_dir = tmp_path / "Documents" / "Project"
+    project_dir.mkdir(parents=True)
+    (project_dir / "secret_target.py").write_text("SECRET_TOKEN = 'allowed'\n", encoding="utf-8")
+
+    file_res = _search_files_sync("secret_target.py", target="files", path=str(tmp_path))
+    assert "Documents/Project/secret_target.py" in file_res
+    assert "Library" not in file_res
+    assert "SomeApp.app" not in file_res
+
+    content_res = _search_files_sync("SECRET_TOKEN", target="content", path=str(tmp_path))
+    assert "Documents/Project/secret_target.py" in content_res
+    assert "Library" not in content_res
+    assert "SomeApp.app" not in content_res
 
 
 @pytest.mark.asyncio

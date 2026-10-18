@@ -1,0 +1,81 @@
+[
+    {
+        "id": "SW-01",
+        "complexity": "High",
+        "category": "swarm_parallel",
+        "goal": "Complete these three independent deliverables (if delegate_task is available, spawn 3 background subagents in parallel and wait for all): 1. Write the first 8 Fibonacci numbers [0, 1, 1, 2, 3, 5, 8, 13] into 'fib.json'. 2. Write a JavaScript file 'greet.js' containing 'module.exports = (name) => `Hello, ${name}!`;'. 3. Write a Python script 'square.py' that prints the square of 12 (144) when run, and write '144' to 'square_result.txt'.",
+        "subtasks": [
+            {
+                "profile": "developer",
+                "goal": "Write the first 8 Fibonacci numbers as a JSON array [0, 1, 1, 2, 3, 5, 8, 13] into 'fib.json'."
+            },
+            {
+                "profile": "developer",
+                "goal": "Write a JavaScript file 'greet.js' containing 'module.exports = (name) => `Hello, ${name}!`;'."
+            },
+            {
+                "profile": "developer",
+                "goal": "Write a Python script 'square.py' that prints 144 and write '144' into 'square_result.txt'."
+            }
+        ],
+        "tool_chain": [
+            "delegate_task",
+            "write_file"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "files_exist": [
+                "fib.json",
+                "greet.js",
+                "square_result.txt"
+            ],
+            "file": "square_result.txt",
+            "content_regex": "144",
+            "verify_command": "test -f fib.json && test -f greet.js && grep -q '13' fib.json && grep -q 'Hello' greet.js",
+            "cleanup": [
+                "fib.json",
+                "greet.js",
+                "square.py",
+                "square_result.txt"
+            ]
+        }
+    },
+    {
+        "id": "SW-02",
+        "complexity": "High",
+        "category": "swarm_parallel",
+        "goal": "Complete this 3-part cross-functional launch package concurrently: 1. [Archivist] Create 'research_summary.md' listing the 3 core Valstorm layers (apps, packages, mobile-apps). 2. [Marketer] Create 'campaign_hook.md' with a headline containing the word 'Valstorm'. 3. [Developer] Create 'schema.json' with a JSON object containing '\"object\": \"lead\"'.",
+        "subtasks": [
+            {
+                "profile": "archivist",
+                "goal": "Create 'research_summary.md' listing the 3 core Valstorm layers: apps, packages, mobile-apps."
+            },
+            {
+                "profile": "marketer",
+                "goal": "Create 'campaign_hook.md' with a marketing headline containing the word 'Valstorm'."
+            },
+            {
+                "profile": "developer",
+                "goal": "Create 'schema.json' containing a valid JSON object with '\"object\": \"lead\"'."
+            }
+        ],
+        "tool_chain": [
+            "delegate_task",
+            "write_file"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "files_exist": [
+                "research_summary.md",
+                "campaign_hook.md",
+                "schema.json"
+            ],
+            "verify_command": "grep -qi 'apps' research_summary.md && grep -qi 'Valstorm' campaign_hook.md && grep -q 'lead' schema.json",
+            "cleanup": [
+                "research_summary.md",
+                "campaign_hook.md",
+                "schema.json"
+            ]
+        }
+    }
+]

@@ -29,8 +29,10 @@ COPY apps/agent-runtime/pyproject.toml /workspace/apps/agent-runtime/
 WORKDIR /workspace/apps/agent-runtime
 RUN uv pip install --system --no-cache -r pyproject.toml
 
-# Copy application source code
+# Copy application source code and marketing telemetry scripts
 COPY apps/agent-runtime /workspace/apps/agent-runtime
+COPY scripting/marketing /workspace/scripting/marketing
+RUN uv pip install --system --no-cache google-ads google-analytics-data google-api-python-client google-auth matplotlib
 RUN ln -s /workspace/apps/agent-runtime /app
 
 # Expose cloud runtime port

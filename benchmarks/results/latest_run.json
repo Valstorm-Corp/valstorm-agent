@@ -1,0 +1,5008 @@
+{
+  "timestamp": "2026-10-18T18:56:19.552075+00:00",
+  "mode": "mock",
+  "trials_per_task": 1,
+  "task_count": 13,
+  "config_count": 15,
+  "config_summaries": [
+    {
+      "config_id": "skills_on",
+      "label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "low",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.267,
+      "avg_turns": 3.0,
+      "avg_tokens": 945.2,
+      "total_cost_usd": 0.001712,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.197,
+          "avg_total_tokens": 918.0,
+          "avg_cost_usd": 0.000186
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.198,
+          "avg_total_tokens": 918.0,
+          "avg_cost_usd": 0.000186
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.225,
+          "avg_total_tokens": 1023.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.131,
+          "avg_total_tokens": 612.0,
+          "avg_cost_usd": 0.000124
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.219,
+          "avg_total_tokens": 918.0,
+          "avg_cost_usd": 0.000186
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.263,
+          "avg_total_tokens": 1364.0,
+          "avg_cost_usd": 0.000269
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.657,
+          "avg_total_tokens": 1530.0,
+          "avg_cost_usd": 0.000311
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.065,
+          "avg_total_tokens": 306.0,
+          "avg_cost_usd": 6.2e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.444,
+          "avg_total_tokens": 918.0,
+          "avg_cost_usd": 0.000186
+        }
+      }
+    },
+    {
+      "config_id": "skills_off",
+      "label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "low",
+      "with_skills": false,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 8,
+      "pass_rate": 0.8889,
+      "pass_hat_k": 0.8889,
+      "avg_duration_sec": 0.242,
+      "avg_turns": 3.0,
+      "avg_tokens": 705.2,
+      "total_cost_usd": 0.001388,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.197,
+          "avg_total_tokens": 678.0,
+          "avg_cost_usd": 0.00015
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.197,
+          "avg_total_tokens": 678.0,
+          "avg_cost_usd": 0.00015
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.206,
+          "avg_total_tokens": 783.0,
+          "avg_cost_usd": 0.000166
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.131,
+          "avg_total_tokens": 452.0,
+          "avg_cost_usd": 0.0001
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.22,
+          "avg_total_tokens": 678.0,
+          "avg_cost_usd": 0.00015
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.262,
+          "avg_total_tokens": 1044.0,
+          "avg_cost_usd": 0.000221
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.684,
+          "avg_total_tokens": 1130.0,
+          "avg_cost_usd": 0.000251
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.065,
+          "avg_total_tokens": 226.0,
+          "avg_cost_usd": 5e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.219,
+          "avg_total_tokens": 678.0,
+          "avg_cost_usd": 0.00015
+        }
+      }
+    },
+    {
+      "config_id": "react_on",
+      "label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.305,
+      "avg_turns": 3.0,
+      "avg_tokens": 972.2,
+      "total_cost_usd": 0.001858,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.254,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.244,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.256,
+          "avg_total_tokens": 1050.0,
+          "avg_cost_usd": 0.000218
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.163,
+          "avg_total_tokens": 630.0,
+          "avg_cost_usd": 0.000135
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.268,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.326,
+          "avg_total_tokens": 1400.0,
+          "avg_cost_usd": 0.000291
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.754,
+          "avg_total_tokens": 1575.0,
+          "avg_cost_usd": 0.000338
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.082,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.401,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        }
+      }
+    },
+    {
+      "config_id": "react_off",
+      "label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": false,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 5,
+      "pass_rate": 0.5556,
+      "pass_hat_k": 0.5556,
+      "avg_duration_sec": 0.082,
+      "avg_turns": 1.0,
+      "avg_tokens": 322.8,
+      "total_cost_usd": 0.000622,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.082,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.082,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.087,
+          "avg_total_tokens": 350.0,
+          "avg_cost_usd": 7.3e-05
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.082,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.082,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.082,
+          "avg_total_tokens": 350.0,
+          "avg_cost_usd": 7.3e-05
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.082,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        }
+      }
+    },
+    {
+      "config_id": "tools_scoped",
+      "label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.3,
+      "avg_turns": 3.0,
+      "avg_tokens": 972.2,
+      "total_cost_usd": 0.001858,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.244,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.245,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.256,
+          "avg_total_tokens": 1050.0,
+          "avg_cost_usd": 0.000218
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.163,
+          "avg_total_tokens": 630.0,
+          "avg_cost_usd": 0.000135
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.267,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.326,
+          "avg_total_tokens": 1400.0,
+          "avg_cost_usd": 0.000291
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.696,
+          "avg_total_tokens": 1575.0,
+          "avg_cost_usd": 0.000338
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.426,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        }
+      }
+    },
+    {
+      "config_id": "tools_full",
+      "label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "full",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.299,
+      "avg_turns": 3.0,
+      "avg_tokens": 3885.0,
+      "total_cost_usd": 0.005789,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.243,
+          "avg_total_tokens": 3885.0,
+          "avg_cost_usd": 0.000643
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.245,
+          "avg_total_tokens": 3885.0,
+          "avg_cost_usd": 0.000643
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.254,
+          "avg_total_tokens": 3885.0,
+          "avg_cost_usd": 0.000643
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.163,
+          "avg_total_tokens": 2590.0,
+          "avg_cost_usd": 0.000429
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.27,
+          "avg_total_tokens": 3885.0,
+          "avg_cost_usd": 0.000643
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.327,
+          "avg_total_tokens": 5180.0,
+          "avg_cost_usd": 0.000858
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.694,
+          "avg_total_tokens": 6475.0,
+          "avg_cost_usd": 0.001072
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 1295.0,
+          "avg_cost_usd": 0.000215
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.417,
+          "avg_total_tokens": 3885.0,
+          "avg_cost_usd": 0.000643
+        }
+      }
+    },
+    {
+      "config_id": "tools_none",
+      "label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "none",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 0,
+      "pass_rate": 0.0,
+      "pass_hat_k": 0.0,
+      "avg_duration_sec": 0.081,
+      "avg_turns": 1.0,
+      "avg_tokens": 245.0,
+      "total_cost_usd": 0.000513,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 245.0,
+          "avg_cost_usd": 5.7e-05
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.08,
+          "avg_total_tokens": 245.0,
+          "avg_cost_usd": 5.7e-05
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 245.0,
+          "avg_cost_usd": 5.7e-05
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.082,
+          "avg_total_tokens": 245.0,
+          "avg_cost_usd": 5.7e-05
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 245.0,
+          "avg_cost_usd": 5.7e-05
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 245.0,
+          "avg_cost_usd": 5.7e-05
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 245.0,
+          "avg_cost_usd": 5.7e-05
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 245.0,
+          "avg_cost_usd": 5.7e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 245.0,
+          "avg_cost_usd": 5.7e-05
+        }
+      }
+    },
+    {
+      "config_id": "thinking_none",
+      "label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "none",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.182,
+      "avg_turns": 3.0,
+      "avg_tokens": 903.2,
+      "total_cost_usd": 0.001487,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.123,
+          "avg_total_tokens": 876.0,
+          "avg_cost_usd": 0.000161
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.124,
+          "avg_total_tokens": 876.0,
+          "avg_cost_usd": 0.000161
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.134,
+          "avg_total_tokens": 981.0,
+          "avg_cost_usd": 0.000177
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.083,
+          "avg_total_tokens": 584.0,
+          "avg_cost_usd": 0.000107
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.149,
+          "avg_total_tokens": 876.0,
+          "avg_cost_usd": 0.000161
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.167,
+          "avg_total_tokens": 1308.0,
+          "avg_cost_usd": 0.000236
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.498,
+          "avg_total_tokens": 1460.0,
+          "avg_cost_usd": 0.000269
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.041,
+          "avg_total_tokens": 292.0,
+          "avg_cost_usd": 5.4e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.322,
+          "avg_total_tokens": 876.0,
+          "avg_cost_usd": 0.000161
+        }
+      }
+    },
+    {
+      "config_id": "thinking_low",
+      "label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "low",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.25,
+      "avg_turns": 3.0,
+      "avg_tokens": 945.2,
+      "total_cost_usd": 0.001712,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.195,
+          "avg_total_tokens": 918.0,
+          "avg_cost_usd": 0.000186
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.196,
+          "avg_total_tokens": 918.0,
+          "avg_cost_usd": 0.000186
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.211,
+          "avg_total_tokens": 1023.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.131,
+          "avg_total_tokens": 612.0,
+          "avg_cost_usd": 0.000124
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.22,
+          "avg_total_tokens": 918.0,
+          "avg_cost_usd": 0.000186
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.262,
+          "avg_total_tokens": 1364.0,
+          "avg_cost_usd": 0.000269
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.603,
+          "avg_total_tokens": 1530.0,
+          "avg_cost_usd": 0.000311
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.065,
+          "avg_total_tokens": 306.0,
+          "avg_cost_usd": 6.2e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.367,
+          "avg_total_tokens": 918.0,
+          "avg_cost_usd": 0.000186
+        }
+      }
+    },
+    {
+      "config_id": "thinking_medium",
+      "label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.299,
+      "avg_turns": 3.0,
+      "avg_tokens": 972.2,
+      "total_cost_usd": 0.001858,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.245,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.244,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.253,
+          "avg_total_tokens": 1050.0,
+          "avg_cost_usd": 0.000218
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.162,
+          "avg_total_tokens": 630.0,
+          "avg_cost_usd": 0.000135
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.274,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.326,
+          "avg_total_tokens": 1400.0,
+          "avg_cost_usd": 0.000291
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.705,
+          "avg_total_tokens": 1575.0,
+          "avg_cost_usd": 0.000338
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.081,
+          "avg_total_tokens": 315.0,
+          "avg_cost_usd": 6.8e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.405,
+          "avg_total_tokens": 945.0,
+          "avg_cost_usd": 0.000202
+        }
+      }
+    },
+    {
+      "config_id": "thinking_high",
+      "label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "high",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.418,
+      "avg_turns": 3.0,
+      "avg_tokens": 1038.2,
+      "total_cost_usd": 0.002215,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.363,
+          "avg_total_tokens": 1011.0,
+          "avg_cost_usd": 0.000242
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.364,
+          "avg_total_tokens": 1011.0,
+          "avg_cost_usd": 0.000242
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.374,
+          "avg_total_tokens": 1116.0,
+          "avg_cost_usd": 0.000258
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.242,
+          "avg_total_tokens": 674.0,
+          "avg_cost_usd": 0.000161
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.387,
+          "avg_total_tokens": 1011.0,
+          "avg_cost_usd": 0.000242
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.487,
+          "avg_total_tokens": 1488.0,
+          "avg_cost_usd": 0.000344
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.899,
+          "avg_total_tokens": 1685.0,
+          "avg_cost_usd": 0.000403
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.121,
+          "avg_total_tokens": 337.0,
+          "avg_cost_usd": 8.1e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.528,
+          "avg_total_tokens": 1011.0,
+          "avg_cost_usd": 0.000242
+        }
+      }
+    },
+    {
+      "config_id": "seq_single",
+      "label": "10a. Single Agent (Sequential Execution)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 2,
+      "passed_runs": 2,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 1.081,
+      "avg_turns": 4.0,
+      "avg_tokens": 1260.0,
+      "total_cost_usd": 0.00054,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "SW-01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 1.081,
+          "avg_total_tokens": 1260.0,
+          "avg_cost_usd": 0.00027
+        },
+        "SW-02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 1.08,
+          "avg_total_tokens": 1260.0,
+          "avg_cost_usd": 0.00027
+        }
+      }
+    },
+    {
+      "config_id": "swarm_parallel",
+      "label": "10b. Parallel Subagent Swarm (background=True, 3 Workers)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": true,
+      "total_runs": 2,
+      "passed_runs": 2,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.673,
+      "avg_turns": 3.0,
+      "avg_tokens": 7840.0,
+      "total_cost_usd": 0.002716,
+      "avg_parallel_speedup": 2.1,
+      "per_task": {
+        "SW-01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.75,
+          "avg_total_tokens": 8820.0,
+          "avg_cost_usd": 0.001505
+        },
+        "SW-02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.597,
+          "avg_total_tokens": 6860.0,
+          "avg_cost_usd": 0.001211
+        }
+      }
+    },
+    {
+      "config_id": "system_one_ui_nav",
+      "label": "11a. System-1 Decision Model UI/Canvas Navigator (Parallel Closed-Set)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "low",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 2,
+      "passed_runs": 2,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.147,
+      "avg_turns": 2.0,
+      "avg_tokens": 612.0,
+      "total_cost_usd": 0.000248,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "UI-01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.144,
+          "avg_total_tokens": 612.0,
+          "avg_cost_usd": 0.000124
+        },
+        "UI-02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.151,
+          "avg_total_tokens": 612.0,
+          "avg_cost_usd": 0.000124
+        }
+      }
+    },
+    {
+      "config_id": "llm_react_ui_nav",
+      "label": "11b. System-2 Full LLM ReAct UI/Canvas Navigation (Step-by-Step)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 2,
+      "passed_runs": 2,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 1.183,
+      "avg_turns": 4.5,
+      "avg_tokens": 5107.5,
+      "total_cost_usd": 0.002281,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "UI-01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 1.052,
+          "avg_total_tokens": 4540.0,
+          "avg_cost_usd": 0.001014
+        },
+        "UI-02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 1.315,
+          "avg_total_tokens": 5675.0,
+          "avg_cost_usd": 0.001267
+        }
+      }
+    }
+  ],
+  "runs": [
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "skills_on",
+      "config_label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.197,
+      "prompt_tokens": 810,
+      "completion_tokens": 108,
+      "total_tokens": 918,
+      "estimated_cost_usd": 0.000186,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "skills_on",
+      "config_label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.198,
+      "prompt_tokens": 810,
+      "completion_tokens": 108,
+      "total_tokens": 918,
+      "estimated_cost_usd": 0.000186,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "skills_on",
+      "config_label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.225,
+      "prompt_tokens": 915,
+      "completion_tokens": 108,
+      "total_tokens": 1023,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "skills_on",
+      "config_label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.131,
+      "prompt_tokens": 540,
+      "completion_tokens": 72,
+      "total_tokens": 612,
+      "estimated_cost_usd": 0.000124,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "skills_on",
+      "config_label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.219,
+      "prompt_tokens": 810,
+      "completion_tokens": 108,
+      "total_tokens": 918,
+      "estimated_cost_usd": 0.000186,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "skills_on",
+      "config_label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.263,
+      "prompt_tokens": 1220,
+      "completion_tokens": 144,
+      "total_tokens": 1364,
+      "estimated_cost_usd": 0.000269,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "skills_on",
+      "config_label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.657,
+      "prompt_tokens": 1350,
+      "completion_tokens": 180,
+      "total_tokens": 1530,
+      "estimated_cost_usd": 0.000311,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "skills_on",
+      "config_label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.065,
+      "prompt_tokens": 270,
+      "completion_tokens": 36,
+      "total_tokens": 306,
+      "estimated_cost_usd": 6.2e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "skills_on",
+      "config_label": "1. With Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.444,
+      "prompt_tokens": 810,
+      "completion_tokens": 108,
+      "total_tokens": 918,
+      "estimated_cost_usd": 0.000186,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "skills_off",
+      "config_label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.197,
+      "prompt_tokens": 570,
+      "completion_tokens": 108,
+      "total_tokens": 678,
+      "estimated_cost_usd": 0.00015,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "skills_off",
+      "config_label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.197,
+      "prompt_tokens": 570,
+      "completion_tokens": 108,
+      "total_tokens": 678,
+      "estimated_cost_usd": 0.00015,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "skills_off",
+      "config_label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.206,
+      "prompt_tokens": 675,
+      "completion_tokens": 108,
+      "total_tokens": 783,
+      "estimated_cost_usd": 0.000166,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "skills_off",
+      "config_label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.131,
+      "prompt_tokens": 380,
+      "completion_tokens": 72,
+      "total_tokens": 452,
+      "estimated_cost_usd": 0.0001,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "skills_off",
+      "config_label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.22,
+      "prompt_tokens": 570,
+      "completion_tokens": 108,
+      "total_tokens": 678,
+      "estimated_cost_usd": 0.00015,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "skills_off",
+      "config_label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.262,
+      "prompt_tokens": 900,
+      "completion_tokens": 144,
+      "total_tokens": 1044,
+      "estimated_cost_usd": 0.000221,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "skills_off",
+      "config_label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.684,
+      "prompt_tokens": 950,
+      "completion_tokens": 180,
+      "total_tokens": 1130,
+      "estimated_cost_usd": 0.000251,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "skills_off",
+      "config_label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.065,
+      "prompt_tokens": 190,
+      "completion_tokens": 36,
+      "total_tokens": 226,
+      "estimated_cost_usd": 5e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "skills_off",
+      "config_label": "2. Without Procedural Skills",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.6,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh"
+      ],
+      "checks_failed": [
+        "missing_executable_chmod:setup_env.sh",
+        "verify_command_failed(exit=1): "
+      ],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.219,
+      "prompt_tokens": 570,
+      "completion_tokens": 108,
+      "total_tokens": 678,
+      "estimated_cost_usd": 0.00015,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_executable_chmod:setup_env.sh; verify_command_failed(exit=1): "
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "react_on",
+      "config_label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.254,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "react_on",
+      "config_label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.244,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "react_on",
+      "config_label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.256,
+      "prompt_tokens": 915,
+      "completion_tokens": 135,
+      "total_tokens": 1050,
+      "estimated_cost_usd": 0.000218,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "react_on",
+      "config_label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.163,
+      "prompt_tokens": 540,
+      "completion_tokens": 90,
+      "total_tokens": 630,
+      "estimated_cost_usd": 0.000135,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "react_on",
+      "config_label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.268,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "react_on",
+      "config_label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.326,
+      "prompt_tokens": 1220,
+      "completion_tokens": 180,
+      "total_tokens": 1400,
+      "estimated_cost_usd": 0.000291,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "react_on",
+      "config_label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.754,
+      "prompt_tokens": 1350,
+      "completion_tokens": 225,
+      "total_tokens": 1575,
+      "estimated_cost_usd": 0.000338,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "react_on",
+      "config_label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.082,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "react_on",
+      "config_label": "3. With ReAct Loop (Iterative Multi-Step, max_turns=15)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.401,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "react_off",
+      "config_label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:calculation_result.txt"
+      ],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 1,
+      "duration_sec": 0.082,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:calculation_result.txt"
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "react_off",
+      "config_label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 1,
+      "duration_sec": 0.082,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "react_off",
+      "config_label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.67,
+      "turns_taken": 1,
+      "duration_sec": 0.087,
+      "prompt_tokens": 305,
+      "completion_tokens": 45,
+      "total_tokens": 350,
+      "estimated_cost_usd": 7.3e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "react_off",
+      "config_label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 1,
+      "duration_sec": 0.082,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "react_off",
+      "config_label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 1,
+      "duration_sec": 0.082,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "react_off",
+      "config_label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.5,
+      "checks_passed": [
+        "target_file_exists:config.json"
+      ],
+      "checks_failed": [
+        "content_regex_mismatch:config.json (expected /http://api\\.new\\.com/v2/, got '{\"url\": \"http://api.old.com/v1\"}')"
+      ],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.33,
+      "turns_taken": 1,
+      "duration_sec": 0.082,
+      "prompt_tokens": 305,
+      "completion_tokens": 45,
+      "total_tokens": 350,
+      "estimated_cost_usd": 7.3e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "content_regex_mismatch:config.json (expected /http://api\\.new\\.com/v2/, got '{\"url\": \"http://api.old.com/v1\"}')"
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "react_off",
+      "config_label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.667,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py"
+      ],
+      "checks_failed": [
+        "verify_command_failed(exit=1): ============================= test session starts ==============================\nplatform darwin -- Python 3.13.14, pyte"
+      ],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 1,
+      "duration_sec": 0.082,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "verify_command_failed(exit=1): ============================= test session starts ==============================\nplatform darwin -- Python 3.13.14, pyte"
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "react_off",
+      "config_label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "react_off",
+      "config_label": "4. Without ReAct Loop (Single-Shot, max_turns=1)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.4,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "target_file_exists:setup_env.sh"
+      ],
+      "checks_failed": [
+        "missing_file:temp_proj/.gitignore",
+        "missing_executable_chmod:setup_env.sh",
+        "verify_command_failed(exit=1): "
+      ],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_file:temp_proj/.gitignore; missing_executable_chmod:setup_env.sh; verify_command_failed(exit=1): "
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "tools_scoped",
+      "config_label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.244,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "tools_scoped",
+      "config_label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.245,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "tools_scoped",
+      "config_label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.256,
+      "prompt_tokens": 915,
+      "completion_tokens": 135,
+      "total_tokens": 1050,
+      "estimated_cost_usd": 0.000218,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "tools_scoped",
+      "config_label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.163,
+      "prompt_tokens": 540,
+      "completion_tokens": 90,
+      "total_tokens": 630,
+      "estimated_cost_usd": 0.000135,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "tools_scoped",
+      "config_label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.267,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "tools_scoped",
+      "config_label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.326,
+      "prompt_tokens": 1220,
+      "completion_tokens": 180,
+      "total_tokens": 1400,
+      "estimated_cost_usd": 0.000291,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "tools_scoped",
+      "config_label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.696,
+      "prompt_tokens": 1350,
+      "completion_tokens": 225,
+      "total_tokens": 1575,
+      "estimated_cost_usd": 0.000338,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "tools_scoped",
+      "config_label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "tools_scoped",
+      "config_label": "5a. With Scoped Tools (Task Whitelist)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.426,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "tools_full",
+      "config_label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.243,
+      "prompt_tokens": 3750,
+      "completion_tokens": 135,
+      "total_tokens": 3885,
+      "estimated_cost_usd": 0.000643,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "tools_full",
+      "config_label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.245,
+      "prompt_tokens": 3750,
+      "completion_tokens": 135,
+      "total_tokens": 3885,
+      "estimated_cost_usd": 0.000643,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "tools_full",
+      "config_label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.254,
+      "prompt_tokens": 3750,
+      "completion_tokens": 135,
+      "total_tokens": 3885,
+      "estimated_cost_usd": 0.000643,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "tools_full",
+      "config_label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.163,
+      "prompt_tokens": 2500,
+      "completion_tokens": 90,
+      "total_tokens": 2590,
+      "estimated_cost_usd": 0.000429,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "tools_full",
+      "config_label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.27,
+      "prompt_tokens": 3750,
+      "completion_tokens": 135,
+      "total_tokens": 3885,
+      "estimated_cost_usd": 0.000643,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "tools_full",
+      "config_label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.327,
+      "prompt_tokens": 5000,
+      "completion_tokens": 180,
+      "total_tokens": 5180,
+      "estimated_cost_usd": 0.000858,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "tools_full",
+      "config_label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.694,
+      "prompt_tokens": 6250,
+      "completion_tokens": 225,
+      "total_tokens": 6475,
+      "estimated_cost_usd": 0.001072,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "tools_full",
+      "config_label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 1250,
+      "completion_tokens": 45,
+      "total_tokens": 1295,
+      "estimated_cost_usd": 0.000215,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "tools_full",
+      "config_label": "5b. With Full Tool Registry (All Runtime Tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.417,
+      "prompt_tokens": 3750,
+      "completion_tokens": 135,
+      "total_tokens": 3885,
+      "estimated_cost_usd": 0.000643,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "tools_none",
+      "config_label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:calculation_result.txt"
+      ],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 200,
+      "completion_tokens": 45,
+      "total_tokens": 245,
+      "estimated_cost_usd": 5.7e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:calculation_result.txt"
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "tools_none",
+      "config_label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:index.js"
+      ],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.08,
+      "prompt_tokens": 200,
+      "completion_tokens": 45,
+      "total_tokens": 245,
+      "estimated_cost_usd": 5.7e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:index.js"
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "tools_none",
+      "config_label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_file:src/main.py",
+        "missing_file:test/test_main.py",
+        "verify_command_failed(exit=1): "
+      ],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 200,
+      "completion_tokens": 45,
+      "total_tokens": 245,
+      "estimated_cost_usd": 5.7e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_file:src/main.py; missing_file:test/test_main.py; verify_command_failed(exit=1): "
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "tools_none",
+      "config_label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:documentation_source.md"
+      ],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.082,
+      "prompt_tokens": 200,
+      "completion_tokens": 45,
+      "total_tokens": 245,
+      "estimated_cost_usd": 5.7e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:documentation_source.md"
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "tools_none",
+      "config_label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:sum.py",
+        "verify_command_failed(exit=2): python3: can't open file '/private/var/folders/3j/yf9j_tjd02g6n491sbf_2xc40000gn/T/vsbench_G-M02_tools_none_xl5yjxru/sum"
+      ],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 200,
+      "completion_tokens": 45,
+      "total_tokens": 245,
+      "estimated_cost_usd": 5.7e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:sum.py; verify_command_failed(exit=2): python3: can't open file '/private/var/folders/3j/yf9j_tjd02g6n491sbf_2xc40000gn/T/vsbench_G-M02_tools_none_xl5yjxru/sum"
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "tools_none",
+      "config_label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:config.json"
+      ],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 200,
+      "completion_tokens": 45,
+      "total_tokens": 245,
+      "estimated_cost_usd": 5.7e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:config.json"
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "tools_none",
+      "config_label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_file:src/utils.py",
+        "missing_file:test/test_reverse.py",
+        "verify_command_failed(exit=4): ERROR: file or directory not found: test/test_reverse.py"
+      ],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 200,
+      "completion_tokens": 45,
+      "total_tokens": 245,
+      "estimated_cost_usd": 5.7e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_file:src/utils.py; missing_file:test/test_reverse.py; verify_command_failed(exit=4): ERROR: file or directory not found: test/test_reverse.py"
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "tools_none",
+      "config_label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "output_regex_mismatch (expected /(?i)(unchanged|changed|diff|identical|no changes)/)"
+      ],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 200,
+      "completion_tokens": 45,
+      "total_tokens": 245,
+      "estimated_cost_usd": 5.7e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "output_regex_mismatch (expected /(?i)(unchanged|changed|diff|identical|no changes)/)"
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "tools_none",
+      "config_label": "6. Without Tools (Pure Text Generation)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_file:setup_env.sh",
+        "missing_file:temp_proj/.gitignore",
+        "missing_target_file:setup_env.sh",
+        "verify_command_failed(exit=1): "
+      ],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 200,
+      "completion_tokens": 45,
+      "total_tokens": 245,
+      "estimated_cost_usd": 5.7e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_file:setup_env.sh; missing_file:temp_proj/.gitignore; missing_target_file:setup_env.sh; verify_command_failed(exit=1): "
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "thinking_none",
+      "config_label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.123,
+      "prompt_tokens": 810,
+      "completion_tokens": 66,
+      "total_tokens": 876,
+      "estimated_cost_usd": 0.000161,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "thinking_none",
+      "config_label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.124,
+      "prompt_tokens": 810,
+      "completion_tokens": 66,
+      "total_tokens": 876,
+      "estimated_cost_usd": 0.000161,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "thinking_none",
+      "config_label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.134,
+      "prompt_tokens": 915,
+      "completion_tokens": 66,
+      "total_tokens": 981,
+      "estimated_cost_usd": 0.000177,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "thinking_none",
+      "config_label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.083,
+      "prompt_tokens": 540,
+      "completion_tokens": 44,
+      "total_tokens": 584,
+      "estimated_cost_usd": 0.000107,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "thinking_none",
+      "config_label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.149,
+      "prompt_tokens": 810,
+      "completion_tokens": 66,
+      "total_tokens": 876,
+      "estimated_cost_usd": 0.000161,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "thinking_none",
+      "config_label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.167,
+      "prompt_tokens": 1220,
+      "completion_tokens": 88,
+      "total_tokens": 1308,
+      "estimated_cost_usd": 0.000236,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "thinking_none",
+      "config_label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.498,
+      "prompt_tokens": 1350,
+      "completion_tokens": 110,
+      "total_tokens": 1460,
+      "estimated_cost_usd": 0.000269,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "thinking_none",
+      "config_label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.041,
+      "prompt_tokens": 270,
+      "completion_tokens": 22,
+      "total_tokens": 292,
+      "estimated_cost_usd": 5.4e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "thinking_none",
+      "config_label": "7. gemini-flash-latest (Thinking: NONE)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.322,
+      "prompt_tokens": 810,
+      "completion_tokens": 66,
+      "total_tokens": 876,
+      "estimated_cost_usd": 0.000161,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "thinking_low",
+      "config_label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.195,
+      "prompt_tokens": 810,
+      "completion_tokens": 108,
+      "total_tokens": 918,
+      "estimated_cost_usd": 0.000186,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "thinking_low",
+      "config_label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.196,
+      "prompt_tokens": 810,
+      "completion_tokens": 108,
+      "total_tokens": 918,
+      "estimated_cost_usd": 0.000186,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "thinking_low",
+      "config_label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.211,
+      "prompt_tokens": 915,
+      "completion_tokens": 108,
+      "total_tokens": 1023,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "thinking_low",
+      "config_label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.131,
+      "prompt_tokens": 540,
+      "completion_tokens": 72,
+      "total_tokens": 612,
+      "estimated_cost_usd": 0.000124,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "thinking_low",
+      "config_label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.22,
+      "prompt_tokens": 810,
+      "completion_tokens": 108,
+      "total_tokens": 918,
+      "estimated_cost_usd": 0.000186,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "thinking_low",
+      "config_label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.262,
+      "prompt_tokens": 1220,
+      "completion_tokens": 144,
+      "total_tokens": 1364,
+      "estimated_cost_usd": 0.000269,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "thinking_low",
+      "config_label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.603,
+      "prompt_tokens": 1350,
+      "completion_tokens": 180,
+      "total_tokens": 1530,
+      "estimated_cost_usd": 0.000311,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "thinking_low",
+      "config_label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.065,
+      "prompt_tokens": 270,
+      "completion_tokens": 36,
+      "total_tokens": 306,
+      "estimated_cost_usd": 6.2e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "thinking_low",
+      "config_label": "7. gemini-flash-latest (Thinking: LOW)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.367,
+      "prompt_tokens": 810,
+      "completion_tokens": 108,
+      "total_tokens": 918,
+      "estimated_cost_usd": 0.000186,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "thinking_medium",
+      "config_label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.245,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "thinking_medium",
+      "config_label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.244,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "thinking_medium",
+      "config_label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.253,
+      "prompt_tokens": 915,
+      "completion_tokens": 135,
+      "total_tokens": 1050,
+      "estimated_cost_usd": 0.000218,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "thinking_medium",
+      "config_label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.162,
+      "prompt_tokens": 540,
+      "completion_tokens": 90,
+      "total_tokens": 630,
+      "estimated_cost_usd": 0.000135,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "thinking_medium",
+      "config_label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.274,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "thinking_medium",
+      "config_label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.326,
+      "prompt_tokens": 1220,
+      "completion_tokens": 180,
+      "total_tokens": 1400,
+      "estimated_cost_usd": 0.000291,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "thinking_medium",
+      "config_label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.705,
+      "prompt_tokens": 1350,
+      "completion_tokens": 225,
+      "total_tokens": 1575,
+      "estimated_cost_usd": 0.000338,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "thinking_medium",
+      "config_label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.081,
+      "prompt_tokens": 270,
+      "completion_tokens": 45,
+      "total_tokens": 315,
+      "estimated_cost_usd": 6.8e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "thinking_medium",
+      "config_label": "7. gemini-flash-latest (Thinking: MEDIUM)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.405,
+      "prompt_tokens": 810,
+      "completion_tokens": 135,
+      "total_tokens": 945,
+      "estimated_cost_usd": 0.000202,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "thinking_high",
+      "config_label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.363,
+      "prompt_tokens": 810,
+      "completion_tokens": 201,
+      "total_tokens": 1011,
+      "estimated_cost_usd": 0.000242,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "thinking_high",
+      "config_label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.364,
+      "prompt_tokens": 810,
+      "completion_tokens": 201,
+      "total_tokens": 1011,
+      "estimated_cost_usd": 0.000242,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "thinking_high",
+      "config_label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.374,
+      "prompt_tokens": 915,
+      "completion_tokens": 201,
+      "total_tokens": 1116,
+      "estimated_cost_usd": 0.000258,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "thinking_high",
+      "config_label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.242,
+      "prompt_tokens": 540,
+      "completion_tokens": 134,
+      "total_tokens": 674,
+      "estimated_cost_usd": 0.000161,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "thinking_high",
+      "config_label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.387,
+      "prompt_tokens": 810,
+      "completion_tokens": 201,
+      "total_tokens": 1011,
+      "estimated_cost_usd": 0.000242,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "thinking_high",
+      "config_label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.487,
+      "prompt_tokens": 1220,
+      "completion_tokens": 268,
+      "total_tokens": 1488,
+      "estimated_cost_usd": 0.000344,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "thinking_high",
+      "config_label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.899,
+      "prompt_tokens": 1350,
+      "completion_tokens": 335,
+      "total_tokens": 1685,
+      "estimated_cost_usd": 0.000403,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "thinking_high",
+      "config_label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.121,
+      "prompt_tokens": 270,
+      "completion_tokens": 67,
+      "total_tokens": 337,
+      "estimated_cost_usd": 8.1e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "thinking_high",
+      "config_label": "7. gemini-flash-latest (Thinking: HIGH)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.528,
+      "prompt_tokens": 810,
+      "completion_tokens": 201,
+      "total_tokens": 1011,
+      "estimated_cost_usd": 0.000242,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "SW-01",
+      "complexity": "High",
+      "category": "swarm_parallel",
+      "config_id": "seq_single",
+      "config_label": "10a. Single Agent (Sequential Execution)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:fib.json",
+        "file_exists:greet.js",
+        "file_exists:square_result.txt",
+        "target_file_exists:square_result.txt",
+        "content_regex_match:square_result.txt",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "delegate_task",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 1.081,
+      "prompt_tokens": 1080,
+      "completion_tokens": 180,
+      "total_tokens": 1260,
+      "estimated_cost_usd": 0.00027,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "SW-02",
+      "complexity": "High",
+      "category": "swarm_parallel",
+      "config_id": "seq_single",
+      "config_label": "10a. Single Agent (Sequential Execution)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:research_summary.md",
+        "file_exists:campaign_hook.md",
+        "file_exists:schema.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "delegate_task",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 1.08,
+      "prompt_tokens": 1080,
+      "completion_tokens": 180,
+      "total_tokens": 1260,
+      "estimated_cost_usd": 0.00027,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "SW-01",
+      "complexity": "High",
+      "category": "swarm_parallel",
+      "config_id": "swarm_parallel",
+      "config_label": "10b. Parallel Subagent Swarm (background=True, 3 Workers)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:fib.json",
+        "file_exists:greet.js",
+        "file_exists:square_result.txt",
+        "target_file_exists:square_result.txt",
+        "content_regex_match:square_result.txt",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "delegate_task",
+        "write_file"
+      ],
+      "actual_tools": [
+        "delegate_task",
+        "delegate_task",
+        "delegate_task",
+        "delegate_task"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 3,
+      "duration_sec": 0.75,
+      "prompt_tokens": 8415,
+      "completion_tokens": 405,
+      "total_tokens": 8820,
+      "estimated_cost_usd": 0.001505,
+      "subagents_spawned": 3,
+      "parallel_speedup": 2.09,
+      "failure_reason": null
+    },
+    {
+      "task_id": "SW-02",
+      "complexity": "High",
+      "category": "swarm_parallel",
+      "config_id": "swarm_parallel",
+      "config_label": "10b. Parallel Subagent Swarm (background=True, 3 Workers)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:research_summary.md",
+        "file_exists:campaign_hook.md",
+        "file_exists:schema.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "delegate_task",
+        "write_file"
+      ],
+      "actual_tools": [
+        "delegate_task",
+        "delegate_task",
+        "delegate_task",
+        "delegate_task"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 3,
+      "duration_sec": 0.597,
+      "prompt_tokens": 6455,
+      "completion_tokens": 405,
+      "total_tokens": 6860,
+      "estimated_cost_usd": 0.001211,
+      "subagents_spawned": 3,
+      "parallel_speedup": 2.11,
+      "failure_reason": null
+    },
+    {
+      "task_id": "UI-01",
+      "complexity": "Medium",
+      "category": "ui_navigation",
+      "config_id": "system_one_ui_nav",
+      "config_label": "11a. System-1 Decision Model UI/Canvas Navigator (Parallel Closed-Set)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:ui_nav_result.json",
+        "content_regex_match:ui_nav_result.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "ui_navigate",
+        "write_file"
+      ],
+      "actual_tools": [
+        "ui_navigate"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.144,
+      "prompt_tokens": 540,
+      "completion_tokens": 72,
+      "total_tokens": 612,
+      "estimated_cost_usd": 0.000124,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "UI-02",
+      "complexity": "High",
+      "category": "artcraft_canvas_navigation",
+      "config_id": "system_one_ui_nav",
+      "config_label": "11a. System-1 Decision Model UI/Canvas Navigator (Parallel Closed-Set)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:artcraft_workflow_result.json",
+        "content_regex_match:artcraft_workflow_result.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "ui_navigate",
+        "write_file"
+      ],
+      "actual_tools": [
+        "ui_navigate"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.151,
+      "prompt_tokens": 540,
+      "completion_tokens": 72,
+      "total_tokens": 612,
+      "estimated_cost_usd": 0.000124,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "UI-01",
+      "complexity": "Medium",
+      "category": "ui_navigation",
+      "config_id": "llm_react_ui_nav",
+      "config_label": "11b. System-2 Full LLM ReAct UI/Canvas Navigation (Step-by-Step)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:ui_nav_result.json",
+        "content_regex_match:ui_nav_result.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "ui_navigate",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 1.052,
+      "prompt_tokens": 3800,
+      "completion_tokens": 740,
+      "total_tokens": 4540,
+      "estimated_cost_usd": 0.001014,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "UI-02",
+      "complexity": "High",
+      "category": "artcraft_canvas_navigation",
+      "config_id": "llm_react_ui_nav",
+      "config_label": "11b. System-2 Full LLM ReAct UI/Canvas Navigation (Step-by-Step)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:artcraft_workflow_result.json",
+        "content_regex_match:artcraft_workflow_result.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "ui_navigate",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "write_file",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 1.315,
+      "prompt_tokens": 4750,
+      "completion_tokens": 925,
+      "total_tokens": 5675,
+      "estimated_cost_usd": 0.001267,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    }
+  ]
+}

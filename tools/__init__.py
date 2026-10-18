@@ -81,6 +81,12 @@ from tools.web_tools import (
     web_scrape,
     web_search,
 )
+from tools.ui_navigator_tools import (
+    create_ui_navigator_tools,
+    register_ui_navigator_tools,
+    system_one_decide,
+    ui_navigate,
+)
 
 
 def create_tier1_tools() -> List[Any]:
@@ -166,4 +172,8 @@ __all__ = [
     "web_crawl_domain",
     "web_content_diff",
     "web_feed_poll",
+    "system_one_decide",
+    "ui_navigate",
+    "create_ui_navigator_tools",
+    "register_ui_navigator_tools",
 ]

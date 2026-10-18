@@ -1,0 +1,185 @@
+[
+    {
+        "id": "UI-01",
+        "complexity": "Medium",
+        "category": "ui_navigation",
+        "goal": "1. Open the Cloud Vaults workspace tab -> 2. Select the Q4 Strategy document in the vault tree -> 3. Click Share Document to open the sharing modal. Save the navigation trajectory to 'ui_nav_result.json'.",
+        "tool_chain": [
+            "ui_navigate",
+            "write_file"
+        ],
+        "recommended_skills": [],
+        "ui_state": {
+            "viewport": {"width": 1920, "height": 1080},
+            "current_view": "/view/home",
+            "error_toast": false,
+            "vault_view_active": false,
+            "share_modal_ready": false,
+            "elements": [
+                {
+                    "id": "nav_tab_cloud_vaults",
+                    "label": "Cloud Vaults Workspace Tab",
+                    "role": "tab",
+                    "description": "Open the Cloud Vaults file and folder hierarchy workspace",
+                    "action": "click",
+                    "box": [0.05, 0.12, 0.16, 0.16]
+                },
+                {
+                    "id": "nav_tab_crm_deals",
+                    "label": "CRM Deals Kanban Tab",
+                    "role": "tab",
+                    "description": "Switch to CRM deals pipeline board",
+                    "action": "click",
+                    "box": [0.05, 0.18, 0.16, 0.22]
+                },
+                {
+                    "id": "vault_doc_q4_strategy",
+                    "label": "Q4 Strategy Document Row",
+                    "role": "row",
+                    "description": "Select Q4_Strategy.md inside Cloud Vaults tree",
+                    "action": "select",
+                    "box": [0.25, 0.30, 0.65, 0.36]
+                },
+                {
+                    "id": "btn_share_vault_doc",
+                    "label": "Share Document Button",
+                    "role": "button",
+                    "description": "Click Share Document to open the public/team sharing permissions modal",
+                    "action": "click",
+                    "box": [0.78, 0.10, 0.88, 0.15]
+                },
+                {
+                    "id": "btn_delete_vault_doc",
+                    "label": "Delete Document Button",
+                    "role": "button",
+                    "description": "Permanently delete selected file from vault",
+                    "action": "click",
+                    "box": [0.89, 0.10, 0.96, 0.15]
+                }
+            ],
+            "transitions": {
+                "nav_tab_cloud_vaults": {
+                    "current_view": "/view/vaults",
+                    "vault_view_active": true
+                },
+                "vault_doc_q4_strategy": {
+                    "selected_file": "Q4_Strategy.md"
+                },
+                "btn_share_vault_doc": {
+                    "share_modal_ready": true,
+                    "goal_completed": true
+                }
+            }
+        },
+        "assertions": {
+            "no_error_toast": "Is there an unhandled error toast or crash alert on screen?",
+            "vault_view_active": "The Cloud Vaults workspace view is active",
+            "share_modal_ready": "The Share Document modal is open and ready"
+        },
+        "success_criteria": {
+            "file": "ui_nav_result.json",
+            "content_regex": "\"nav_tab_cloud_vaults\"[\\s\\S]*\"vault_doc_q4_strategy\"[\\s\\S]*\"btn_share_vault_doc\"",
+            "cleanup": [
+                "ui_nav_result.json"
+            ]
+        }
+    },
+    {
+        "id": "UI-02",
+        "complexity": "High",
+        "category": "artcraft_canvas_navigation",
+        "goal": "1. Convert the prop image into a 3D mesh object -> 2. Pose the 3D character actor rig in the scene -> 3. Frame the 3D camera shot angle in the viewport -> 4. Render and synthesize the composed video scene. Save the trajectory to 'artcraft_workflow_result.json'.",
+        "tool_chain": [
+            "ui_navigate",
+            "write_file"
+        ],
+        "recommended_skills": [],
+        "ui_state": {
+            "viewport": {"width": 2560, "height": 1440},
+            "app": "ArtCraft Intentional Crafting Engine",
+            "mesh_converted": false,
+            "actor_posed": false,
+            "camera_framed": false,
+            "video_rendered": false,
+            "tools": [
+                {
+                    "id": "tool_img_to_3d_mesh",
+                    "label": "Image to 3D Mesh Tool",
+                    "role": "canvas_tool",
+                    "description": "Convert a 2D prop image into a 3D mesh object with depth geometry",
+                    "action": "convert_3d_mesh",
+                    "box": [0.02, 0.22, 0.08, 0.28]
+                },
+                {
+                    "id": "tool_2d_brush_sketch",
+                    "label": "2D Brush & Inpaint Sketch Tool",
+                    "role": "canvas_tool",
+                    "description": "Draw freehand 2D brush strokes on canvas layer",
+                    "action": "drag",
+                    "box": [0.02, 0.14, 0.08, 0.20]
+                },
+                {
+                    "id": "tool_bg_remove_matte",
+                    "label": "Background Removal Alpha Tool",
+                    "role": "canvas_tool",
+                    "description": "Remove background from 2D image layer",
+                    "action": "composite_layer",
+                    "box": [0.02, 0.30, 0.08, 0.36]
+                },
+                {
+                    "id": "btn_render_video_scene",
+                    "label": "Render Video Scene Button",
+                    "role": "button",
+                    "description": "Render, generate, and synthesize the composed 3D/2D video shot sequence",
+                    "action": "render_scene",
+                    "box": [0.88, 0.03, 0.98, 0.08]
+                }
+            ],
+            "actors": [
+                {
+                    "id": "actor_hero_pose_rig",
+                    "label": "3D Character Actor Pose Rig",
+                    "role": "scene_node",
+                    "description": "Pose the 3D character actor skeleton joints and mannequin posture in the room",
+                    "action": "pose_actor",
+                    "box": [0.42, 0.35, 0.58, 0.78]
+                },
+                {
+                    "id": "cam_main_shot_rig",
+                    "label": "3D Viewport Camera Shot Rig",
+                    "role": "scene_node",
+                    "description": "Frame the 3D camera shot angle, lens FOV, and orbit placement",
+                    "action": "camera_frame",
+                    "box": [0.70, 0.20, 0.82, 0.32]
+                }
+            ],
+            "transitions": {
+                "tool_img_to_3d_mesh": {
+                    "mesh_converted": true
+                },
+                "actor_hero_pose_rig": {
+                    "actor_posed": true
+                },
+                "cam_main_shot_rig": {
+                    "camera_framed": true
+                },
+                "btn_render_video_scene": {
+                    "video_rendered": true,
+                    "goal_completed": true
+                }
+            }
+        },
+        "assertions": {
+            "mesh_converted": "The prop image is converted into a 3D mesh",
+            "actor_posed": "The 3D character actor rig is posed",
+            "video_rendered": "The composed video scene is rendered"
+        },
+        "success_criteria": {
+            "file": "artcraft_workflow_result.json",
+            "content_regex": "\"tool_img_to_3d_mesh\"[\\s\\S]*\"actor_hero_pose_rig\"[\\s\\S]*\"cam_main_shot_rig\"[\\s\\S]*\"btn_render_video_scene\"",
+            "cleanup": [
+                "artcraft_workflow_result.json"
+            ]
+        }
+    }
+]
