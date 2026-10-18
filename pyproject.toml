@@ -1,6 +1,6 @@
 [project]
 name = "valstorm-agent"
-version = "4.0.0"
+version = "4.1.0"
 description = "Valstorm Autonomous AI Agent Runtime & CLI"
 readme = "README.md"
 license = "PolyForm-Noncommercial-1.0.0"

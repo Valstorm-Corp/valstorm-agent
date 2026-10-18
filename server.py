@@ -184,6 +184,7 @@ class RunRequestPayload(BaseModel):
     profile: Optional[str] = None
     model: Optional[str] = None
     reasoning_effort: Optional[str] = None
+    auto_tune: Optional[bool] = None
     provider: Optional[str] = None
     session_id: Optional[str] = None
     instructions: Optional[str] = None
@@ -776,6 +777,7 @@ async def _execute_agent_run(
             model=target_model,
             max_iterations=payload.max_iterations,
             reasoning_effort=effective_reasoning_effort,
+            auto_tune=payload.auto_tune,
         ):
             if event.event_type == StreamEventType.TEXT_CHUNK and event.delta:
                 if event.metadata.get("failover"):
@@ -884,7 +886,9 @@ async def _execute_agent_run(
         logger.info(
             f"[{run_id}] Run finished successfully | total tokens: {input_tokens + output_tokens}"
         )
-        resolved_model_str = _optional_non_empty_string(target_model)
+        resolved_model_str = _optional_non_empty_string(
+            (session.metadata or {}).get("last_autotune_model") or session.active_model or target_model
+        )
         resolved_prov_str = _optional_non_empty_string(resolved_provider)
         tool_calls_list = list(tool_calls_map.values()) if tool_calls_map else None
 
@@ -898,6 +902,8 @@ async def _execute_agent_run(
             "model": resolved_model_str,
             "provider": resolved_prov_str,
         }
+        if (session.metadata or {}).get("last_autotune_decision"):
+            completed_event["auto_tune"] = session.metadata["last_autotune_decision"]
         if tool_calls_list:
             completed_event["tool_calls"] = tool_calls_list
         if subagents_list:
@@ -1808,6 +1814,60 @@ async def system_one_ui_navigate_endpoint(req: SystemOneUINavigateRequest):
         confidence_threshold=req.confidence_threshold,
     )
     return traj.model_dump()
+
+
+class SystemOneAutoTuneRequest(BaseModel):
+    user_input: str
+    provider: str = "gemini"
+    base_model: Optional[str] = "gemini-flash-latest"
+    iteration: int = 0
+    locked_tier: Literal["worker", "reasoner", "thinker"] = "reasoner"
+    locked_model: Optional[str] = None
+    last_tool_name: Optional[str] = None
+    last_tool_error: bool = False
+    confidence_threshold: float = 0.55
+
+
+@app.post("/v1/system-one/autotune-message")
+async def system_one_autotune_message_endpoint(req: SystemOneAutoTuneRequest):
+    """Evaluates System-1 `ai_chat_message` auto-tuning for Model Tier & Reasoning Effort."""
+    from core.message_autotuner import MessageAutoTuner
+    from core.models import ToolResult
+
+    tuner = MessageAutoTuner(confidence_threshold=req.confidence_threshold)
+    dummy_session = None
+    if req.last_tool_name or req.last_tool_error:
+        dummy_session = SessionState(session_id="autotune_preview", active_provider=req.provider)
+        dummy_session.add_message(
+            Message(
+                role="tool",
+                content="Error" if req.last_tool_error else "OK",
+                tool_result=ToolResult(
+                    call_id="c1",
+                    name=req.last_tool_name or "tool",
+                    output="Error" if req.last_tool_error else "OK",
+                    is_error=req.last_tool_error,
+                ),
+            )
+        )
+    if req.iteration <= 0:
+        dec = tuner.tune_turn(
+            user_input=req.user_input,
+            session=dummy_session,
+            base_provider=req.provider,
+            base_model=req.base_model,
+            confidence_threshold=req.confidence_threshold,
+        )
+    else:
+        dec = tuner.tune_iteration(
+            user_input=req.user_input,
+            session=dummy_session,
+            iteration=req.iteration,
+            locked_tier=req.locked_tier,
+            locked_model=req.locked_model or req.base_model or "gemini-flash-latest",
+            base_provider=req.provider,
+        )
+    return dec.model_dump()
 
 
 def _save_active_port(port: int):

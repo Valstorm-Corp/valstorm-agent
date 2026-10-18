@@ -161,12 +161,29 @@ class ReActEngine:
         model: Optional[str] = None,
         max_iterations: Optional[int] = None,
         reasoning_effort: Optional[str] = None,
+        auto_tune: Optional[bool] = None,
     ) -> AsyncIterator[StreamEvent]:
         """Executes a full ReAct loop turn with real-time streaming of tokens and tool execution events."""
         iter_limit = max_iterations if max_iterations is not None else DEFAULT_MAX_ITERATIONS
-        target_model = model or session.active_model
+        raw_req_model = model or session.active_model
         if reasoning_effort is not None:
             session.metadata["reasoning_effort"] = str(reasoning_effort).strip().lower()
+        if auto_tune is not None:
+            session.metadata["auto_tune"] = bool(auto_tune)
+
+        is_auto_tune = bool(
+            session.metadata.get("auto_tune")
+            or str(raw_req_model or "").strip().lower() in ("auto", "autotune")
+            or str((session.metadata or {}).get("reasoning_effort") or "").strip().lower() in ("auto", "autotune")
+            or os.environ.get("VALSTORM_AUTO_TUNE", "").strip().lower() in ("1", "true", "yes")
+        )
+        target_model = (
+            session.active_model
+            if str(raw_req_model or "").strip().lower() in ("auto", "autotune")
+            else (raw_req_model or "gemini-flash-latest")
+        )
+        locked_turn_tier = "reasoner"
+        locked_turn_model = target_model or "gemini-flash-latest"
         # Avoid duplicating user prompt if already hydrated in session
         if not session.messages or session.messages[-1].content != user_input or session.messages[-1].role != "user":
             user_msg = Message(role="user", content=user_input, images=images)
@@ -240,7 +257,41 @@ class ReActEngine:
 
             req_effort = (session.metadata or {}).get("reasoning_effort") or os.environ.get("VALSTORM_THINKING_LEVEL")
             effective_effort = req_effort
-            if req_effort and str(req_effort).strip().lower() == "adaptive":
+            if is_auto_tune:
+                from .message_autotuner import MessageAutoTuner
+                autotuner = getattr(self, "_message_autotuner", None)
+                if autotuner is None:
+                    autotuner = MessageAutoTuner()
+                    self._message_autotuner = autotuner
+                base_prov = session.active_provider or getattr(self.provider, "provider_name", "gemini")
+                if iteration == 0:
+                    tune_dec = autotuner.tune_turn(
+                        user_input=user_input,
+                        session=session,
+                        base_provider=base_prov,
+                        base_model=locked_turn_model,
+                    )
+                    locked_turn_tier = tune_dec.tier
+                    locked_turn_model = tune_dec.model
+                else:
+                    tune_dec = autotuner.tune_iteration(
+                        user_input=user_input,
+                        session=session,
+                        iteration=iteration,
+                        locked_tier=locked_turn_tier,  # type: ignore[arg-type]
+                        locked_model=locked_turn_model,
+                        base_provider=base_prov,
+                    )
+                target_model = locked_turn_model
+                session.active_model = locked_turn_model
+                effective_effort = tune_dec.reasoning_effort
+                session.metadata["last_autotune_decision"] = tune_dec.model_dump()
+                session.metadata["last_autotune_model"] = locked_turn_model
+                session.metadata["last_routed_thinking_level"] = effective_effort
+                hist_tune = list(session.metadata.get("autotune_history") or [])
+                hist_tune.append(tune_dec.model_dump())
+                session.metadata["autotune_history"] = hist_tune
+            elif req_effort and str(req_effort).strip().lower() == "adaptive":
                 from .thinking_router import SystemOneThinkingRouter
                 router = getattr(self, "_thinking_router", None)
                 if router is None:
@@ -320,7 +371,9 @@ class ReActEngine:
             if not isinstance(assistant_msg, Message):
                 raise TypeError(f"Provider must produce a Message instance, got {type(assistant_msg)}")
 
-            if not assistant_msg.model and target_model:
+            if is_auto_tune and target_model:
+                assistant_msg.model = target_model
+            elif not assistant_msg.model and target_model:
                 assistant_msg.model = target_model
             if not assistant_msg.provider and hasattr(self.provider, "provider_name"):
                 assistant_msg.provider = getattr(self.provider, "provider_name")

@@ -243,6 +243,54 @@ def get_ablation_configs(
             ),
         ]
 
+    if ab == "message_autotune":
+        return [
+            BenchmarkConfig(
+                config_id="autotune_s1_full",
+                label="9a. System-1 ai_chat_message Auto-Tuner (Dynamic Tier + Intra-Turn Step-Down)",
+                provider=provider,
+                model="gemini-flash-latest",
+                thinking_level="adaptive",
+                with_skills=False,
+                with_react_loop=True,
+                tools_mode="scoped",
+                auto_tune=True,
+            ),
+            BenchmarkConfig(
+                config_id="static_thinker_high",
+                label="9b. Static Tier-1 THINKER (`gemini-pro-latest` @ HIGH, No Skills)",
+                provider=provider,
+                model="gemini-pro-latest",
+                thinking_level="high",
+                with_skills=False,
+                with_react_loop=True,
+                tools_mode="scoped",
+                auto_tune=False,
+            ),
+            BenchmarkConfig(
+                config_id="static_reasoner_high",
+                label="9c. Static Tier-2 REASONER (`gemini-flash-latest` @ HIGH, No Skills)",
+                provider=provider,
+                model="gemini-flash-latest",
+                thinking_level="high",
+                with_skills=False,
+                with_react_loop=True,
+                tools_mode="scoped",
+                auto_tune=False,
+            ),
+            BenchmarkConfig(
+                config_id="static_worker_none",
+                label="9d. Static Tier-3 WORKER (`gemini-flash-lite-latest` @ NONE, No Skills)",
+                provider=provider,
+                model="gemini-flash-lite-latest",
+                thinking_level="none",
+                with_skills=False,
+                with_react_loop=True,
+                tools_mode="scoped",
+                auto_tune=False,
+            ),
+        ]
+
     if ab in ("ui_nav", "decision_model"):
         return [
             BenchmarkConfig(
@@ -460,9 +508,9 @@ async def run_all_ablations_demo(mode: Literal["auto", "mock", "live"] = "mock",
     swarm_tasks = load_tasks(suite="swarm")
     ui_tasks = load_tasks(suite="ui")
 
-    # 1. Run Core Tasks across Skills, ReAct, Tools, Reasoning, and Adaptive Thinking ablations
+    # 1. Run Core Tasks across Skills, ReAct, Tools, Reasoning, Adaptive Thinking, and Message Auto-Tune ablations
     core_configs: List[BenchmarkConfig] = []
-    for axis in ("skills", "react", "tools", "reasoning", "adaptive_thinking"):
+    for axis in ("skills", "react", "tools", "reasoning", "adaptive_thinking", "message_autotune"):
         core_configs.extend(get_ablation_configs(axis))
 
     core_report = await run_benchmark_matrix(tasks=core_tasks, configs=core_configs, mode=mode, trials=trials)
@@ -496,7 +544,7 @@ def main():
     parser = argparse.ArgumentParser(description="Valstorm Agent Runtime — Multi-Axis Benchmark & Ablation Runner")
     parser.add_argument(
         "--ablation",
-        choices=["baseline", "skills", "react", "tools", "reasoning", "adaptive_thinking", "swarm", "harnesses", "ui_nav", "decision_model", "all"],
+        choices=["baseline", "skills", "react", "tools", "reasoning", "adaptive_thinking", "message_autotune", "swarm", "harnesses", "ui_nav", "decision_model", "all"],
         default="baseline",
         help="Ablation preset to execute (default: baseline)",
     )

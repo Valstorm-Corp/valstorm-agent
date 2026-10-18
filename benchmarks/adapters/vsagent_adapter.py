@@ -85,9 +85,11 @@ class TaskAwareMockProvider:
             self._active_effort = str(kwargs["reasoning_effort"]).strip().lower()
 
     async def generate(self, messages: List[Message], tools: Optional[List[Dict[str, Any]]] = None, model: Optional[str] = None, **kwargs):
-        eff = self._active_effort if self.config.thinking_level == "adaptive" else self.config.thinking_level
+        eff = self._active_effort if (self.config.thinking_level == "adaptive" or self.config.auto_tune) else self.config.thinking_level
         thinking_mult = {"none": 0.5, "low": 0.8, "medium": 1.0, "high": 1.5}.get(eff, 1.0)
-        await asyncio.sleep(self.step_delay_sec * thinking_mult)
+        eff_model = (model or self.config.model or "").lower()
+        model_speed_mult = 0.72 if "lite" in eff_model else (1.55 if "pro" in eff_model else 1.0)
+        await asyncio.sleep(self.step_delay_sec * thinking_mult * model_speed_mult)
 
         # Distinguish child subagent turns (which start with "Goal:\n") from the parent orchestrator
         first_user_msg = next((m.content for m in messages if m.role == "user"), "")
@@ -234,9 +236,9 @@ class TaskAwareMockProvider:
                 script = "#!/bin/sh\nmkdir -p temp_proj\ncd temp_proj\ngit init\nprintf 'node_modules\\ndist\\n' > .gitignore\npwd\n"
                 return Message(role="assistant", content="", tool_calls=[ToolCall(id="c1", name="write_file", arguments={"path": "setup_env.sh", "content": script})], usage=usage), usage
             if s == 2:
-                # Ablation behavior: With skills ('bash-scripting') or medium/high thinking (including System-1 adaptive escalation), agent remembers chmod +x.
+                # Ablation behavior: With skills ('bash-scripting') or medium/high thinking (including System-1 adaptive/autotune escalation), agent remembers chmod +x.
                 # Without skills and with low/none thinking, agent executes `sh setup_env.sh` without setting +x bit!
-                eff = self._active_effort if self.config.thinking_level == "adaptive" else self.config.thinking_level
+                eff = self._active_effort if (self.config.thinking_level == "adaptive" or self.config.auto_tune) else self.config.thinking_level
                 if self.config.with_skills or eff in ("medium", "high"):
                     cmd = "chmod +x setup_env.sh && ./setup_env.sh"
                 else:
@@ -440,6 +442,7 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
                     model=config.model,
                     max_iterations=config.effective_max_turns,
                     reasoning_effort=config.thinking_level,
+                    auto_tune=config.auto_tune,
                 ):
                     if event.event_type == StreamEventType.TOOL_CALL_DETECTED and event.tool_call:
                         tool_calls_made.append(event.tool_call.name)
@@ -480,6 +483,22 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
         seq_sum = sum(t.duration_sec for t in spawned_tasks) if spawned_tasks else duration_sec
         parallel_speedup = round(seq_sum / duration_sec, 2) if (spawned_tasks and duration_sec > 0) else 1.0
 
+        if config.auto_tune:
+            per_msg_cost = 0.0
+            for m in session.messages:
+                if m.role == "assistant" and m.usage:
+                    m_mod = m.model or session.active_model or config.model
+                    per_msg_cost += estimate_cost_usd(m_mod, m.usage.prompt_tokens, m.usage.completion_tokens)
+            for t in spawned_tasks:
+                per_msg_cost += estimate_cost_usd(
+                    t.model_name or config.model,
+                    t.child_session.total_prompt_tokens,
+                    t.child_session.total_completion_tokens,
+                )
+            est_cost = round(per_msg_cost, 6)
+        else:
+            est_cost = estimate_cost_usd(config.model, total_prompt, total_comp)
+
         return ExecutionTrace(
             task_id=task["id"],
             config_id=config.config_id,
@@ -495,7 +514,7 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
             prompt_tokens=total_prompt,
             completion_tokens=total_comp,
             total_tokens=total_tok,
-            estimated_cost_usd=estimate_cost_usd(config.model, total_prompt, total_comp),
+            estimated_cost_usd=est_cost,
             subagents_spawned=subagents_count,
             sequential_sum_sec=round(seq_sum, 3),
             parallel_speedup=parallel_speedup,

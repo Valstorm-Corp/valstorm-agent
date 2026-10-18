@@ -154,7 +154,7 @@ class GeminiProvider(BaseProvider):
 
         if self._thinking_disabled:
             return None
-        if model_name and "lite" in str(model_name).lower():
+        if model_name and ("lite" in str(model_name).lower() or "2.5" in str(model_name).lower()):
             return None
         ctx_effort = (getattr(self, "_request_context", None) or {}).get("reasoning_effort")
         raw_effort = reasoning_effort if reasoning_effort is not None else (ctx_effort or os.getenv("VALSTORM_THINKING_LEVEL") or "high")

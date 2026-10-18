@@ -54,6 +54,7 @@ class BenchmarkConfig:
     swarm_mode: bool = False
     swarm_workers: int = 1
     use_decision_model: bool = True
+    auto_tune: bool = False
     timeout_sec: float = 120.0
 
     @property
