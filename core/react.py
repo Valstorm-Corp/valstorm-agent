@@ -238,14 +238,28 @@ class ReActEngine:
             assistant_msg = None
             usage_meta = None
 
+            req_effort = (session.metadata or {}).get("reasoning_effort") or os.environ.get("VALSTORM_THINKING_LEVEL")
+            effective_effort = req_effort
+            if req_effort and str(req_effort).strip().lower() == "adaptive":
+                from .thinking_router import SystemOneThinkingRouter
+                router = getattr(self, "_thinking_router", None)
+                if router is None:
+                    router = SystemOneThinkingRouter()
+                    self._thinking_router = router
+                route_dec = router.route_turn(user_input=user_input, session=session, iteration=iteration)
+                effective_effort = route_dec.reasoning_effort
+                session.metadata["last_routed_thinking_level"] = effective_effort
+                hist_levels = list(session.metadata.get("routed_thinking_history") or [])
+                hist_levels.append(effective_effort)
+                session.metadata["routed_thinking_history"] = hist_levels
+
             set_ctx = getattr(self.provider, "set_request_context", None)
             if callable(set_ctx):
                 ctx_kwargs: Dict[str, Any] = {
                     "chat_id": (session.metadata or {}).get("valstorm_chat_id") or session.session_id,
                 }
-                req_effort = (session.metadata or {}).get("reasoning_effort")
-                if req_effort:
-                    ctx_kwargs["reasoning_effort"] = req_effort
+                if effective_effort:
+                    ctx_kwargs["reasoning_effort"] = effective_effort
                 set_ctx(**ctx_kwargs)
 
             # Check if provider supports streaming

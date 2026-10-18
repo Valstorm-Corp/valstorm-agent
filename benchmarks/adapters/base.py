@@ -45,7 +45,7 @@ class BenchmarkConfig:
     harness: Literal["vsagent", "claude", "codex", "opencode", "hermes", "oh-my-pi"] = "vsagent"
     provider: str = "gemini"
     model: str = "gemini-flash-latest"
-    thinking_level: Literal["none", "low", "medium", "high"] = "medium"
+    thinking_level: Literal["none", "low", "medium", "high", "adaptive"] = "medium"
     with_skills: bool = True
     skills: List[str] = field(default_factory=list)
     with_react_loop: bool = True

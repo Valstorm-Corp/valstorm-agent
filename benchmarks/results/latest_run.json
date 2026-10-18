@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-10-18T18:56:19.552075+00:00",
+  "timestamp": "2026-10-18T19:48:11.038195+00:00",
   "mode": "mock",
   "trials_per_task": 1,
-  "task_count": 13,
-  "config_count": 15,
+  "task_count": 15,
+  "config_count": 18,
   "config_summaries": [
     {
       "config_id": "skills_on",
@@ -19,7 +19,7 @@
       "passed_runs": 9,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 0.267,
+      "avg_duration_sec": 0.269,
       "avg_turns": 3.0,
       "avg_tokens": 945.2,
       "total_cost_usd": 0.001712,
@@ -31,7 +31,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.197,
+          "avg_duration_sec": 0.198,
           "avg_total_tokens": 918.0,
           "avg_cost_usd": 0.000186
         },
@@ -41,7 +41,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.198,
+          "avg_duration_sec": 0.202,
           "avg_total_tokens": 918.0,
           "avg_cost_usd": 0.000186
         },
@@ -51,7 +51,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.225,
+          "avg_duration_sec": 0.217,
           "avg_total_tokens": 1023.0,
           "avg_cost_usd": 0.000202
         },
@@ -71,7 +71,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.219,
+          "avg_duration_sec": 0.222,
           "avg_total_tokens": 918.0,
           "avg_cost_usd": 0.000186
         },
@@ -91,7 +91,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.657,
+          "avg_duration_sec": 0.655,
           "avg_total_tokens": 1530.0,
           "avg_cost_usd": 0.000311
         },
@@ -111,7 +111,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.444,
+          "avg_duration_sec": 0.469,
           "avg_total_tokens": 918.0,
           "avg_cost_usd": 0.000186
         }
@@ -131,7 +131,7 @@
       "passed_runs": 8,
       "pass_rate": 0.8889,
       "pass_hat_k": 0.8889,
-      "avg_duration_sec": 0.242,
+      "avg_duration_sec": 0.234,
       "avg_turns": 3.0,
       "avg_tokens": 705.2,
       "total_cost_usd": 0.001388,
@@ -143,7 +143,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.197,
+          "avg_duration_sec": 0.196,
           "avg_total_tokens": 678.0,
           "avg_cost_usd": 0.00015
         },
@@ -153,7 +153,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.197,
+          "avg_duration_sec": 0.196,
           "avg_total_tokens": 678.0,
           "avg_cost_usd": 0.00015
         },
@@ -173,7 +173,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.131,
+          "avg_duration_sec": 0.13,
           "avg_total_tokens": 452.0,
           "avg_cost_usd": 0.0001
         },
@@ -183,7 +183,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.22,
+          "avg_duration_sec": 0.217,
           "avg_total_tokens": 678.0,
           "avg_cost_usd": 0.00015
         },
@@ -193,7 +193,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.262,
+          "avg_duration_sec": 0.263,
           "avg_total_tokens": 1044.0,
           "avg_cost_usd": 0.000221
         },
@@ -203,7 +203,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.684,
+          "avg_duration_sec": 0.613,
           "avg_total_tokens": 1130.0,
           "avg_cost_usd": 0.000251
         },
@@ -243,7 +243,7 @@
       "passed_runs": 9,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 0.305,
+      "avg_duration_sec": 0.302,
       "avg_turns": 3.0,
       "avg_tokens": 972.2,
       "total_cost_usd": 0.001858,
@@ -255,7 +255,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.254,
+          "avg_duration_sec": 0.245,
           "avg_total_tokens": 945.0,
           "avg_cost_usd": 0.000202
         },
@@ -265,7 +265,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.244,
+          "avg_duration_sec": 0.245,
           "avg_total_tokens": 945.0,
           "avg_cost_usd": 0.000202
         },
@@ -275,7 +275,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.256,
+          "avg_duration_sec": 0.255,
           "avg_total_tokens": 1050.0,
           "avg_cost_usd": 0.000218
         },
@@ -305,7 +305,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.326,
+          "avg_duration_sec": 0.327,
           "avg_total_tokens": 1400.0,
           "avg_cost_usd": 0.000291
         },
@@ -315,7 +315,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.754,
+          "avg_duration_sec": 0.709,
           "avg_total_tokens": 1575.0,
           "avg_cost_usd": 0.000338
         },
@@ -325,7 +325,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.082,
+          "avg_duration_sec": 0.081,
           "avg_total_tokens": 315.0,
           "avg_cost_usd": 6.8e-05
         },
@@ -335,7 +335,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.401,
+          "avg_duration_sec": 0.426,
           "avg_total_tokens": 945.0,
           "avg_cost_usd": 0.000202
         }
@@ -367,7 +367,7 @@
           "pass_rate": 0.0,
           "pass_at_k": 0.0,
           "pass_hat_k": 0.0,
-          "avg_duration_sec": 0.082,
+          "avg_duration_sec": 0.081,
           "avg_total_tokens": 315.0,
           "avg_cost_usd": 6.8e-05
         },
@@ -377,7 +377,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.082,
+          "avg_duration_sec": 0.083,
           "avg_total_tokens": 315.0,
           "avg_cost_usd": 6.8e-05
         },
@@ -387,7 +387,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.087,
+          "avg_duration_sec": 0.082,
           "avg_total_tokens": 350.0,
           "avg_cost_usd": 7.3e-05
         },
@@ -427,7 +427,7 @@
           "pass_rate": 0.0,
           "pass_at_k": 0.0,
           "pass_hat_k": 0.0,
-          "avg_duration_sec": 0.082,
+          "avg_duration_sec": 0.083,
           "avg_total_tokens": 315.0,
           "avg_cost_usd": 6.8e-05
         },
@@ -447,7 +447,7 @@
           "pass_rate": 0.0,
           "pass_at_k": 0.0,
           "pass_hat_k": 0.0,
-          "avg_duration_sec": 0.081,
+          "avg_duration_sec": 0.082,
           "avg_total_tokens": 315.0,
           "avg_cost_usd": 6.8e-05
         }
@@ -467,7 +467,7 @@
       "passed_runs": 9,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 0.3,
+      "avg_duration_sec": 0.299,
       "avg_turns": 3.0,
       "avg_tokens": 972.2,
       "total_cost_usd": 0.001858,
@@ -479,7 +479,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.244,
+          "avg_duration_sec": 0.245,
           "avg_total_tokens": 945.0,
           "avg_cost_usd": 0.000202
         },
@@ -529,7 +529,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.326,
+          "avg_duration_sec": 0.327,
           "avg_total_tokens": 1400.0,
           "avg_cost_usd": 0.000291
         },
@@ -539,7 +539,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.696,
+          "avg_duration_sec": 0.702,
           "avg_total_tokens": 1575.0,
           "avg_cost_usd": 0.000338
         },
@@ -559,7 +559,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.426,
+          "avg_duration_sec": 0.404,
           "avg_total_tokens": 945.0,
           "avg_cost_usd": 0.000202
         }
@@ -579,7 +579,7 @@
       "passed_runs": 9,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 0.299,
+      "avg_duration_sec": 0.301,
       "avg_turns": 3.0,
       "avg_tokens": 3885.0,
       "total_cost_usd": 0.005789,
@@ -591,7 +591,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.243,
+          "avg_duration_sec": 0.244,
           "avg_total_tokens": 3885.0,
           "avg_cost_usd": 0.000643
         },
@@ -601,7 +601,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.245,
+          "avg_duration_sec": 0.244,
           "avg_total_tokens": 3885.0,
           "avg_cost_usd": 0.000643
         },
@@ -611,7 +611,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.254,
+          "avg_duration_sec": 0.261,
           "avg_total_tokens": 3885.0,
           "avg_cost_usd": 0.000643
         },
@@ -621,7 +621,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.163,
+          "avg_duration_sec": 0.164,
           "avg_total_tokens": 2590.0,
           "avg_cost_usd": 0.000429
         },
@@ -631,7 +631,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.27,
+          "avg_duration_sec": 0.269,
           "avg_total_tokens": 3885.0,
           "avg_cost_usd": 0.000643
         },
@@ -641,7 +641,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.327,
+          "avg_duration_sec": 0.328,
           "avg_total_tokens": 5180.0,
           "avg_cost_usd": 0.000858
         },
@@ -671,7 +671,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.417,
+          "avg_duration_sec": 0.424,
           "avg_total_tokens": 3885.0,
           "avg_cost_usd": 0.000643
         }
@@ -713,7 +713,7 @@
           "pass_rate": 0.0,
           "pass_at_k": 0.0,
           "pass_hat_k": 0.0,
-          "avg_duration_sec": 0.08,
+          "avg_duration_sec": 0.081,
           "avg_total_tokens": 245.0,
           "avg_cost_usd": 5.7e-05
         },
@@ -733,7 +733,7 @@
           "pass_rate": 0.0,
           "pass_at_k": 0.0,
           "pass_hat_k": 0.0,
-          "avg_duration_sec": 0.082,
+          "avg_duration_sec": 0.081,
           "avg_total_tokens": 245.0,
           "avg_cost_usd": 5.7e-05
         },
@@ -803,7 +803,7 @@
       "passed_runs": 9,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 0.182,
+      "avg_duration_sec": 0.178,
       "avg_turns": 3.0,
       "avg_tokens": 903.2,
       "total_cost_usd": 0.001487,
@@ -815,7 +815,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.123,
+          "avg_duration_sec": 0.125,
           "avg_total_tokens": 876.0,
           "avg_cost_usd": 0.000161
         },
@@ -835,7 +835,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.134,
+          "avg_duration_sec": 0.133,
           "avg_total_tokens": 981.0,
           "avg_cost_usd": 0.000177
         },
@@ -845,7 +845,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.083,
+          "avg_duration_sec": 0.084,
           "avg_total_tokens": 584.0,
           "avg_cost_usd": 0.000107
         },
@@ -855,7 +855,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.149,
+          "avg_duration_sec": 0.147,
           "avg_total_tokens": 876.0,
           "avg_cost_usd": 0.000161
         },
@@ -875,7 +875,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.498,
+          "avg_duration_sec": 0.497,
           "avg_total_tokens": 1460.0,
           "avg_cost_usd": 0.000269
         },
@@ -895,7 +895,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.322,
+          "avg_duration_sec": 0.286,
           "avg_total_tokens": 876.0,
           "avg_cost_usd": 0.000161
         }
@@ -915,7 +915,7 @@
       "passed_runs": 9,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 0.25,
+      "avg_duration_sec": 0.252,
       "avg_turns": 3.0,
       "avg_tokens": 945.2,
       "total_cost_usd": 0.001712,
@@ -927,7 +927,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.195,
+          "avg_duration_sec": 0.197,
           "avg_total_tokens": 918.0,
           "avg_cost_usd": 0.000186
         },
@@ -947,7 +947,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.211,
+          "avg_duration_sec": 0.206,
           "avg_total_tokens": 1023.0,
           "avg_cost_usd": 0.000202
         },
@@ -967,7 +967,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.22,
+          "avg_duration_sec": 0.221,
           "avg_total_tokens": 918.0,
           "avg_cost_usd": 0.000186
         },
@@ -977,7 +977,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.262,
+          "avg_duration_sec": 0.263,
           "avg_total_tokens": 1364.0,
           "avg_cost_usd": 0.000269
         },
@@ -987,7 +987,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.603,
+          "avg_duration_sec": 0.611,
           "avg_total_tokens": 1530.0,
           "avg_cost_usd": 0.000311
         },
@@ -1007,7 +1007,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.367,
+          "avg_duration_sec": 0.376,
           "avg_total_tokens": 918.0,
           "avg_cost_usd": 0.000186
         }
@@ -1027,7 +1027,7 @@
       "passed_runs": 9,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 0.299,
+      "avg_duration_sec": 0.302,
       "avg_turns": 3.0,
       "avg_tokens": 972.2,
       "total_cost_usd": 0.001858,
@@ -1049,7 +1049,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.244,
+          "avg_duration_sec": 0.245,
           "avg_total_tokens": 945.0,
           "avg_cost_usd": 0.000202
         },
@@ -1059,7 +1059,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.253,
+          "avg_duration_sec": 0.254,
           "avg_total_tokens": 1050.0,
           "avg_cost_usd": 0.000218
         },
@@ -1069,7 +1069,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.162,
+          "avg_duration_sec": 0.163,
           "avg_total_tokens": 630.0,
           "avg_cost_usd": 0.000135
         },
@@ -1079,7 +1079,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.274,
+          "avg_duration_sec": 0.27,
           "avg_total_tokens": 945.0,
           "avg_cost_usd": 0.000202
         },
@@ -1089,7 +1089,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.326,
+          "avg_duration_sec": 0.327,
           "avg_total_tokens": 1400.0,
           "avg_cost_usd": 0.000291
         },
@@ -1099,7 +1099,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.705,
+          "avg_duration_sec": 0.721,
           "avg_total_tokens": 1575.0,
           "avg_cost_usd": 0.000338
         },
@@ -1119,7 +1119,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.405,
+          "avg_duration_sec": 0.412,
           "avg_total_tokens": 945.0,
           "avg_cost_usd": 0.000202
         }
@@ -1139,7 +1139,7 @@
       "passed_runs": 9,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 0.418,
+      "avg_duration_sec": 0.421,
       "avg_turns": 3.0,
       "avg_tokens": 1038.2,
       "total_cost_usd": 0.002215,
@@ -1151,7 +1151,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.363,
+          "avg_duration_sec": 0.365,
           "avg_total_tokens": 1011.0,
           "avg_cost_usd": 0.000242
         },
@@ -1181,7 +1181,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.242,
+          "avg_duration_sec": 0.244,
           "avg_total_tokens": 674.0,
           "avg_cost_usd": 0.000161
         },
@@ -1201,7 +1201,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.487,
+          "avg_duration_sec": 0.486,
           "avg_total_tokens": 1488.0,
           "avg_cost_usd": 0.000344
         },
@@ -1211,7 +1211,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.899,
+          "avg_duration_sec": 0.916,
           "avg_total_tokens": 1685.0,
           "avg_cost_usd": 0.000403
         },
@@ -1231,9 +1231,345 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.528,
+          "avg_duration_sec": 0.531,
           "avg_total_tokens": 1011.0,
           "avg_cost_usd": 0.000242
+        }
+      }
+    },
+    {
+      "config_id": "thinking_adaptive_s1",
+      "label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "adaptive",
+      "with_skills": false,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.298,
+      "avg_turns": 3.0,
+      "avg_tokens": 727.2,
+      "total_cost_usd": 0.001509,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.13,
+          "avg_total_tokens": 636.0,
+          "avg_cost_usd": 0.000125
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.217,
+          "avg_total_tokens": 687.0,
+          "avg_cost_usd": 0.000156
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.23,
+          "avg_total_tokens": 792.0,
+          "avg_cost_usd": 0.000171
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.15,
+          "avg_total_tokens": 461.0,
+          "avg_cost_usd": 0.000106
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.242,
+          "avg_total_tokens": 687.0,
+          "avg_cost_usd": 0.000156
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.285,
+          "avg_total_tokens": 1053.0,
+          "avg_cost_usd": 0.000227
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.789,
+          "avg_total_tokens": 1223.0,
+          "avg_cost_usd": 0.000306
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.083,
+          "avg_total_tokens": 235.0,
+          "avg_cost_usd": 5.6e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.553,
+          "avg_total_tokens": 771.0,
+          "avg_cost_usd": 0.000206
+        }
+      }
+    },
+    {
+      "config_id": "thinking_high_static",
+      "label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "high",
+      "with_skills": false,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 9,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 0.42,
+      "avg_turns": 3.0,
+      "avg_tokens": 798.2,
+      "total_cost_usd": 0.001892,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.365,
+          "avg_total_tokens": 771.0,
+          "avg_cost_usd": 0.000206
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.365,
+          "avg_total_tokens": 771.0,
+          "avg_cost_usd": 0.000206
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.374,
+          "avg_total_tokens": 876.0,
+          "avg_cost_usd": 0.000222
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.244,
+          "avg_total_tokens": 514.0,
+          "avg_cost_usd": 0.000137
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.394,
+          "avg_total_tokens": 771.0,
+          "avg_cost_usd": 0.000206
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.487,
+          "avg_total_tokens": 1168.0,
+          "avg_cost_usd": 0.000296
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.892,
+          "avg_total_tokens": 1285.0,
+          "avg_cost_usd": 0.000344
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.121,
+          "avg_total_tokens": 257.0,
+          "avg_cost_usd": 6.9e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.541,
+          "avg_total_tokens": 771.0,
+          "avg_cost_usd": 0.000206
+        }
+      }
+    },
+    {
+      "config_id": "thinking_none_static",
+      "label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "none",
+      "with_skills": false,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 9,
+      "passed_runs": 8,
+      "pass_rate": 0.8889,
+      "pass_hat_k": 0.8889,
+      "avg_duration_sec": 0.162,
+      "avg_turns": 3.0,
+      "avg_tokens": 663.2,
+      "total_cost_usd": 0.001162,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-S01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.125,
+          "avg_total_tokens": 636.0,
+          "avg_cost_usd": 0.000125
+        },
+        "G-S02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.125,
+          "avg_total_tokens": 636.0,
+          "avg_cost_usd": 0.000125
+        },
+        "G-S03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.135,
+          "avg_total_tokens": 741.0,
+          "avg_cost_usd": 0.000141
+        },
+        "G-M01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.082,
+          "avg_total_tokens": 424.0,
+          "avg_cost_usd": 8.3e-05
+        },
+        "G-M02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.148,
+          "avg_total_tokens": 636.0,
+          "avg_cost_usd": 0.000125
+        },
+        "G-M03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.166,
+          "avg_total_tokens": 988.0,
+          "avg_cost_usd": 0.000188
+        },
+        "G-H01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.484,
+          "avg_total_tokens": 1060.0,
+          "avg_cost_usd": 0.000208
+        },
+        "G-H02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.041,
+          "avg_total_tokens": 212.0,
+          "avg_cost_usd": 4.2e-05
+        },
+        "G-H03": {
+          "trials": 1,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 0.148,
+          "avg_total_tokens": 636.0,
+          "avg_cost_usd": 0.000125
         }
       }
     },
@@ -1251,7 +1587,7 @@
       "passed_runs": 2,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 1.081,
+      "avg_duration_sec": 1.079,
       "avg_turns": 4.0,
       "avg_tokens": 1260.0,
       "total_cost_usd": 0.00054,
@@ -1263,7 +1599,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 1.081,
+          "avg_duration_sec": 1.08,
           "avg_total_tokens": 1260.0,
           "avg_cost_usd": 0.00027
         },
@@ -1273,7 +1609,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 1.08,
+          "avg_duration_sec": 1.079,
           "avg_total_tokens": 1260.0,
           "avg_cost_usd": 0.00027
         }
@@ -1297,7 +1633,7 @@
       "avg_turns": 3.0,
       "avg_tokens": 7840.0,
       "total_cost_usd": 0.002716,
-      "avg_parallel_speedup": 2.1,
+      "avg_parallel_speedup": 2.09,
       "per_task": {
         "SW-01": {
           "trials": 1,
@@ -1305,7 +1641,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.75,
+          "avg_duration_sec": 0.746,
           "avg_total_tokens": 8820.0,
           "avg_cost_usd": 0.001505
         },
@@ -1315,7 +1651,7 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.597,
+          "avg_duration_sec": 0.601,
           "avg_total_tokens": 6860.0,
           "avg_cost_usd": 0.001211
         }
@@ -1331,14 +1667,14 @@
       "with_react_loop": true,
       "tools_mode": "scoped",
       "swarm_mode": false,
-      "total_runs": 2,
-      "passed_runs": 2,
+      "total_runs": 4,
+      "passed_runs": 4,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
-      "avg_duration_sec": 0.147,
+      "avg_duration_sec": 0.148,
       "avg_turns": 2.0,
-      "avg_tokens": 612.0,
-      "total_cost_usd": 0.000248,
+      "avg_tokens": 542.0,
+      "total_cost_usd": 0.000456,
       "avg_parallel_speedup": 1.0,
       "per_task": {
         "UI-01": {
@@ -1347,9 +1683,9 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.144,
-          "avg_total_tokens": 612.0,
-          "avg_cost_usd": 0.000124
+          "avg_duration_sec": 0.147,
+          "avg_total_tokens": 542.0,
+          "avg_cost_usd": 0.000114
         },
         "UI-02": {
           "trials": 1,
@@ -1357,9 +1693,29 @@
           "pass_rate": 1.0,
           "pass_at_k": 1.0,
           "pass_hat_k": 1.0,
-          "avg_duration_sec": 0.151,
-          "avg_total_tokens": 612.0,
-          "avg_cost_usd": 0.000124
+          "avg_duration_sec": 0.152,
+          "avg_total_tokens": 542.0,
+          "avg_cost_usd": 0.000114
+        },
+        "UI-03": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.143,
+          "avg_total_tokens": 542.0,
+          "avg_cost_usd": 0.000114
+        },
+        "UI-04": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 0.149,
+          "avg_total_tokens": 542.0,
+          "avg_cost_usd": 0.000114
         }
       }
     },
@@ -1373,17 +1729,37 @@
       "with_react_loop": true,
       "tools_mode": "scoped",
       "swarm_mode": false,
-      "total_runs": 2,
-      "passed_runs": 2,
+      "total_runs": 4,
+      "passed_runs": 4,
       "pass_rate": 1.0,
       "pass_hat_k": 1.0,
       "avg_duration_sec": 1.183,
       "avg_turns": 4.5,
       "avg_tokens": 5107.5,
-      "total_cost_usd": 0.002281,
+      "total_cost_usd": 0.004562,
       "avg_parallel_speedup": 1.0,
       "per_task": {
         "UI-01": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 1.051,
+          "avg_total_tokens": 4540.0,
+          "avg_cost_usd": 0.001014
+        },
+        "UI-02": {
+          "trials": 1,
+          "successes": 1,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 1.313,
+          "avg_total_tokens": 5675.0,
+          "avg_cost_usd": 0.001267
+        },
+        "UI-03": {
           "trials": 1,
           "successes": 1,
           "pass_rate": 1.0,
@@ -1393,7 +1769,7 @@
           "avg_total_tokens": 4540.0,
           "avg_cost_usd": 0.001014
         },
-        "UI-02": {
+        "UI-04": {
           "trials": 1,
           "successes": 1,
           "pass_rate": 1.0,
@@ -1431,7 +1807,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.197,
+      "duration_sec": 0.198,
       "prompt_tokens": 810,
       "completion_tokens": 108,
       "total_tokens": 918,
@@ -1464,7 +1840,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.198,
+      "duration_sec": 0.202,
       "prompt_tokens": 810,
       "completion_tokens": 108,
       "total_tokens": 918,
@@ -1500,7 +1876,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.225,
+      "duration_sec": 0.217,
       "prompt_tokens": 915,
       "completion_tokens": 108,
       "total_tokens": 1023,
@@ -1566,7 +1942,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.219,
+      "duration_sec": 0.222,
       "prompt_tokens": 810,
       "completion_tokens": 108,
       "total_tokens": 918,
@@ -1638,7 +2014,7 @@
       ],
       "tool_overhead_ratio": 2.5,
       "turns_taken": 5,
-      "duration_sec": 0.657,
+      "duration_sec": 0.655,
       "prompt_tokens": 1350,
       "completion_tokens": 180,
       "total_tokens": 1530,
@@ -1703,7 +2079,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.444,
+      "duration_sec": 0.469,
       "prompt_tokens": 810,
       "completion_tokens": 108,
       "total_tokens": 918,
@@ -1736,7 +2112,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.197,
+      "duration_sec": 0.196,
       "prompt_tokens": 570,
       "completion_tokens": 108,
       "total_tokens": 678,
@@ -1769,7 +2145,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.197,
+      "duration_sec": 0.196,
       "prompt_tokens": 570,
       "completion_tokens": 108,
       "total_tokens": 678,
@@ -1837,7 +2213,7 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 2,
-      "duration_sec": 0.131,
+      "duration_sec": 0.13,
       "prompt_tokens": 380,
       "completion_tokens": 72,
       "total_tokens": 452,
@@ -1871,7 +2247,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.22,
+      "duration_sec": 0.217,
       "prompt_tokens": 570,
       "completion_tokens": 108,
       "total_tokens": 678,
@@ -1906,7 +2282,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 4,
-      "duration_sec": 0.262,
+      "duration_sec": 0.263,
       "prompt_tokens": 900,
       "completion_tokens": 144,
       "total_tokens": 1044,
@@ -1943,7 +2319,7 @@
       ],
       "tool_overhead_ratio": 2.5,
       "turns_taken": 5,
-      "duration_sec": 0.684,
+      "duration_sec": 0.613,
       "prompt_tokens": 950,
       "completion_tokens": 180,
       "total_tokens": 1130,
@@ -2042,7 +2418,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.254,
+      "duration_sec": 0.245,
       "prompt_tokens": 810,
       "completion_tokens": 135,
       "total_tokens": 945,
@@ -2075,7 +2451,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.244,
+      "duration_sec": 0.245,
       "prompt_tokens": 810,
       "completion_tokens": 135,
       "total_tokens": 945,
@@ -2111,7 +2487,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.256,
+      "duration_sec": 0.255,
       "prompt_tokens": 915,
       "completion_tokens": 135,
       "total_tokens": 1050,
@@ -2212,7 +2588,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 4,
-      "duration_sec": 0.326,
+      "duration_sec": 0.327,
       "prompt_tokens": 1220,
       "completion_tokens": 180,
       "total_tokens": 1400,
@@ -2249,7 +2625,7 @@
       ],
       "tool_overhead_ratio": 2.5,
       "turns_taken": 5,
-      "duration_sec": 0.754,
+      "duration_sec": 0.709,
       "prompt_tokens": 1350,
       "completion_tokens": 225,
       "total_tokens": 1575,
@@ -2278,7 +2654,7 @@
       "actual_tools": [],
       "tool_overhead_ratio": 0.0,
       "turns_taken": 1,
-      "duration_sec": 0.082,
+      "duration_sec": 0.081,
       "prompt_tokens": 270,
       "completion_tokens": 45,
       "total_tokens": 315,
@@ -2314,7 +2690,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.401,
+      "duration_sec": 0.426,
       "prompt_tokens": 810,
       "completion_tokens": 135,
       "total_tokens": 945,
@@ -2345,7 +2721,7 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 1,
-      "duration_sec": 0.082,
+      "duration_sec": 0.081,
       "prompt_tokens": 270,
       "completion_tokens": 45,
       "total_tokens": 315,
@@ -2377,7 +2753,7 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 1,
-      "duration_sec": 0.082,
+      "duration_sec": 0.083,
       "prompt_tokens": 270,
       "completion_tokens": 45,
       "total_tokens": 315,
@@ -2412,7 +2788,7 @@
       ],
       "tool_overhead_ratio": 0.67,
       "turns_taken": 1,
-      "duration_sec": 0.087,
+      "duration_sec": 0.082,
       "prompt_tokens": 305,
       "completion_tokens": 45,
       "total_tokens": 350,
@@ -2546,7 +2922,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 1,
-      "duration_sec": 0.082,
+      "duration_sec": 0.083,
       "prompt_tokens": 270,
       "completion_tokens": 45,
       "total_tokens": 315,
@@ -2611,7 +2987,7 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 1,
-      "duration_sec": 0.081,
+      "duration_sec": 0.082,
       "prompt_tokens": 270,
       "completion_tokens": 45,
       "total_tokens": 315,
@@ -2644,7 +3020,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.244,
+      "duration_sec": 0.245,
       "prompt_tokens": 810,
       "completion_tokens": 135,
       "total_tokens": 945,
@@ -2814,7 +3190,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 4,
-      "duration_sec": 0.326,
+      "duration_sec": 0.327,
       "prompt_tokens": 1220,
       "completion_tokens": 180,
       "total_tokens": 1400,
@@ -2851,7 +3227,7 @@
       ],
       "tool_overhead_ratio": 2.5,
       "turns_taken": 5,
-      "duration_sec": 0.696,
+      "duration_sec": 0.702,
       "prompt_tokens": 1350,
       "completion_tokens": 225,
       "total_tokens": 1575,
@@ -2916,7 +3292,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.426,
+      "duration_sec": 0.404,
       "prompt_tokens": 810,
       "completion_tokens": 135,
       "total_tokens": 945,
@@ -2949,7 +3325,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.243,
+      "duration_sec": 0.244,
       "prompt_tokens": 3750,
       "completion_tokens": 135,
       "total_tokens": 3885,
@@ -2982,7 +3358,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.245,
+      "duration_sec": 0.244,
       "prompt_tokens": 3750,
       "completion_tokens": 135,
       "total_tokens": 3885,
@@ -3018,7 +3394,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.254,
+      "duration_sec": 0.261,
       "prompt_tokens": 3750,
       "completion_tokens": 135,
       "total_tokens": 3885,
@@ -3050,7 +3426,7 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 2,
-      "duration_sec": 0.163,
+      "duration_sec": 0.164,
       "prompt_tokens": 2500,
       "completion_tokens": 90,
       "total_tokens": 2590,
@@ -3084,7 +3460,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.27,
+      "duration_sec": 0.269,
       "prompt_tokens": 3750,
       "completion_tokens": 135,
       "total_tokens": 3885,
@@ -3119,7 +3495,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 4,
-      "duration_sec": 0.327,
+      "duration_sec": 0.328,
       "prompt_tokens": 5000,
       "completion_tokens": 180,
       "total_tokens": 5180,
@@ -3221,7 +3597,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.417,
+      "duration_sec": 0.424,
       "prompt_tokens": 3750,
       "completion_tokens": 135,
       "total_tokens": 3885,
@@ -3279,7 +3655,7 @@
       "actual_tools": [],
       "tool_overhead_ratio": 0.0,
       "turns_taken": 1,
-      "duration_sec": 0.08,
+      "duration_sec": 0.081,
       "prompt_tokens": 200,
       "completion_tokens": 45,
       "total_tokens": 245,
@@ -3340,7 +3716,7 @@
       "actual_tools": [],
       "tool_overhead_ratio": 0.0,
       "turns_taken": 1,
-      "duration_sec": 0.082,
+      "duration_sec": 0.081,
       "prompt_tokens": 200,
       "completion_tokens": 45,
       "total_tokens": 245,
@@ -3361,7 +3737,7 @@
       "checks_passed": [],
       "checks_failed": [
         "missing_target_file:sum.py",
-        "verify_command_failed(exit=2): python3: can't open file '/private/var/folders/3j/yf9j_tjd02g6n491sbf_2xc40000gn/T/vsbench_G-M02_tools_none_xl5yjxru/sum"
+        "verify_command_failed(exit=2): python3: can't open file '/private/var/folders/3j/yf9j_tjd02g6n491sbf_2xc40000gn/T/vsbench_G-M02_tools_none_upn0z95u/sum"
       ],
       "expected_tools": [
         "write_file",
@@ -3377,7 +3753,7 @@
       "estimated_cost_usd": 5.7e-05,
       "subagents_spawned": 0,
       "parallel_speedup": 1.0,
-      "failure_reason": "missing_target_file:sum.py; verify_command_failed(exit=2): python3: can't open file '/private/var/folders/3j/yf9j_tjd02g6n491sbf_2xc40000gn/T/vsbench_G-M02_tools_none_xl5yjxru/sum"
+      "failure_reason": "missing_target_file:sum.py; verify_command_failed(exit=2): python3: can't open file '/private/var/folders/3j/yf9j_tjd02g6n491sbf_2xc40000gn/T/vsbench_G-M02_tools_none_upn0z95u/sum"
     },
     {
       "task_id": "G-M03",
@@ -3525,7 +3901,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.123,
+      "duration_sec": 0.125,
       "prompt_tokens": 810,
       "completion_tokens": 66,
       "total_tokens": 876,
@@ -3594,7 +3970,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.134,
+      "duration_sec": 0.133,
       "prompt_tokens": 915,
       "completion_tokens": 66,
       "total_tokens": 981,
@@ -3626,7 +4002,7 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 2,
-      "duration_sec": 0.083,
+      "duration_sec": 0.084,
       "prompt_tokens": 540,
       "completion_tokens": 44,
       "total_tokens": 584,
@@ -3660,7 +4036,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.149,
+      "duration_sec": 0.147,
       "prompt_tokens": 810,
       "completion_tokens": 66,
       "total_tokens": 876,
@@ -3732,7 +4108,7 @@
       ],
       "tool_overhead_ratio": 2.5,
       "turns_taken": 5,
-      "duration_sec": 0.498,
+      "duration_sec": 0.497,
       "prompt_tokens": 1350,
       "completion_tokens": 110,
       "total_tokens": 1460,
@@ -3797,7 +4173,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.322,
+      "duration_sec": 0.286,
       "prompt_tokens": 810,
       "completion_tokens": 66,
       "total_tokens": 876,
@@ -3830,7 +4206,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.195,
+      "duration_sec": 0.197,
       "prompt_tokens": 810,
       "completion_tokens": 108,
       "total_tokens": 918,
@@ -3899,7 +4275,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.211,
+      "duration_sec": 0.206,
       "prompt_tokens": 915,
       "completion_tokens": 108,
       "total_tokens": 1023,
@@ -3965,7 +4341,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.22,
+      "duration_sec": 0.221,
       "prompt_tokens": 810,
       "completion_tokens": 108,
       "total_tokens": 918,
@@ -4000,7 +4376,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 4,
-      "duration_sec": 0.262,
+      "duration_sec": 0.263,
       "prompt_tokens": 1220,
       "completion_tokens": 144,
       "total_tokens": 1364,
@@ -4037,7 +4413,7 @@
       ],
       "tool_overhead_ratio": 2.5,
       "turns_taken": 5,
-      "duration_sec": 0.603,
+      "duration_sec": 0.611,
       "prompt_tokens": 1350,
       "completion_tokens": 180,
       "total_tokens": 1530,
@@ -4102,7 +4478,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.367,
+      "duration_sec": 0.376,
       "prompt_tokens": 810,
       "completion_tokens": 108,
       "total_tokens": 918,
@@ -4168,7 +4544,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.244,
+      "duration_sec": 0.245,
       "prompt_tokens": 810,
       "completion_tokens": 135,
       "total_tokens": 945,
@@ -4204,7 +4580,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.253,
+      "duration_sec": 0.254,
       "prompt_tokens": 915,
       "completion_tokens": 135,
       "total_tokens": 1050,
@@ -4236,7 +4612,7 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 2,
-      "duration_sec": 0.162,
+      "duration_sec": 0.163,
       "prompt_tokens": 540,
       "completion_tokens": 90,
       "total_tokens": 630,
@@ -4270,7 +4646,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.274,
+      "duration_sec": 0.27,
       "prompt_tokens": 810,
       "completion_tokens": 135,
       "total_tokens": 945,
@@ -4305,7 +4681,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 4,
-      "duration_sec": 0.326,
+      "duration_sec": 0.327,
       "prompt_tokens": 1220,
       "completion_tokens": 180,
       "total_tokens": 1400,
@@ -4342,7 +4718,7 @@
       ],
       "tool_overhead_ratio": 2.5,
       "turns_taken": 5,
-      "duration_sec": 0.705,
+      "duration_sec": 0.721,
       "prompt_tokens": 1350,
       "completion_tokens": 225,
       "total_tokens": 1575,
@@ -4407,7 +4783,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.405,
+      "duration_sec": 0.412,
       "prompt_tokens": 810,
       "completion_tokens": 135,
       "total_tokens": 945,
@@ -4440,7 +4816,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.363,
+      "duration_sec": 0.365,
       "prompt_tokens": 810,
       "completion_tokens": 201,
       "total_tokens": 1011,
@@ -4541,7 +4917,7 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 2,
-      "duration_sec": 0.242,
+      "duration_sec": 0.244,
       "prompt_tokens": 540,
       "completion_tokens": 134,
       "total_tokens": 674,
@@ -4610,7 +4986,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 4,
-      "duration_sec": 0.487,
+      "duration_sec": 0.486,
       "prompt_tokens": 1220,
       "completion_tokens": 268,
       "total_tokens": 1488,
@@ -4647,7 +5023,7 @@
       ],
       "tool_overhead_ratio": 2.5,
       "turns_taken": 5,
-      "duration_sec": 0.899,
+      "duration_sec": 0.916,
       "prompt_tokens": 1350,
       "completion_tokens": 335,
       "total_tokens": 1685,
@@ -4712,7 +5088,7 @@
       ],
       "tool_overhead_ratio": 1.0,
       "turns_taken": 3,
-      "duration_sec": 0.528,
+      "duration_sec": 0.531,
       "prompt_tokens": 810,
       "completion_tokens": 201,
       "total_tokens": 1011,
@@ -4720,6 +5096,922 @@
       "subagents_spawned": 0,
       "parallel_speedup": 1.0,
       "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "thinking_adaptive_s1",
+      "config_label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.13,
+      "prompt_tokens": 570,
+      "completion_tokens": 66,
+      "total_tokens": 636,
+      "estimated_cost_usd": 0.000125,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "thinking_adaptive_s1",
+      "config_label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.217,
+      "prompt_tokens": 570,
+      "completion_tokens": 117,
+      "total_tokens": 687,
+      "estimated_cost_usd": 0.000156,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "thinking_adaptive_s1",
+      "config_label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.23,
+      "prompt_tokens": 675,
+      "completion_tokens": 117,
+      "total_tokens": 792,
+      "estimated_cost_usd": 0.000171,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "thinking_adaptive_s1",
+      "config_label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.15,
+      "prompt_tokens": 380,
+      "completion_tokens": 81,
+      "total_tokens": 461,
+      "estimated_cost_usd": 0.000106,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "thinking_adaptive_s1",
+      "config_label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.242,
+      "prompt_tokens": 570,
+      "completion_tokens": 117,
+      "total_tokens": 687,
+      "estimated_cost_usd": 0.000156,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "thinking_adaptive_s1",
+      "config_label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.285,
+      "prompt_tokens": 900,
+      "completion_tokens": 153,
+      "total_tokens": 1053,
+      "estimated_cost_usd": 0.000227,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "thinking_adaptive_s1",
+      "config_label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.789,
+      "prompt_tokens": 950,
+      "completion_tokens": 273,
+      "total_tokens": 1223,
+      "estimated_cost_usd": 0.000306,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "thinking_adaptive_s1",
+      "config_label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.083,
+      "prompt_tokens": 190,
+      "completion_tokens": 45,
+      "total_tokens": 235,
+      "estimated_cost_usd": 5.6e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "thinking_adaptive_s1",
+      "config_label": "8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.553,
+      "prompt_tokens": 570,
+      "completion_tokens": 201,
+      "total_tokens": 771,
+      "estimated_cost_usd": 0.000206,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "thinking_high_static",
+      "config_label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.365,
+      "prompt_tokens": 570,
+      "completion_tokens": 201,
+      "total_tokens": 771,
+      "estimated_cost_usd": 0.000206,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "thinking_high_static",
+      "config_label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.365,
+      "prompt_tokens": 570,
+      "completion_tokens": 201,
+      "total_tokens": 771,
+      "estimated_cost_usd": 0.000206,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "thinking_high_static",
+      "config_label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.374,
+      "prompt_tokens": 675,
+      "completion_tokens": 201,
+      "total_tokens": 876,
+      "estimated_cost_usd": 0.000222,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "thinking_high_static",
+      "config_label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.244,
+      "prompt_tokens": 380,
+      "completion_tokens": 134,
+      "total_tokens": 514,
+      "estimated_cost_usd": 0.000137,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "thinking_high_static",
+      "config_label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.394,
+      "prompt_tokens": 570,
+      "completion_tokens": 201,
+      "total_tokens": 771,
+      "estimated_cost_usd": 0.000206,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "thinking_high_static",
+      "config_label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.487,
+      "prompt_tokens": 900,
+      "completion_tokens": 268,
+      "total_tokens": 1168,
+      "estimated_cost_usd": 0.000296,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "thinking_high_static",
+      "config_label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.892,
+      "prompt_tokens": 950,
+      "completion_tokens": 335,
+      "total_tokens": 1285,
+      "estimated_cost_usd": 0.000344,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "thinking_high_static",
+      "config_label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.121,
+      "prompt_tokens": 190,
+      "completion_tokens": 67,
+      "total_tokens": 257,
+      "estimated_cost_usd": 6.9e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "thinking_high_static",
+      "config_label": "8b. Static HIGH Thinking (Always High without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.541,
+      "prompt_tokens": 570,
+      "completion_tokens": 201,
+      "total_tokens": 771,
+      "estimated_cost_usd": 0.000206,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S01",
+      "complexity": "Simple",
+      "category": "gaia_math_io",
+      "config_id": "thinking_none_static",
+      "config_label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:calculation_result.txt",
+        "content_regex_match:calculation_result.txt"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "actual_tools": [
+        "calculator",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.125,
+      "prompt_tokens": 570,
+      "completion_tokens": 66,
+      "total_tokens": 636,
+      "estimated_cost_usd": 0.000125,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S02",
+      "complexity": "Simple",
+      "category": "code_generation",
+      "config_id": "thinking_none_static",
+      "config_label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:index.js",
+        "content_regex_match:index.js"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.125,
+      "prompt_tokens": 570,
+      "completion_tokens": 66,
+      "total_tokens": 636,
+      "estimated_cost_usd": 0.000125,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-S03",
+      "complexity": "Simple",
+      "category": "terminal_ops",
+      "config_id": "thinking_none_static",
+      "config_label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/main.py",
+        "file_exists:test/test_main.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "terminal_exec",
+        "write_file",
+        "search_files"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "search_files"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.135,
+      "prompt_tokens": 675,
+      "completion_tokens": 66,
+      "total_tokens": 741,
+      "estimated_cost_usd": 0.000141,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M01",
+      "complexity": "Medium",
+      "category": "web_research",
+      "config_id": "thinking_none_static",
+      "config_label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:documentation_source.md",
+        "content_regex_match:documentation_source.md"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_search",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.082,
+      "prompt_tokens": 380,
+      "completion_tokens": 44,
+      "total_tokens": 424,
+      "estimated_cost_usd": 8.3e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M02",
+      "complexity": "Medium",
+      "category": "code_generation",
+      "config_id": "thinking_none_static",
+      "config_label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:sum.py",
+        "verify_command_exit_0",
+        "verify_stdout_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.148,
+      "prompt_tokens": 570,
+      "completion_tokens": 66,
+      "total_tokens": 636,
+      "estimated_cost_usd": 0.000125,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "thinking_none_static",
+      "config_label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 0.166,
+      "prompt_tokens": 900,
+      "completion_tokens": 88,
+      "total_tokens": 988,
+      "estimated_cost_usd": 0.000188,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "thinking_none_static",
+      "config_label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 0.484,
+      "prompt_tokens": 950,
+      "completion_tokens": 110,
+      "total_tokens": 1060,
+      "estimated_cost_usd": 0.000208,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H02",
+      "complexity": "High",
+      "category": "web_research",
+      "config_id": "thinking_none_static",
+      "config_label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "output_regex_match"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "web_scrape",
+        "web_content_diff"
+      ],
+      "actual_tools": [],
+      "tool_overhead_ratio": 0.0,
+      "turns_taken": 1,
+      "duration_sec": 0.041,
+      "prompt_tokens": 190,
+      "completion_tokens": 22,
+      "total_tokens": 212,
+      "estimated_cost_usd": 4.2e-05,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "thinking_none_static",
+      "config_label": "8c. Static NONE Thinking (Always None without Skills)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.6,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh"
+      ],
+      "checks_failed": [
+        "missing_executable_chmod:setup_env.sh",
+        "verify_command_failed(exit=1): "
+      ],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 0.148,
+      "prompt_tokens": 570,
+      "completion_tokens": 66,
+      "total_tokens": 636,
+      "estimated_cost_usd": 0.000125,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_executable_chmod:setup_env.sh; verify_command_failed(exit=1): "
     },
     {
       "task_id": "SW-01",
@@ -4736,42 +6028,6 @@
         "file_exists:square_result.txt",
         "target_file_exists:square_result.txt",
         "content_regex_match:square_result.txt",
-        "verify_command_exit_0"
-      ],
-      "checks_failed": [],
-      "expected_tools": [
-        "delegate_task",
-        "write_file"
-      ],
-      "actual_tools": [
-        "write_file",
-        "write_file",
-        "write_file"
-      ],
-      "tool_overhead_ratio": 1.5,
-      "turns_taken": 4,
-      "duration_sec": 1.081,
-      "prompt_tokens": 1080,
-      "completion_tokens": 180,
-      "total_tokens": 1260,
-      "estimated_cost_usd": 0.00027,
-      "subagents_spawned": 0,
-      "parallel_speedup": 1.0,
-      "failure_reason": null
-    },
-    {
-      "task_id": "SW-02",
-      "complexity": "High",
-      "category": "swarm_parallel",
-      "config_id": "seq_single",
-      "config_label": "10a. Single Agent (Sequential Execution)",
-      "harness": "vsagent",
-      "passed": true,
-      "score": 1.0,
-      "checks_passed": [
-        "file_exists:research_summary.md",
-        "file_exists:campaign_hook.md",
-        "file_exists:schema.json",
         "verify_command_exit_0"
       ],
       "checks_failed": [],
@@ -4796,6 +6052,42 @@
       "failure_reason": null
     },
     {
+      "task_id": "SW-02",
+      "complexity": "High",
+      "category": "swarm_parallel",
+      "config_id": "seq_single",
+      "config_label": "10a. Single Agent (Sequential Execution)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:research_summary.md",
+        "file_exists:campaign_hook.md",
+        "file_exists:schema.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "delegate_task",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 1.079,
+      "prompt_tokens": 1080,
+      "completion_tokens": 180,
+      "total_tokens": 1260,
+      "estimated_cost_usd": 0.00027,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
       "task_id": "SW-01",
       "complexity": "High",
       "category": "swarm_parallel",
@@ -4825,13 +6117,13 @@
       ],
       "tool_overhead_ratio": 2.0,
       "turns_taken": 3,
-      "duration_sec": 0.75,
+      "duration_sec": 0.746,
       "prompt_tokens": 8415,
       "completion_tokens": 405,
       "total_tokens": 8820,
       "estimated_cost_usd": 0.001505,
       "subagents_spawned": 3,
-      "parallel_speedup": 2.09,
+      "parallel_speedup": 2.08,
       "failure_reason": null
     },
     {
@@ -4862,7 +6154,7 @@
       ],
       "tool_overhead_ratio": 2.0,
       "turns_taken": 3,
-      "duration_sec": 0.597,
+      "duration_sec": 0.601,
       "prompt_tokens": 6455,
       "completion_tokens": 405,
       "total_tokens": 6860,
@@ -4894,11 +6186,11 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 2,
-      "duration_sec": 0.144,
-      "prompt_tokens": 540,
+      "duration_sec": 0.147,
+      "prompt_tokens": 470,
       "completion_tokens": 72,
-      "total_tokens": 612,
-      "estimated_cost_usd": 0.000124,
+      "total_tokens": 542,
+      "estimated_cost_usd": 0.000114,
       "subagents_spawned": 0,
       "parallel_speedup": 1.0,
       "failure_reason": null
@@ -4926,11 +6218,75 @@
       ],
       "tool_overhead_ratio": 0.5,
       "turns_taken": 2,
-      "duration_sec": 0.151,
-      "prompt_tokens": 540,
+      "duration_sec": 0.152,
+      "prompt_tokens": 470,
       "completion_tokens": 72,
-      "total_tokens": 612,
-      "estimated_cost_usd": 0.000124,
+      "total_tokens": 542,
+      "estimated_cost_usd": 0.000114,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "UI-03",
+      "complexity": "Medium",
+      "category": "ui_blocker_recovery",
+      "config_id": "system_one_ui_nav",
+      "config_label": "11a. System-1 Decision Model UI/Canvas Navigator (Parallel Closed-Set)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:ui_blocker_result.json",
+        "content_regex_match:ui_blocker_result.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "ui_navigate",
+        "write_file"
+      ],
+      "actual_tools": [
+        "ui_navigate"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.143,
+      "prompt_tokens": 470,
+      "completion_tokens": 72,
+      "total_tokens": 542,
+      "estimated_cost_usd": 0.000114,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "UI-04",
+      "complexity": "High",
+      "category": "artcraft_multilayer_compositing",
+      "config_id": "system_one_ui_nav",
+      "config_label": "11a. System-1 Decision Model UI/Canvas Navigator (Parallel Closed-Set)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:artcraft_compositing_result.json",
+        "content_regex_match:artcraft_compositing_result.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "ui_navigate",
+        "write_file"
+      ],
+      "actual_tools": [
+        "ui_navigate"
+      ],
+      "tool_overhead_ratio": 0.5,
+      "turns_taken": 2,
+      "duration_sec": 0.149,
+      "prompt_tokens": 470,
+      "completion_tokens": 72,
+      "total_tokens": 542,
+      "estimated_cost_usd": 0.000114,
       "subagents_spawned": 0,
       "parallel_speedup": 1.0,
       "failure_reason": null
@@ -4960,7 +6316,7 @@
       ],
       "tool_overhead_ratio": 1.5,
       "turns_taken": 4,
-      "duration_sec": 1.052,
+      "duration_sec": 1.051,
       "prompt_tokens": 3800,
       "completion_tokens": 740,
       "total_tokens": 4540,
@@ -4981,6 +6337,75 @@
       "checks_passed": [
         "target_file_exists:artcraft_workflow_result.json",
         "content_regex_match:artcraft_workflow_result.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "ui_navigate",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "write_file",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 1.313,
+      "prompt_tokens": 4750,
+      "completion_tokens": 925,
+      "total_tokens": 5675,
+      "estimated_cost_usd": 0.001267,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "UI-03",
+      "complexity": "Medium",
+      "category": "ui_blocker_recovery",
+      "config_id": "llm_react_ui_nav",
+      "config_label": "11b. System-2 Full LLM ReAct UI/Canvas Navigation (Step-by-Step)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:ui_blocker_result.json",
+        "content_regex_match:ui_blocker_result.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "ui_navigate",
+        "write_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "write_file"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 1.052,
+      "prompt_tokens": 3800,
+      "completion_tokens": 740,
+      "total_tokens": 4540,
+      "estimated_cost_usd": 0.001014,
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "UI-04",
+      "complexity": "High",
+      "category": "artcraft_multilayer_compositing",
+      "config_id": "llm_react_ui_nav",
+      "config_label": "11b. System-2 Full LLM ReAct UI/Canvas Navigation (Step-by-Step)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:artcraft_compositing_result.json",
+        "content_regex_match:artcraft_compositing_result.json"
       ],
       "checks_failed": [],
       "expected_tools": [

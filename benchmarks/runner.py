@@ -209,6 +209,40 @@ def get_ablation_configs(
             for h in harnesses
         ]
 
+    if ab == "adaptive_thinking":
+        return [
+            BenchmarkConfig(
+                config_id="thinking_adaptive_s1",
+                label="8a. System-1 Adaptive Thinking Router (Dynamic none/low/medium/high)",
+                provider=provider,
+                model=model,
+                thinking_level="adaptive",
+                with_skills=False,
+                with_react_loop=True,
+                tools_mode="scoped",
+            ),
+            BenchmarkConfig(
+                config_id="thinking_high_static",
+                label="8b. Static HIGH Thinking (Always High without Skills)",
+                provider=provider,
+                model=model,
+                thinking_level="high",
+                with_skills=False,
+                with_react_loop=True,
+                tools_mode="scoped",
+            ),
+            BenchmarkConfig(
+                config_id="thinking_none_static",
+                label="8c. Static NONE Thinking (Always None without Skills)",
+                provider=provider,
+                model=model,
+                thinking_level="none",
+                with_skills=False,
+                with_react_loop=True,
+                tools_mode="scoped",
+            ),
+        ]
+
     if ab in ("ui_nav", "decision_model"):
         return [
             BenchmarkConfig(
@@ -426,9 +460,9 @@ async def run_all_ablations_demo(mode: Literal["auto", "mock", "live"] = "mock",
     swarm_tasks = load_tasks(suite="swarm")
     ui_tasks = load_tasks(suite="ui")
 
-    # 1. Run Core Tasks across Skills, ReAct, Tools, and Reasoning ablations
+    # 1. Run Core Tasks across Skills, ReAct, Tools, Reasoning, and Adaptive Thinking ablations
     core_configs: List[BenchmarkConfig] = []
-    for axis in ("skills", "react", "tools", "reasoning"):
+    for axis in ("skills", "react", "tools", "reasoning", "adaptive_thinking"):
         core_configs.extend(get_ablation_configs(axis))
 
     core_report = await run_benchmark_matrix(tasks=core_tasks, configs=core_configs, mode=mode, trials=trials)
@@ -462,7 +496,7 @@ def main():
     parser = argparse.ArgumentParser(description="Valstorm Agent Runtime — Multi-Axis Benchmark & Ablation Runner")
     parser.add_argument(
         "--ablation",
-        choices=["baseline", "skills", "react", "tools", "reasoning", "swarm", "harnesses", "ui_nav", "decision_model", "all"],
+        choices=["baseline", "skills", "react", "tools", "reasoning", "adaptive_thinking", "swarm", "harnesses", "ui_nav", "decision_model", "all"],
         default="baseline",
         help="Ablation preset to execute (default: baseline)",
     )

@@ -27,19 +27,32 @@ from tools.delegation import SubagentRegistry, _get_subagent_provider, set_subag
 from .base import BenchmarkAdapter, BenchmarkConfig, ExecutionTrace, estimate_cost_usd
 
 
-def build_benchmark_tool_registry(tools_mode: str, task: Dict[str, Any], swarm_mode: bool = False) -> ToolRegistry:
-    """Builds the ToolRegistry according to the `tools_mode` ablation knob."""
+def build_benchmark_tool_registry(
+    tools_mode: str,
+    task: Dict[str, Any],
+    swarm_mode: bool = False,
+    use_decision_model: bool = True,
+) -> ToolRegistry:
+    """Builds the ToolRegistry according to the `tools_mode` and `use_decision_model` ablation knobs."""
     if tools_mode == "none":
         return ToolRegistry()
 
     base = get_default_registry()
     register_developer_tools(base)
     register_tier1_tools(base)
-    register_ui_navigator_tools(base)
+    if use_decision_model:
+        register_ui_navigator_tools(base)
     register_memory_tools(base)
 
     if tools_mode == "scoped":
         whitelist = list(task.get("tool_chain") or [])
+        if not use_decision_model:
+            whitelist = [t for t in whitelist if t not in ("ui_navigate", "system_one_decide")]
+            for fallback_t in ("read_file", "write_file"):
+                if fallback_t not in whitelist:
+                    whitelist.append(fallback_t)
+        elif task.get("ui_state") and "ui_navigate" in whitelist:
+            whitelist = ["ui_navigate"]
         if swarm_mode:
             for extra in ("delegate_task", "subagent_manage"):
                 if extra not in whitelist:
@@ -65,9 +78,15 @@ class TaskAwareMockProvider:
         self.config = config
         self.step_delay_sec = step_delay_sec
         self.orch_step = 0
+        self._active_effort: str = config.thinking_level
+
+    def set_request_context(self, **kwargs):
+        if "reasoning_effort" in kwargs and kwargs["reasoning_effort"]:
+            self._active_effort = str(kwargs["reasoning_effort"]).strip().lower()
 
     async def generate(self, messages: List[Message], tools: Optional[List[Dict[str, Any]]] = None, model: Optional[str] = None, **kwargs):
-        thinking_mult = {"none": 0.5, "low": 0.8, "medium": 1.0, "high": 1.5}.get(self.config.thinking_level, 1.0)
+        eff = self._active_effort if self.config.thinking_level == "adaptive" else self.config.thinking_level
+        thinking_mult = {"none": 0.5, "low": 0.8, "medium": 1.0, "high": 1.5}.get(eff, 1.0)
         await asyncio.sleep(self.step_delay_sec * thinking_mult)
 
         # Distinguish child subagent turns (which start with "Goal:\n") from the parent orchestrator
@@ -215,9 +234,10 @@ class TaskAwareMockProvider:
                 script = "#!/bin/sh\nmkdir -p temp_proj\ncd temp_proj\ngit init\nprintf 'node_modules\\ndist\\n' > .gitignore\npwd\n"
                 return Message(role="assistant", content="", tool_calls=[ToolCall(id="c1", name="write_file", arguments={"path": "setup_env.sh", "content": script})], usage=usage), usage
             if s == 2:
-                # Ablation behavior: With skills ('bash-scripting') or high thinking, agent remembers chmod +x.
+                # Ablation behavior: With skills ('bash-scripting') or medium/high thinking (including System-1 adaptive escalation), agent remembers chmod +x.
                 # Without skills and with low/none thinking, agent executes `sh setup_env.sh` without setting +x bit!
-                if self.config.with_skills or self.config.thinking_level in ("medium", "high"):
+                eff = self._active_effort if self.config.thinking_level == "adaptive" else self.config.thinking_level
+                if self.config.with_skills or eff in ("medium", "high"):
                     cmd = "chmod +x setup_env.sh && ./setup_env.sh"
                 else:
                     cmd = "sh setup_env.sh"
@@ -267,9 +287,9 @@ class TaskAwareMockProvider:
                     return Message(role="assistant", content="", tool_calls=[tc], usage=usage), usage
                 return Message(role="assistant", content="Sequential deliverables completed.", usage=usage), usage
 
-        # UI & Crafting Canvas Navigation tasks (UI-01, UI-02)
-        if task_id in ("UI-01", "UI-02"):
-            out_file = "ui_nav_result.json" if task_id == "UI-01" else "artcraft_workflow_result.json"
+        # UI & Crafting Canvas Navigation tasks (UI-01 .. UI-04)
+        if task_id in ("UI-01", "UI-02", "UI-03", "UI-04"):
+            out_file = (self.task.get("success_criteria") or {}).get("file") or "ui_nav_result.json"
             ui_state_obj = self.task.get("ui_state") or {}
             assertions_obj = self.task.get("assertions") or {}
 
@@ -291,11 +311,13 @@ class TaskAwareMockProvider:
                 return Message(role="assistant", content=f"System-1 UI navigation completed and saved to {out_file}.", usage=usage), usage
             else:
                 # System-2 LLM ReAct Step-by-Step Navigation Mode: requires 1 slow LLM reasoning turn per UI/canvas click
-                expected_steps = (
-                    ["nav_tab_cloud_vaults", "vault_doc_q4_strategy", "btn_share_vault_doc"]
-                    if task_id == "UI-01"
-                    else ["tool_img_to_3d_mesh", "actor_hero_pose_rig", "cam_main_shot_rig", "btn_render_video_scene"]
-                )
+                step_chains = {
+                    "UI-01": ["nav_tab_cloud_vaults", "vault_doc_q4_strategy", "btn_share_vault_doc"],
+                    "UI-02": ["tool_img_to_3d_mesh", "actor_hero_pose_rig", "cam_main_shot_rig", "btn_render_video_scene"],
+                    "UI-03": ["btn_dismiss_sync_modal", "select_high_value_leads_filter", "btn_pin_filter_view"],
+                    "UI-04": ["tool_bg_remove_alpha", "layer_3d_studio_backdrop", "timeline_scrub_kf_24", "btn_render_composited_shot"],
+                }
+                expected_steps = step_chains.get(task_id, ["nav_tab_cloud_vaults"])
                 # Simulate extra LLM reasoning & DOM-parsing token/time overhead per UI step
                 await asyncio.sleep(0.18)
                 extra_usage = UsageMetadata(
@@ -354,7 +376,29 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
             tools_mode=config.tools_mode,
             task=task,
             swarm_mode=config.swarm_mode,
+            use_decision_model=config.use_decision_model,
         )
+
+        # Materialize ui_state.json for UI/Canvas benchmark tasks
+        effective_user_input = task["goal"]
+        if task.get("ui_state"):
+            ui_file = workspace_dir / "ui_state.json"
+            ui_file.write_text(json.dumps(task["ui_state"], indent=2), encoding="utf-8")
+            out_target = (task.get("success_criteria") or {}).get("file") or "ui_nav_result.json"
+            if not use_mock:
+                if config.use_decision_model:
+                    effective_user_input = (
+                        f"{task['goal']}\n\n"
+                        f"The UI state is stored in 'ui_state.json'. Call `ui_navigate` once with "
+                        f"`goal`, `ui_state='ui_state.json'`, `mode='workflow'`, and `output_path='{out_target}'`."
+                    )
+                else:
+                    effective_user_input = (
+                        f"{task['goal']}\n\n"
+                        f"The UI state is stored in 'ui_state.json'. First call `read_file` on 'ui_state.json', "
+                        f"then write the JSON result containing `selected_element_chain` (list of chosen element IDs in order) "
+                        f"to '{out_target}' using `write_file`."
+                    )
 
         # 4. Build system prompt with or without attached skills
         ctx_mgr = WorkspaceContextManager(workdir=str(workspace_dir))
@@ -392,7 +436,7 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
                 nonlocal turns_taken, tool_time_ms, final_output
                 async for event in engine.run_turn_stream(
                     session=session,
-                    user_input=task["goal"],
+                    user_input=effective_user_input,
                     model=config.model,
                     max_iterations=config.effective_max_turns,
                     reasoning_effort=config.thinking_level,

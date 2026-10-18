@@ -358,9 +358,9 @@ class TestToolsServerAndBenchmarkIntegration:
 
     @pytest.mark.asyncio
     async def test_benchmark_decision_model_ablation_matrix(self):
-        """Verify System-1 UI Navigator vs Full LLM ReAct UI Navigation in the benchmark harness."""
+        """Verify System-1 UI Navigator vs Full LLM ReAct UI Navigation across all 4 UI/ArtCraft tasks."""
         ui_tasks = load_tasks(suite="ui")
-        assert len(ui_tasks) == 2
+        assert len(ui_tasks) == 4
 
         configs = get_ablation_configs("decision_model")
         assert [c.config_id for c in configs] == ["system_one_ui_nav", "llm_react_ui_nav"]
@@ -378,3 +378,38 @@ class TestToolsServerAndBenchmarkIntegration:
         assert s1["avg_duration_sec"] < s2["avg_duration_sec"]
         assert s1["avg_tokens"] < s2["avg_tokens"]
         assert s1["total_cost_usd"] < s2["total_cost_usd"]
+
+    @pytest.mark.asyncio
+    async def test_adaptive_thinking_router_and_ablation(self):
+        """Verify SystemOneThinkingRouter dynamically allocates effort and achieves 100% pass rate at lower cost/latency."""
+        from core.thinking_router import SystemOneThinkingRouter
+
+        router = SystemOneThinkingRouter()
+        r_simple = router.route_turn("Calculate (42 * 3.14159) / 7 and write to calculation_result.txt")
+        assert r_simple.reasoning_effort == "none"
+
+        r_med = router.route_turn("Use patch_file to change the URL in config.json")
+        assert r_med.reasoning_effort == "medium"
+
+        r_high = router.route_turn("Write a shell script setup_env.sh, run git init, set executable permissions, and execute it.")
+        assert r_high.reasoning_effort == "high"
+
+        core_tasks = load_tasks(suite="core")
+        configs = get_ablation_configs("adaptive_thinking")
+        report = await run_benchmark_matrix(tasks=core_tasks, configs=configs, mode="mock", trials=1)
+        summaries = {s["config_id"]: s for s in report["config_summaries"]}
+
+        s_adapt = summaries["thinking_adaptive_s1"]
+        s_high = summaries["thinking_high_static"]
+        s_none = summaries["thinking_none_static"]
+
+        # Adaptive matches Static HIGH's 100% pass rate (9/9) while Static NONE fails G-H03 (8/9 = 88.9%)
+        assert s_adapt["pass_rate"] == 1.0
+        assert s_high["pass_rate"] == 1.0
+        assert s_none["pass_rate"] < 1.0
+
+        # Adaptive is significantly faster and cheaper than Static HIGH
+        assert s_adapt["avg_duration_sec"] < s_high["avg_duration_sec"]
+        assert s_adapt["avg_tokens"] < s_high["avg_tokens"]
+        assert s_adapt["total_cost_usd"] < s_high["total_cost_usd"]
+

@@ -181,5 +181,147 @@
                 "artcraft_workflow_result.json"
             ]
         }
+    },
+    {
+        "id": "UI-03",
+        "complexity": "Medium",
+        "category": "ui_blocker_recovery",
+        "goal": "1. Dismiss any blocking warning modal -> 2. Select the High-Value Leads filter in the CRM DataGrid -> 3. Click Pin Filter View. Save the trajectory to 'ui_blocker_result.json'.",
+        "tool_chain": [
+            "ui_navigate",
+            "write_file"
+        ],
+        "recommended_skills": [],
+        "ui_state": {
+            "viewport": {"width": 1920, "height": 1080},
+            "current_view": "/view/crm/leads",
+            "active_error": "Session sync warning modal is blocking DataGrid controls",
+            "filter_selected": false,
+            "filter_pinned": false,
+            "elements": [
+                {
+                    "id": "btn_dismiss_sync_modal",
+                    "label": "Dismiss & Close Sync Warning Modal",
+                    "role": "button",
+                    "description": "Dismiss and close the blocking warning modal overlay",
+                    "action": "dismiss_modal",
+                    "box": [0.55, 0.58, 0.65, 0.63]
+                },
+                {
+                    "id": "select_high_value_leads_filter",
+                    "label": "High-Value Leads (30d) Filter Option",
+                    "role": "combobox",
+                    "description": "Select the High-Value Leads filter in the CRM DataGrid",
+                    "action": "select",
+                    "box": [0.18, 0.14, 0.34, 0.19]
+                },
+                {
+                    "id": "btn_pin_filter_view",
+                    "label": "Pin Filter View Button",
+                    "role": "button",
+                    "description": "Click Pin Filter View as active tab",
+                    "action": "click",
+                    "box": [0.36, 0.14, 0.44, 0.19]
+                }
+            ],
+            "transitions": {
+                "btn_dismiss_sync_modal": {
+                    "modal_dismissed": true
+                },
+                "select_high_value_leads_filter": {
+                    "filter_selected": true
+                },
+                "btn_pin_filter_view": {
+                    "filter_pinned": true,
+                    "goal_completed": true
+                }
+            }
+        },
+        "assertions": {
+            "no_active_blocker": "Is there an unhandled error toast or crash alert on screen?",
+            "filter_pinned": "The High-Value Leads filter is pinned"
+        },
+        "success_criteria": {
+            "file": "ui_blocker_result.json",
+            "content_regex": "\"btn_dismiss_sync_modal\"[\\s\\S]*\"select_high_value_leads_filter\"[\\s\\S]*\"btn_pin_filter_view\"",
+            "cleanup": [
+                "ui_blocker_result.json"
+            ]
+        }
+    },
+    {
+        "id": "UI-04",
+        "complexity": "High",
+        "category": "artcraft_multilayer_compositing",
+        "goal": "1. Remove background from the foreground character layer -> 2. Composite the 3D studio backdrop layer -> 3. Scrub the timeline playhead to keyframe 24 -> 4. Render the final composited shot. Save the trajectory to 'artcraft_compositing_result.json'.",
+        "tool_chain": [
+            "ui_navigate",
+            "write_file"
+        ],
+        "recommended_skills": [],
+        "ui_state": {
+            "viewport": {"width": 2560, "height": 1440},
+            "app": "ArtCraft Intentional Crafting Engine",
+            "bg_removed": false,
+            "backdrop_composited": false,
+            "keyframe_scrubbed": false,
+            "shot_rendered": false,
+            "tools": [
+                {
+                    "id": "tool_bg_remove_alpha",
+                    "label": "Remove Background Matte Tool",
+                    "role": "canvas_tool",
+                    "description": "Remove background from the foreground character image layer",
+                    "action": "composite_layer",
+                    "box": [0.02, 0.30, 0.08, 0.36]
+                },
+                {
+                    "id": "btn_render_composited_shot",
+                    "label": "Render Final Composited Shot",
+                    "role": "button",
+                    "description": "Render and export the final composited video shot",
+                    "action": "render_scene",
+                    "box": [0.88, 0.03, 0.98, 0.08]
+                }
+            ],
+            "layers": [
+                {
+                    "id": "layer_3d_studio_backdrop",
+                    "label": "3D Studio Backdrop Depth Layer",
+                    "role": "layer",
+                    "description": "Composite the 3D studio backdrop layer behind foreground actors",
+                    "action": "composite_layer",
+                    "box": [0.80, 0.42, 0.96, 0.48]
+                }
+            ],
+            "timeline": [
+                {
+                    "id": "timeline_scrub_kf_24",
+                    "label": "Timeline Playhead Keyframe 24",
+                    "role": "slider",
+                    "description": "Scrub the timeline playhead to keyframe 24",
+                    "action": "drag",
+                    "box": [0.30, 0.88, 0.65, 0.94]
+                }
+            ],
+            "transitions": {
+                "tool_bg_remove_alpha": {"bg_removed": true},
+                "layer_3d_studio_backdrop": {"backdrop_composited": true},
+                "timeline_scrub_kf_24": {"keyframe_scrubbed": true},
+                "btn_render_composited_shot": {"shot_rendered": true, "goal_completed": true}
+            }
+        },
+        "assertions": {
+            "bg_removed": "The foreground character background is removed",
+            "backdrop_composited": "The 3D studio backdrop layer is composited",
+            "shot_rendered": "The final composited shot is rendered"
+        },
+        "success_criteria": {
+            "file": "artcraft_compositing_result.json",
+            "content_regex": "\"tool_bg_remove_alpha\"[\\s\\S]*\"layer_3d_studio_backdrop\"[\\s\\S]*\"timeline_scrub_kf_24\"[\\s\\S]*\"btn_render_composited_shot\"",
+            "cleanup": [
+                "artcraft_compositing_result.json"
+            ]
+        }
     }
 ]
