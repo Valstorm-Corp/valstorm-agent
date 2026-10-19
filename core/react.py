@@ -15,6 +15,51 @@ from .compaction import ContextCompactor
 
 DEFAULT_MAX_ITERATIONS = int(os.environ.get("VALSTORM_MAX_ITERATIONS", "250"))
 
+# Pure read-only / idempotent tools safe to launch speculatively the moment TOOL_CALL_DETECTED arrives in the stream
+SPECULATIVE_SAFE_TOOLS = frozenset({
+    "read_file",
+    "read_local_file",
+    "search_files",
+    "code_outline",
+    "find_symbols",
+    "package_blast_radius",
+    "calculator",
+    "mock_db_lookup",
+    "skill_view",
+    "skill_list",
+    "session_search",
+    "valstorm_sql_query",
+    "valstorm_mongo_query",
+    "valstorm_vfs_search",
+    "valstorm_vfs_browse",
+    "valstorm_vfs_get_file",
+    "valstorm_records_hydrate_batch",
+    "valstorm_schema_inspect",
+    "valstorm_function_list",
+    "valstorm_get_execution_logs",
+    "valstorm_get_log_detail",
+    "valstorm_analytics_compute",
+    "web_search",
+    "web_scrape",
+    "web_content_diff",
+    "web_feed_poll",
+    "system_one_decide",
+    "analyze_image",
+    "vision_analyze",
+    "slack_list_channels",
+    "slack_get_channel_history",
+    "slack_list_users",
+    "slack_get_user_profile",
+    "slack_get_auth_status",
+})
+
+
+def is_speculative_safe_tool(tool_name: Optional[str]) -> bool:
+    """Returns True if the tool is side-effect-free and safe to execute speculatively during LLM streaming."""
+    if not tool_name:
+        return False
+    return tool_name.strip() in SPECULATIVE_SAFE_TOOLS
+
 TRUNCATED_NUDGE = (
     "[System Notice: Your previous response was cut off by the output token limit. Continue exactly where you left "
     "off. If you were about to call a tool, call it now; if you were writing a large file, split it into smaller "
@@ -380,6 +425,14 @@ class ReActEngine:
                 set_ctx(**ctx_kwargs)
 
             # Check if provider supports streaming
+            speculative_tasks: Dict[str, asyncio.Task] = {}
+            saw_mutating_tool_in_batch = False
+            speculative_enabled = (
+                os.environ.get("VALSTORM_SPECULATIVE_TOOLS", "1").strip().lower()
+                not in ("0", "false", "no", "off")
+                and bool((session.metadata or {}).get("speculative_tools", True))
+            )
+
             if hasattr(self.provider, "generate_stream"):
                 stream = self.provider.generate_stream(
                     messages=session.messages,
@@ -388,6 +441,25 @@ class ReActEngine:
                 )
                 async for item in stream:
                     if isinstance(item, StreamEvent):
+                        if (
+                            item.event_type == StreamEventType.TOOL_CALL_DETECTED
+                            and item.tool_call is not None
+                        ):
+                            tc_stream = item.tool_call
+                            if not is_speculative_safe_tool(tc_stream.name):
+                                saw_mutating_tool_in_batch = True
+                            elif (
+                                speculative_enabled
+                                and not saw_mutating_tool_in_batch
+                                and tc_stream.id
+                                and tc_stream.id not in speculative_tasks
+                            ):
+                                speculative_tasks[tc_stream.id] = asyncio.create_task(
+                                    self._execute_tool(tc_stream)
+                                )
+                                session.metadata["speculative_tools_launched"] = (
+                                    int(session.metadata.get("speculative_tools_launched", 0)) + 1
+                                )
                         if item.event_type == StreamEventType.TURN_COMPLETE:
                             # A provider's TURN_COMPLETE only ends this single LLM call. Re-label it so
                             # consumers don't treat a mid-turn call as the end of the whole turn.
@@ -462,10 +534,22 @@ class ReActEngine:
                         tool_call=tool_call,
                     )
 
-                # Parallel tool execution via asyncio.gather
-                tool_results = await asyncio.gather(
-                    *[self._execute_tool(tc) for tc in assistant_msg.tool_calls]
-                )
+                # Parallel tool execution via asyncio.gather (reusing any in-flight speculative tasks)
+                async def _resolve_or_execute_tool(tc: ToolCall) -> ToolResult:
+                    spec_task = speculative_tasks.pop(tc.id, None) if tc.id else None
+                    if spec_task is not None:
+                        return await spec_task
+                    return await self._execute_tool(tc)
+
+                try:
+                    tool_results = await asyncio.gather(
+                        *[_resolve_or_execute_tool(tc) for tc in assistant_msg.tool_calls]
+                    )
+                finally:
+                    for orphan_task in speculative_tasks.values():
+                        if not orphan_task.done():
+                            orphan_task.cancel()
+                    speculative_tasks.clear()
 
                 for tool_call, tool_result in zip(assistant_msg.tool_calls, tool_results):
                     yield StreamEvent(
@@ -600,6 +684,7 @@ class ReActEngine:
         model: Optional[str] = None,
         max_iterations: Optional[int] = None,
         step_callback: Optional[Callable[[str, Any], None]] = None,
+        auto_tune: Optional[bool] = None,
     ) -> Message:
         """Executes a full ReAct loop turn (non-streaming wrapper around run_turn_stream)."""
         final_message = None
@@ -609,6 +694,7 @@ class ReActEngine:
             user_input=user_input,
             model=model,
             max_iterations=max_iterations,
+            auto_tune=auto_tune,
         ):
             if step_callback:
                 if event.event_type == StreamEventType.TEXT_CHUNK and event.delta:

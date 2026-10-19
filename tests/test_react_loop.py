@@ -424,3 +424,113 @@ async def test_react_loop_action_intent_nudge_recovery():
     nudges = [m for m in session.messages if "[System Directive:" in (m.content or "")]
     assert len(nudges) == 1
     assert "You stated your intent to perform an action, but did not execute a tool call" in nudges[0].content
+
+
+@pytest.mark.asyncio
+async def test_speculative_readonly_tool_execution_during_stream_and_raw_safety():
+    """Verify speculative read-only tool execution overlaps I/O with LLM streaming and respects read-after-write safety."""
+    import asyncio
+    import time
+    from core.models import StreamEvent, StreamEventType
+
+    class StaggeredStreamProvider:
+        provider_name = "mock-stream"
+
+        def __init__(self):
+            self.call_idx = 0
+
+        async def generate_stream(self, messages, tools=None, model=None):
+            self.call_idx += 1
+            if self.call_idx in (1, 3):
+                tc1 = ToolCall(id="tc_r1", name="read_file", arguments={"path": "a.py"})
+                tc2 = ToolCall(id="tc_r2", name="search_files", arguments={"pattern": "foo"})
+                tc3 = ToolCall(id="tc_r3", name="code_outline", arguments={"path": "b.py"})
+                # Emit tool calls staggered during the LLM stream before TURN_COMPLETE
+                yield StreamEvent(event_type=StreamEventType.TOOL_CALL_DETECTED, tool_call=tc1)
+                await asyncio.sleep(0.10)
+                yield StreamEvent(event_type=StreamEventType.TOOL_CALL_DETECTED, tool_call=tc2)
+                await asyncio.sleep(0.10)
+                yield StreamEvent(event_type=StreamEventType.TOOL_CALL_DETECTED, tool_call=tc3)
+                await asyncio.sleep(0.12)
+                final_m = Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[tc1, tc2, tc3],
+                    usage=UsageMetadata(prompt_tokens=60, completion_tokens=30, total_tokens=90),
+                )
+                yield StreamEvent(event_type=StreamEventType.TURN_COMPLETE, message=final_m, usage=final_m.usage)
+            else:
+                done_m = Message(
+                    role="assistant",
+                    content="All 3 files inspected.",
+                    usage=UsageMetadata(prompt_tokens=90, completion_tokens=15, total_tokens=105),
+                )
+                yield StreamEvent(event_type=StreamEventType.TURN_COMPLETE, message=done_m, usage=done_m.usage)
+
+    class AsyncTimedRegistry:
+        def get_schemas(self):
+            return []
+
+        async def execute_async(self, name: str, args: dict, call_id: str = None):
+            await asyncio.sleep(0.18)
+            return f"Result for {name}({args})"
+
+    prov = StaggeredStreamProvider()
+    reg = AsyncTimedRegistry()
+    engine = ReActEngine(provider=prov, tools=reg)
+
+    # 1. With speculative_tools=True (default): tool I/O overlaps with stream generation
+    s_spec = SessionState(active_model="mock-gpt", active_provider="mock-stream", metadata={"speculative_tools": True})
+    t0 = time.perf_counter()
+    msg_spec = await engine.run_turn(s_spec, "Inspect a.py, foo, and b.py")
+    dur_spec = time.perf_counter() - t0
+    assert msg_spec.content == "All 3 files inspected."
+    assert s_spec.metadata.get("speculative_tools_launched") == 3
+
+    # 2. With speculative_tools=False (baseline): tools wait until stream completes
+    s_nospec = SessionState(active_model="mock-gpt", active_provider="mock-stream", metadata={"speculative_tools": False})
+    t1 = time.perf_counter()
+    msg_nospec = await engine.run_turn(s_nospec, "Inspect a.py, foo, and b.py")
+    dur_nospec = time.perf_counter() - t1
+    assert msg_nospec.content == "All 3 files inspected."
+    assert s_nospec.metadata.get("speculative_tools_launched", 0) == 0
+    # Speculative overlap saves ~120ms+ compared to waiting for TURN_COMPLETE
+    assert dur_spec < dur_nospec - 0.08
+
+    # 3. Verify Read-After-Write batch safety: if write_file precedes read_file in the same batch,
+    # read_file is NOT launched speculatively before write_file runs.
+    execution_order = []
+
+    class RawSafetyStreamProvider:
+        provider_name = "mock-raw"
+        called = 0
+
+        async def generate_stream(self, messages, tools=None, model=None):
+            self.called += 1
+            if self.called == 1:
+                tc_w = ToolCall(id="tc_w1", name="write_file", arguments={"path": "x.txt", "content": "new"})
+                tc_r = ToolCall(id="tc_r_after_w", name="read_file", arguments={"path": "x.txt"})
+                yield StreamEvent(event_type=StreamEventType.TOOL_CALL_DETECTED, tool_call=tc_w)
+                yield StreamEvent(event_type=StreamEventType.TOOL_CALL_DETECTED, tool_call=tc_r)
+                await asyncio.sleep(0.08)
+                m = Message(role="assistant", content="", tool_calls=[tc_w, tc_r])
+                yield StreamEvent(event_type=StreamEventType.TURN_COMPLETE, message=m)
+            else:
+                m = Message(role="assistant", content="Write then read done.")
+                yield StreamEvent(event_type=StreamEventType.TURN_COMPLETE, message=m)
+
+    class OrderTrackingRegistry:
+        def get_schemas(self):
+            return []
+
+        async def execute_async(self, name: str, args: dict, call_id: str = None):
+            execution_order.append(name)
+            return f"ok:{name}"
+
+    raw_session = SessionState(active_model="mock-gpt", active_provider="mock-raw")
+    raw_engine = ReActEngine(provider=RawSafetyStreamProvider(), tools=OrderTrackingRegistry())
+    await raw_engine.run_turn(raw_session, "Write and read x.txt")
+    # Neither write_file nor the subsequent read_file was launched speculatively
+    assert raw_session.metadata.get("speculative_tools_launched", 0) == 0
+    assert execution_order == ["write_file", "read_file"]
+
