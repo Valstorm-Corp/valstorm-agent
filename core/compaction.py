@@ -34,7 +34,7 @@ class CompactionResult:
     summary: str
 
 
-DEFAULT_MAX_WORKING_CEILING: int = 320_000
+DEFAULT_MAX_WORKING_CEILING: int = 460_000
 
 
 def estimate_tokens_for_text(text: Optional[str], chars_per_token: float = 4.0) -> int:
@@ -167,7 +167,7 @@ def get_model_context_ceiling(model_name: Optional[str], enforce_working_ceiling
     """Resolves context limit ceiling in tokens for a given model string.
 
     If enforce_working_ceiling is True, caps massive context windows (like Gemini's 1M)
-    to a performant, cost-effective working ceiling (default 320k, triggers at 240k).
+    to a performant, cost-effective working ceiling (default 460k, triggers at 345k).
     Configurable via VALSTORM_MAX_WORKING_CEILING.
     """
     clean = (model_name or "gemini-flash-latest").lower()

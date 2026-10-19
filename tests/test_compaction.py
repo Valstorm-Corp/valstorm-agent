@@ -282,10 +282,12 @@ def test_should_auto_compact_with_ground_truth_prompt_tokens():
     # Without usage metadata, short messages don't trigger compaction
     assert compactor.should_auto_compact(session) is False
 
-    # Simulate provider attaching ground-truth usage of 260,000 prompt tokens
+    # 260,000 is below the 345,000 threshold (460,000 * 0.75), so it should NOT compact yet
     session.messages[-1].usage = UsageMetadata(prompt_tokens=260_000, completion_tokens=100, total_tokens=260_100)
+    assert compactor.should_auto_compact(session) is False
 
-    # Should trigger auto-compaction because 260,000 >= 320,000 * 0.75 (240,000 threshold)
+    # Simulate provider attaching ground-truth usage of 360,000 prompt tokens (>= 460,000 * 0.75 = 345,000)
+    session.messages[-1].usage = UsageMetadata(prompt_tokens=360_000, completion_tokens=100, total_tokens=360_100)
     assert compactor.should_auto_compact(session) is True
 
 
