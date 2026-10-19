@@ -11,6 +11,7 @@ varying any combination of the 10 ablation factors:
 
 import asyncio
 import json
+import os
 from pathlib import Path
 import time
 from typing import Any, Dict, List, Literal, Optional
@@ -115,20 +116,21 @@ class TaskAwareMockProvider:
 
         # Handle child subagent execution inside a swarm
         if is_subagent:
-            return await self._handle_subagent_turn(messages, first_user_msg, usage)
+            return await self._handle_subagent_turn(messages, first_user_msg, usage, eff_model)
 
         self.orch_step += 1
         task_id = self.task["id"]
         return await self._handle_orchestrator_turn(task_id, usage)
 
-    async def _handle_subagent_turn(self, messages: List[Message], user_text: str, usage: UsageMetadata):
+    async def _handle_subagent_turn(self, messages: List[Message], user_text: str, usage: UsageMetadata, eff_model: str = ""):
         # Check if subagent already executed its write_file tool
         has_tool_res = any(m.role == "tool" for m in messages)
         if has_tool_res:
             return Message(role="assistant", content="Subtask deliverable completed.", usage=usage), usage
 
-        # Simulate realistic subagent work duration (0.25s) so parallel vs sequential timing is clearly measurable
-        await asyncio.sleep(0.25)
+        # Simulate realistic subagent work duration (0.25s base, scaled by model tier speed)
+        sub_mult = 0.72 if "lite" in eff_model else 1.0
+        await asyncio.sleep(0.25 * sub_mult)
 
         if "fib.json" in user_text:
             tc = ToolCall(id=f"call_{uuid.uuid4().hex[:6]}", name="write_file", arguments={"path": "fib.json", "content": "[0, 1, 1, 2, 3, 5, 8, 13]"})
@@ -433,6 +435,8 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
         error_msg: Optional[str] = None
 
         t0 = time.perf_counter()
+        prev_sub_autotune = os.environ.get("VALSTORM_SUBAGENT_AUTO_TUNE")
+        os.environ["VALSTORM_SUBAGENT_AUTO_TUNE"] = "1" if config.auto_tune else "0"
         try:
             async def _run():
                 nonlocal turns_taken, tool_time_ms, final_output
@@ -462,6 +466,10 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
             status = "failed"
             error_msg = str(e)
         finally:
+            if prev_sub_autotune is None:
+                os.environ.pop("VALSTORM_SUBAGENT_AUTO_TUNE", None)
+            else:
+                os.environ["VALSTORM_SUBAGENT_AUTO_TUNE"] = prev_sub_autotune
             set_subagent_provider_override(None)
             set_current_sandbox(prev_sandbox)
 

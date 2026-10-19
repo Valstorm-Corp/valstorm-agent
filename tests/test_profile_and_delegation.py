@@ -398,3 +398,61 @@ async def test_subagent_manage_tool():
         assert "SUBAGENT DELEGATION KILLED" in poll_res
     finally:
         set_subagent_provider_override(None)
+
+
+@pytest.mark.asyncio
+async def test_subagent_auto_tuning_and_ui_navigator_registration():
+    """Verify delegated subagents auto-tune their model/effort and can access System-1 UI Navigator tools."""
+    from tools.delegation import _build_base_subagent_tool_registry
+
+    # 1. Verify _build_base_subagent_tool_registry includes System-1 UI Navigator & Code Discovery tools
+    base_reg = _build_base_subagent_tool_registry()
+    registered = set(base_reg.list_tools())
+    assert "ui_navigate" in registered
+    assert "system_one_decide" in registered
+    assert "code_outline" in registered
+    assert "find_symbols" in registered
+    assert "package_blast_radius" in registered
+
+    # 2. Verify delegate_task auto-tunes a simple worker subagent to gemini-flash-lite-latest (worker, none)
+    recorded_calls = []
+
+    class RecordingSubagentProvider:
+        provider_name = "gemini"
+        _effort = "medium"
+
+        def set_request_context(self, **kwargs):
+            if "reasoning_effort" in kwargs:
+                self._effort = kwargs["reasoning_effort"]
+
+        async def generate(self, messages, tools=None, model=None, **kwargs):
+            recorded_calls.append({"model": model, "effort": self._effort})
+            return (
+                Message(role="assistant", content="Created fib.json successfully."),
+                UsageMetadata(prompt_tokens=50, completion_tokens=15, total_tokens=65),
+            )
+
+    set_subagent_provider_override(RecordingSubagentProvider())
+    try:
+        SubagentRegistry.get_instance().clear()
+        res_worker = await delegate_task(
+            profile="developer",
+            goal="Write first 8 Fibonacci numbers to fib.json",
+            auto_tune=True,
+        )
+        assert "Model: gemini-flash-lite-latest" in res_worker
+        assert "Auto-Tune: Tier=worker | Model=gemini-flash-lite-latest | Effort=none" in res_worker
+        assert recorded_calls[-1] == {"model": "gemini-flash-lite-latest", "effort": "none"}
+
+        # 3. Verify delegate_task auto-tunes a complex TDD/shell subagent to gemini-pro-latest (thinker, high)
+        res_thinker = await delegate_task(
+            profile="developer",
+            goal="Write failing pytest unit test first (TDD) and setup_env.sh with chmod +x",
+            auto_tune=True,
+        )
+        assert "Model: gemini-pro-latest" in res_thinker
+        assert "Auto-Tune: Tier=thinker | Model=gemini-pro-latest | Effort=high" in res_thinker
+        assert recorded_calls[-1] == {"model": "gemini-pro-latest", "effort": "high"}
+    finally:
+        set_subagent_provider_override(None)
+

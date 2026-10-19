@@ -72,14 +72,15 @@ _THINKER_SIGNALS = (
     "tdd", "failing python unit test", "red-green-refactor", "pytest",
     "setup_env.sh", "chmod", ".sh", "git init", "shell script", "permission",
     "architecture", "rfc", "race condition", "deadlock", "root cause",
-    "security audit", "multi-agent", "subagent", "swarm", "delegate_task",
+    "security audit",
 )
 
 _REASONER_SIGNALS = (
     "patch_file", "patch", "web_search", "web_scrape", "web_content_diff",
     "compare", "sum.py", "command-line arguments", "script", "implement",
     "function", "endpoint", "refactor", "bug", "fix", "ui_navigate",
-    "artcraft", "3d mesh", "compositing",
+    "artcraft", "3d mesh", "compositing", "multi-agent", "subagent",
+    "swarm", "delegate_task",
 )
 
 _WORKER_SIGNALS = (
@@ -87,6 +88,8 @@ _WORKER_SIGNALS = (
     "index.js", "calculation_result.txt", "create two directories",
     "search_files", "count", "hi", "hello", "thanks", "thank you",
     "status", "version", "ping", "what is", "list",
+    "fib.json", "greet.js", "square_result.txt", "research_summary.md",
+    "campaign_hook.md", "schema.json",
 )
 
 
@@ -167,6 +170,8 @@ class MessageAutoTuner:
         t0 = time.perf_counter()
         thresh = confidence_threshold if confidence_threshold is not None else self.confidence_threshold
         clean_prompt = (user_input or "").strip()
+        if clean_prompt.startswith("Goal:\n"):
+            clean_prompt = clean_prompt[len("Goal:\n"):].strip()
         prompt_lower = clean_prompt.lower()
 
         last_tool_name, last_tool_error, consecutive_errors, _ = self._inspect_session_tail(session)

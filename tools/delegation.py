@@ -32,12 +32,16 @@ def _build_base_subagent_tool_registry() -> ToolRegistry:
     from tools.memory_tool import register_memory_tools
     from tools.process_manager import register_process_manager_tools
     from tools.skill_tool import register_skill_tools
+    from tools.ui_navigator_tools import register_ui_navigator_tools
     from tools.vision_tool import register_vision_tools
     from tools.valstorm_client import resolve_valstorm_credentials
     from tools.valstorm_tools import register_valstorm_tools
+    from tools.web_tools import register_web_tools
 
     registry = get_default_registry()
     register_developer_tools(registry)
+    register_web_tools(registry)
+    register_ui_navigator_tools(registry)
     register_clarify_tools(registry)
     register_confirmation_tools(registry)
     register_vision_tools(registry)
@@ -109,6 +113,7 @@ class SubagentTaskSession:
         provider_name: str,
         scoped_tools: List[str],
         child_session: SessionState,
+        auto_tune: bool = True,
     ):
         self.task_id = task_id
         self.child_session_id = child_session_id
@@ -120,6 +125,8 @@ class SubagentTaskSession:
         self.provider_name = provider_name
         self.scoped_tools = scoped_tools
         self.child_session = child_session
+        self.auto_tune = auto_tune
+        self.auto_tune_decision: Optional[Dict[str, Any]] = None
         self.status = "running"  # running, completed, failed, timed_out, killed
         self.start_time = time.time()
         self.end_time: Optional[float] = None
@@ -150,6 +157,11 @@ class SubagentTaskSession:
 
         if self.tools_executed:
             summary_lines.append(f"Tools Executed: [{', '.join(self.tools_executed)}]")
+        if self.auto_tune_decision:
+            summary_lines.append(
+                f"Auto-Tune: Tier={self.auto_tune_decision.get('tier')} | "
+                f"Model={self.model_name} | Effort={self.auto_tune_decision.get('reasoning_effort')}"
+            )
 
         summary_lines.extend([
             "",
@@ -261,6 +273,7 @@ async def _run_subagent_coroutine(
                             user_input=effective_input,
                             model=task_session.model_name,
                             max_iterations=effective_max_turns,
+                            auto_tune=task_session.auto_tune,
                         ):
                             if event.event_type == StreamEventType.TOOL_CALL_DETECTED and event.tool_call:
                                 if event.tool_call.name not in task_session.tools_executed:
@@ -302,6 +315,10 @@ async def _run_subagent_coroutine(
                     break
         finally:
             task_session.end_time = time.time()
+            if task_session.child_session.active_model:
+                task_session.model_name = task_session.child_session.active_model
+            if (task_session.child_session.metadata or {}).get("last_autotune_decision"):
+                task_session.auto_tune_decision = task_session.child_session.metadata["last_autotune_decision"]
             for m in task_session.child_session.messages:
                 if m.tool_calls:
                     for tc in m.tool_calls:
@@ -345,6 +362,7 @@ async def delegate_task(
     background: bool = False,
     action: str = "spawn",
     task_id: Optional[str] = None,
+    auto_tune: Optional[bool] = None,
 ) -> str:
     """Spawns an isolated child subagent running a named profile to complete a delegated goal.
 
@@ -530,6 +548,14 @@ async def delegate_task(
     if context:
         user_prompt += f"\n\nContext:\n{context.strip()}"
 
+    env_auto_tune = os.environ.get("VALSTORM_SUBAGENT_AUTO_TUNE")
+    if auto_tune is not None:
+        effective_auto_tune = bool(auto_tune)
+    elif env_auto_tune is not None and env_auto_tune.strip() != "":
+        effective_auto_tune = env_auto_tune.strip().lower() not in ("0", "false", "no", "off")
+    else:
+        effective_auto_tune = bool(profile_cfg.get("auto_tune", True))
+
     task_session = SubagentTaskSession(
         task_id=task_id_generated,
         child_session_id=child_session_id,
@@ -541,6 +567,7 @@ async def delegate_task(
         provider_name=provider_name,
         scoped_tools=safe_allowed_tools,
         child_session=child_session,
+        auto_tune=effective_auto_tune,
     )
 
     # Launch execution as background task
@@ -587,6 +614,7 @@ async def subagent_manage(
     timeout_sec: Optional[float] = None,
     max_turns: Optional[int] = None,
     background: bool = True,
+    auto_tune: Optional[bool] = None,
 ) -> str:
     """Manages background subagents (list, poll, wait, kill, spawn).
 
@@ -619,6 +647,7 @@ async def subagent_manage(
         background=background,
         action=action,
         task_id=task_id,
+        auto_tune=auto_tune,
     )
 
 

@@ -236,6 +236,16 @@ async def test_growth_investigation_tools_and_deterministic_review():
     ga4_data["traffic_sources"] = [
         {"source": "meta", "medium": "paid_social", "users": 38, "sessions": 38, "engaged_sessions": 38, "avg_duration_sec": 11.5},
     ]
+    ga4_data["visitor_classification"] = {
+        "gtm_status": "GTM-PW5GRWR6 v16 Live",
+        "horizons": {
+            "yesterday": {"total_users": 94, "human_users": 56, "ai_agent_users": 0, "headless_bot_users": 38, "spam_bot_events": 0, "human_share_pct": 59.6},
+            "7d": {"total_users": 625, "human_users": 530, "ai_agent_users": 4, "headless_bot_users": 91, "spam_bot_events": 1, "human_share_pct": 84.8},
+        },
+        "explicit_events": {"visitor_human": {"count": 12, "users": 10}},
+        "aeo_and_llm_hits": [{"path": "/llms.txt", "views_30d": 4, "users_30d": 4}],
+        "bot_sources": [{"source": "meta", "medium": "paid_social", "users_7d": 38, "classification": "Meta Ad-Review Pre-Flight Crawler"}],
+    }
 
     registry = build_growth_investigation_registry(
         ads_data=ads_data,
@@ -253,6 +263,13 @@ async def test_growth_investigation_tools_and_deterministic_review():
     assert parsed_meta["paused_campaigns_count"] == 3
     assert parsed_meta["total_ads_count"] == 10
     assert parsed_meta["configured_daily_budget_usd"] == 73.0
+
+    res_vc = await registry.execute_async("inspect_visitor_classification_and_bots", {})
+    assert not res_vc.is_error
+    parsed_vc = json.loads(res_vc.output)
+    assert parsed_vc["horizons"]["7d"]["human_users"] == 530
+    assert parsed_vc["horizons"]["7d"]["ai_agent_users"] == 4
+    assert parsed_vc["horizons"]["7d"]["headless_bot_users"] == 91
 
     res_ads = await registry.execute_async("inspect_ads_campaigns_and_horizons", {"vertical": "all"})
     assert not res_ads.is_error

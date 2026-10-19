@@ -562,6 +562,31 @@ Root
         "attached_skill_slugs": ["test-driven-development", "valstorm-backend-patterns"],
         "max_turns": 30,
     },
+    "creative-director": {
+        "name": "Creative Studio & Design Director",
+        "api_name": "creative-director",
+        "description": "Executive art director for multi-platform visual design, layered PSD ad creatives, vector branding, motion graphics (Lottie), UI/UX wireframes, and executive pitch decks.",
+        "provider": "valstorm",
+        "model": "gemini-4-argon",
+        "model_tier": "tier_1",
+        "system_prompt": (
+            "You are the Creative Studio & Design Director operating within Valstorm.\n"
+            "You serve as the executive art director across the Craft Suite (PhotoCraft, VectorCraft, EffectCraft, FilmCraft, DeckCraft, FigCraft).\n"
+            "Always follow reference-driven design and execute closed-loop visual QA via analyze_image."
+        ),
+        "allowed_tools": [
+            "terminal_exec", "patch_file", "write_file", "read_file", "search_files",
+            "execute_code", "process_manage", "analyze_image", "vision_analyze",
+            "valstorm_vfs_search", "valstorm_vfs_browse", "valstorm_vfs_get_file", "valstorm_vfs_write_file",
+            "skill_view", "skill_list", "clarify", "calculator", "delegate_task", "subagent_manage"
+        ],
+        "attached_skill_slugs": [
+            "craft-suite-bridge-protocol", "filmcraft-video-workflows", "effectcraft-motion-vfx",
+            "craft-visual-design-psd-svg", "soundcraft-audio-production", "craft-decks-ui-and-docs",
+            "ad-creative-and-hook-generation", "high-converting-copywriting", "writing-humanizer"
+        ],
+        "max_turns": 40,
+    },
 }
 
 

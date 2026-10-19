@@ -372,11 +372,31 @@ def build_growth_investigation_registry(
             ]
         return {
             "horizons": ga4_data.get("horizons", {}),
+            "visitor_classification": ga4_data.get("visitor_classification", {}),
             "funnel_events": ga4_data.get("funnel_events", {}),
             "traffic_sources": ga4_data.get("traffic_sources", []),
             "landing_pages": pages,
             "gsc_top_queries": gsc_data.get("queries", [])[:10],
             "gsc_horizons": gsc_data.get("horizons", {}),
+        }
+
+    @registry.register(
+        name="inspect_visitor_classification_and_bots",
+        description=(
+            "Inspects website visitor classification across Yesterday, 7d, 30d, and All-Time: "
+            "breaks down Verified Humans vs. AI Browser Agents / LLM Referrals vs. Headless/Ad-Review Bots vs. Blocked Spam Bots, "
+            "plus GTM v16 custom telemetry events (`visitor_human`, `visitor_ai_browser_agent`, `visitor_headless_bot`, `visitor_spam_bot`, `call_now_intent`)."
+        ),
+    )
+    def inspect_visitor_classification_and_bots() -> Dict[str, Any]:
+        trace_sink.append("inspect_visitor_classification_and_bots()")
+        vc = ga4_data.get("visitor_classification", {})
+        return {
+            "horizons": vc.get("horizons", {}),
+            "explicit_gtm_events": vc.get("explicit_events", {}),
+            "aeo_and_llm_hits": vc.get("aeo_and_llm_hits", []),
+            "bot_and_crawler_sources": vc.get("bot_sources", []),
+            "gtm_container_status": vc.get("gtm_status", "GTM-PW5GRWR6 v16 Live (Visitor Classification + Funnel Active)"),
         }
 
     @registry.register(
@@ -517,6 +537,12 @@ def build_deterministic_growth_review(
     w_ga4 = ga4_horizons.get("7d", {"active_users": ga4_data.get("active_users", 0), "high_intent_views": ga4_data.get("high_intent_page_views", 0)})
     m_ga4 = ga4_horizons.get("30d", {})
     all_ga4 = ga4_horizons.get("all_time", {})
+
+    vc_horizons = ga4_data.get("visitor_classification", {}).get("horizons", {})
+    y_vc = vc_horizons.get("yesterday", {})
+    w_vc = vc_horizons.get("7d", {})
+    m_vc = vc_horizons.get("30d", {})
+    all_vc = vc_horizons.get("all_time", {})
 
     inst_camps = instantly_data.get("campaigns", [])
     active_inst = [c for c in inst_camps if c.get("status_code") == 1]
@@ -689,7 +715,11 @@ def build_deterministic_growth_review(
         f"• **GA4 Inbound Users / High-Intent Views:** Yesterday `{y_ga4.get('active_users', 0)}`u (`{y_ga4.get('high_intent_views', 0)}` HI) | "
         f"7d `{w_ga4.get('active_users', 0)}`u (`{w_ga4.get('high_intent_views', 0)}` HI) | "
         f"30d `{m_ga4.get('active_users', 0)}`u (`{m_ga4.get('high_intent_views', 0)}` HI) | "
-        f"All-Time `{all_ga4.get('active_users', 0)}`u"
+        f"All-Time `{all_ga4.get('active_users', 0)}`u\n"
+        f"• **Visitor Classification (7d):** 👤 `{w_vc.get('human_users', 0)}` Humans ({w_vc.get('human_share_pct', 0.0):.1f}%) | "
+        f"🤖 `{w_vc.get('ai_agent_users', 0)}` AI Agents | "
+        f"🕷️ `{w_vc.get('headless_bot_users', 0)}` Headless/Ad-Review Bots | "
+        f"🚫 `{w_vc.get('spam_bot_events', 0)}` Blocked Spam Bots"
     )
 
     md_lines = [
@@ -791,14 +821,12 @@ async def run_growth_react_review(
             "1. Enterprise Greenfield / Custom Software ($25k-$40k sprints)\n"
             "2. CT Local General Services & CT Contractors/Trades RevOps (0.8s Astro speed rebuilds, Google/Meta Ads audit, missed-call SMS text-back)\n\n"
             "Operating Protocol (ReAct Loop):\n"
-            "1. Call `inspect_ads_campaigns_and_horizons`, `inspect_meta_ads_campaigns_and_audiences`, "
-            "`inspect_ads_search_terms_and_waste`, `inspect_ga4_funnel_and_pages`, and `inspect_instantly_outbound` "
-            "(call them once each — do not repeat identical tool calls).\n"
-            "2. Correlate Google Ads & Meta Ads status/spend with GA4 landing page engagement (`/book-architecture-audit`, `/ad-conversion-audit`, `/ad-conversion-audit/contractors`) and Instantly outbound reply rates. "
-            "Note: if Meta Ads campaigns are PAUSED with $0.00 spend and 0 impressions while GA4 shows `meta / paid_social` hits, recognize that those GA4 sessions are Meta Ad Review pre-flight crawlers triggered when the 10 ads were provisioned!\n"
-            "3. Register 3 to 4 concrete, high-ROI recommendations using `propose_growth_action` (with IDs A1, A2, A3, A4).\n"
-            "4. Immediately after registering proposals, conclude with a concise, high-signal Markdown briefing summarizing:\n"
-            "   - What happened Yesterday vs 7d vs 30d vs All-Time across Google Ads, Meta Ads, GA4, and Instantly\n"
+            "1. In Turn 1, call `inspect_ads_campaigns_and_horizons`, `inspect_meta_ads_campaigns_and_audiences`, "
+            "`inspect_ads_search_terms_and_waste`, `inspect_ga4_funnel_and_pages`, `inspect_visitor_classification_and_bots`, "
+            "and `inspect_instantly_outbound` together in parallel (call them once each — do not repeat identical tool calls and do not read monorepo files unless asked).\n"
+            "2. In Turn 2, call `propose_growth_action` 3 to 4 times in parallel (IDs A1, A2, A3, A4) covering Google Ads waste/CPC, Meta Ads + CT launch, Visitor Classification / CRO, and Instantly Outbound.\n"
+            "3. In Turn 3, immediately conclude with a concise, high-signal Markdown briefing summarizing:\n"
+            "   - What happened Yesterday vs 7d vs 30d vs All-Time across Google Ads, Meta Ads, GA4 (including Human vs. AI Agent vs. Bot visitor breakdown), and Instantly\n"
             "   - Vertical performance & launch readiness (Enterprise Greenfield vs CT Local/Contractors)\n"
             "   - Key bottlenecks & how your proposed actions [A1..An] fix them."
         )
@@ -826,6 +854,16 @@ async def run_growth_react_review(
         agent_text = (final_msg.content or "").strip()
         if "Terminated after reaching maximum iterations" in agent_text:
             agent_text = ""
+
+        if len(proposals_sink) < 3 and baseline.proposals:
+            existing_cats = {p.category for p in proposals_sink}
+            for bp in baseline.proposals:
+                if len(proposals_sink) >= 4:
+                    break
+                if bp.category not in existing_cats:
+                    next_id = f"A{len(proposals_sink) + 1}"
+                    proposals_sink.append(bp.model_copy(update={"action_id": next_id}))
+                    existing_cats.add(bp.category)
 
         enriched = build_deterministic_growth_review(
             ads_data=ads_data,

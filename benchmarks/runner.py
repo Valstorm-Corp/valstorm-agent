@@ -178,7 +178,7 @@ def get_ablation_configs(
             ),
             BenchmarkConfig(
                 config_id="swarm_parallel",
-                label="10b. Parallel Subagent Swarm (background=True, 3 Workers)",
+                label="10b. Parallel Subagent Swarm (background=True, Static Model)",
                 provider=provider,
                 model=model,
                 with_skills=True,
@@ -186,6 +186,20 @@ def get_ablation_configs(
                 tools_mode="scoped",
                 swarm_mode=True,
                 swarm_workers=3,
+                auto_tune=False,
+            ),
+            BenchmarkConfig(
+                config_id="swarm_autotuned",
+                label="10c. Parallel Subagent Swarm + System-1 Subagent Auto-Tune (background=True)",
+                provider=provider,
+                model=model,
+                thinking_level="adaptive",
+                with_skills=True,
+                with_react_loop=True,
+                tools_mode="scoped",
+                swarm_mode=True,
+                swarm_workers=3,
+                auto_tune=True,
             ),
         ]
 
