@@ -112,17 +112,22 @@ def update_command():
         ver = "local-dev"
 
     console.print(f"Current version: [cyan]{ver}[/cyan]")
-    repo_url = "git+https://github.com/Valstorm-Corp/monorepo.git#subdirectory=apps/agent-runtime"
+    repo_url = "git+https://github.com/Valstorm-Corp/valstorm-agent.git"
+    sanitizer_url = "git+https://github.com/Valstorm-Corp/valstorm-sanitizer.git"
+    client_url = "git+https://github.com/Valstorm-Corp/valstorm-client-python.git"
 
     try:
         with console.status("[bold cyan]Updating vsagent CLI...[/bold cyan]"):
-            # Check if running inside local monorepo source tree
+            # Check if running inside local monorepo source tree with local packages present
             is_installed = "site-packages" in __file__
             if not is_installed:
-                # Find monorepo root
                 current = Path(__file__).resolve()
                 for p in [current, *current.parents]:
-                    if (p / "apps" / "agent-runtime" / "pyproject.toml").exists():
+                    if (
+                        (p / "apps" / "agent-runtime" / "pyproject.toml").exists()
+                        and (p / "packages" / "valstorm-sanitizer" / "pyproject.toml").exists()
+                        and (p / "packages" / "client-python" / "pyproject.toml").exists()
+                    ):
                         if shutil.which("uv"):
                             subprocess.run(["uv", "sync", "--project", str(p / "apps" / "agent-runtime")], check=True, capture_output=True)
                             subprocess.run(["uv", "tool", "install", "--force", str(p / "apps" / "agent-runtime")], check=True, capture_output=True)
@@ -130,15 +135,43 @@ def update_command():
                             return
 
             # Check if uv tool
-            if shutil.which("uv") and "uv/tools" in sys.executable:
-                subprocess.run(["uv", "tool", "upgrade", "valstorm-agent"], check=True, capture_output=True)
+            if shutil.which("uv") and ("uv/tools" in sys.executable or "uv\\tools" in sys.executable):
+                try:
+                    subprocess.run(["uv", "tool", "upgrade", "valstorm-agent"], check=True, capture_output=True)
+                except subprocess.CalledProcessError:
+                    subprocess.run(
+                        [
+                            "uv",
+                            "tool",
+                            "install",
+                            "--from",
+                            repo_url,
+                            "--with",
+                            sanitizer_url,
+                            "--with",
+                            client_url,
+                            "valstorm-agent",
+                            "--force",
+                            "--upgrade",
+                        ],
+                        check=True,
+                        capture_output=True,
+                    )
                 console.print("[bold green]✓[/bold green] vsagent uv tool updated successfully.")
                 return
 
             if shutil.which("uv"):
-                subprocess.run(["uv", "pip", "install", "--upgrade", repo_url], check=True, capture_output=True)
+                subprocess.run(
+                    ["uv", "pip", "install", "--upgrade", sanitizer_url, client_url, repo_url],
+                    check=True,
+                    capture_output=True,
+                )
             else:
-                subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", repo_url], check=True, capture_output=True)
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--upgrade", sanitizer_url, client_url, repo_url],
+                    check=True,
+                    capture_output=True,
+                )
 
         console.print("[bold green]✓[/bold green] vsagent updated successfully.")
     except subprocess.CalledProcessError as e:
