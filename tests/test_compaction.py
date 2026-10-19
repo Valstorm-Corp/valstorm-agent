@@ -341,3 +341,70 @@ def test_storage_save_session_purges_evicted_messages(tmp_path):
     # Verify compacted tool marker is persisted
     assert any("[Compacted Output:" in (m.content or m.body or "") for m in loaded_after.messages)
 
+
+def test_fold_tool_observation_structural_digests_and_wire_tool_result_sync():
+    """Verify structural observation folding (JSON records/IDs, Python symbols, pytest summary) and tool_result.output sync."""
+    import json
+    from core.compaction import fold_tool_observation
+
+    # 1. JSON array observation folding preserves record count, schema keys, and record IDs
+    records = [{"id": f"con_{i}", "name": f"Contact {i}", "status": "Active", "bio": "x" * 200} for i in range(15)]
+    raw_json = json.dumps(records)
+    folded_json = fold_tool_observation(raw_json, tool_name="valstorm_sql_query", max_chars=400)
+    assert "[Compacted Output |" in folded_json
+    assert "tool=valstorm_sql_query" in folded_json
+    assert "records=15" in folded_json
+    assert "keys=[id,name,status,bio]" in folded_json
+    assert "ids=[con_0,con_1,con_2" in folded_json
+
+    # 2. Code / read_file observation folding preserves file header and declared symbols
+    raw_code = (
+        "[/repo/core/engine.py (Lines 1-200 of 600)]\n"
+        "  1| class MasterOrchestrator:\n"
+        "  2|     async def run_pipeline(self):\n"
+        + ("  3|         pass\n" * 120)
+        + "124| def compute_metrics(items):\n"
+        + ("125|     return len(items)\n" * 80)
+    )
+    folded_code = fold_tool_observation(raw_code, tool_name="read_file", max_chars=400)
+    assert "file=/repo/core/engine.py (Lines 1-200 of 600)" in folded_code
+    assert "symbols=[MasterOrchestrator,run_pipeline,compute_metrics]" in folded_code
+
+    # 3. Verify compact() updates msg.tool_result.output on realistic ReAct tool messages (not just msg.content)
+    session = SessionState(session_id="test_wire_sync", active_model="gemini-flash-latest", active_provider="gemini")
+    session.add_message(Message(role="system", content="System prompt."))
+    for i in range(6):
+        cid = f"call_{i}"
+        session.add_message(Message(role="user", content=f"Query {i}"))
+        session.add_message(
+            Message(
+                role="assistant",
+                content="",
+                tool_calls=[ToolCall(id=cid, name="valstorm_sql_query", arguments={"query": "SELECT * FROM contact"})],
+            )
+        )
+        # Realistic ReActEngine tool message sets BOTH content and tool_result.output
+        t_msg = Message(
+            role="tool",
+            content=raw_json,
+            tool_result=ToolResult(call_id=cid, name="valstorm_sql_query", output=raw_json),
+        )
+        # Verify estimate_message_tokens does not double-count content + tool_result.output
+        single_est = estimate_tokens_for_text(raw_json, chars_per_token=2.4) + 4
+        assert estimate_message_tokens(t_msg) == single_est
+        session.add_message(t_msg)
+
+    compactor = ContextCompactor(keep_recent_messages=2, max_tool_chars=400)
+    res = compactor.compact(session)
+    assert res.compacted is True
+
+    older_tool_msgs = [m for m in session.messages[:-2] if m.role == "tool"]
+    assert len(older_tool_msgs) > 0
+    for tm in older_tool_msgs:
+        assert tm.tool_result is not None
+        # Critical fix: providers serialize tm.tool_result.output over the wire
+        assert len(str(tm.tool_result.output)) < len(raw_json) // 3
+        assert "records=15" in str(tm.tool_result.output)
+        assert tm.content == tm.tool_result.output
+
+

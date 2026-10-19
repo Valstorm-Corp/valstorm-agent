@@ -34,7 +34,7 @@ class CompactionResult:
     summary: str
 
 
-DEFAULT_MAX_WORKING_CEILING: int = 640_000
+DEFAULT_MAX_WORKING_CEILING: int = 320_000
 
 
 def estimate_tokens_for_text(text: Optional[str], chars_per_token: float = 4.0) -> int:
@@ -48,6 +48,13 @@ def estimate_tokens_for_text(text: Optional[str], chars_per_token: float = 4.0) 
 def estimate_message_tokens(msg: Message) -> int:
     """Estimates tokens consumed by a single Message object with calibrated token densities."""
     tokens = 4  # overhead per message
+    if msg.role == "tool":
+        tr_out = str(msg.tool_result.output) if (msg.tool_result and msg.tool_result.output is not None) else ""
+        c_out = msg.content or msg.body or ""
+        effective_out = tr_out if len(tr_out) >= len(c_out) else c_out
+        tokens += estimate_tokens_for_text(effective_out, chars_per_token=2.4)
+        return tokens
+
     if msg.content:
         c = msg.content
         ratio = 2.4 if ("```" in c or c.strip().startswith(("{", "["))) else 4.0
@@ -70,6 +77,85 @@ def estimate_message_tokens(msg: Message) -> int:
         tokens += estimate_tokens_for_text(tr_out, chars_per_token=2.4)
 
     return tokens
+
+
+_SYMBOL_DEF_RE = re.compile(
+    r"^\s*(?:\d+\|\s*)?(?:async\s+def|def|class|function|interface|type|struct|enum|export\s+(?:async\s+)?(?:function|class|const|interface))\s+([A-Za-z_][A-Za-z0-9_]*)",
+    re.MULTILINE,
+)
+_FILE_HEADER_RE = re.compile(r"^\[([^\]]+\(Lines\s+\d+-\d+\s+of\s+\d+\))\]")
+_PYTEST_SUMMARY_RE = re.compile(r"=+\s*([^\n=]*(?:passed|failed|error)[^\n=]*)\s*=+", re.IGNORECASE)
+
+
+def fold_tool_observation(
+    raw_content: str,
+    tool_name: Optional[str] = None,
+    max_chars: int = 16384,
+) -> str:
+    """Folds a large tool observation into a structural digest + head/tail preview.
+
+    Preserves critical structural metadata (file headers, declared symbols, JSON record counts
+    and IDs, or terminal exit codes/test summaries) that would otherwise be lost when slicing
+    the middle out of a large tool output.
+    """
+    if len(raw_content) <= max_chars:
+        return raw_content
+
+    digest_parts: List[str] = []
+    if tool_name:
+        digest_parts.append(f"tool={tool_name}")
+
+    stripped = raw_content.strip()
+
+    # 1. JSON array/object structural extraction (SQL queries, VFS search, API payloads)
+    if stripped.startswith(("[", "{")):
+        try:
+            parsed = json.loads(stripped)
+            if isinstance(parsed, list):
+                digest_parts.append(f"records={len(parsed)}")
+                if parsed and isinstance(parsed[0], dict):
+                    keys = list(parsed[0].keys())[:6]
+                    digest_parts.append(f"keys=[{','.join(str(k) for k in keys)}]")
+                    ids = [str(item.get("id") or item.get("file_id") or item.get("name")) for item in parsed[:8] if isinstance(item, dict) and (item.get("id") or item.get("file_id") or item.get("name"))]
+                    if ids:
+                        digest_parts.append(f"ids=[{','.join(ids)}]")
+            elif isinstance(parsed, dict):
+                keys = list(parsed.keys())[:8]
+                digest_parts.append(f"keys=[{','.join(str(k) for k in keys)}]")
+        except Exception:
+            pass
+
+    # 2. Code / read_file structural extraction (file header + symbol outline)
+    header_match = _FILE_HEADER_RE.match(stripped)
+    if header_match:
+        digest_parts.append(f"file={header_match.group(1)}")
+    symbols = []
+    for m in _SYMBOL_DEF_RE.finditer(raw_content):
+        sym = m.group(1)
+        if sym not in symbols:
+            symbols.append(sym)
+        if len(symbols) >= 10:
+            break
+    if symbols:
+        digest_parts.append(f"symbols=[{','.join(symbols)}]")
+
+    # 3. Terminal / pytest summary extraction
+    if stripped.startswith("Command exited with code"):
+        first_line = stripped.splitlines()[0].strip()
+        digest_parts.append(first_line)
+    pytest_match = _PYTEST_SUMMARY_RE.search(raw_content)
+    if pytest_match:
+        digest_parts.append(f"pytest=({pytest_match.group(1).strip()})")
+
+    digest_header = f" | {'; '.join(digest_parts)}" if (digest_parts and max_chars >= 240) else ""
+    half = max(20, max_chars // 2)
+    head = raw_content[:half].rstrip()
+    tail = raw_content[-half:].lstrip()
+    return (
+        f"[Compacted Output{digest_header}: {head}\n"
+        f"... ({len(raw_content)} chars omitted for context efficiency) ...\n"
+        f"{tail}]"
+    )
 
 
 def estimate_session_history_tokens(session: SessionState) -> int:
@@ -234,18 +320,21 @@ class ContextCompactor:
 
         for msg in older_slice:
             if msg.role == "tool":
-                raw_content = msg.content or msg.body or ""
+                tr_raw = str(msg.tool_result.output) if (msg.tool_result and msg.tool_result.output is not None) else ""
+                c_raw = msg.content or msg.body or ""
+                raw_content = tr_raw if len(tr_raw) >= len(c_raw) else c_raw
                 if len(raw_content) > tool_char_limit:
-                    head = raw_content[: tool_char_limit // 2].rstrip()
-                    tail = raw_content[- (tool_char_limit // 2) :].lstrip()
-                    compact_text = (
-                        f"[Compacted Output: {head}\n"
-                        f"... ({len(raw_content)} chars omitted for context efficiency) ...\n"
-                        f"{tail}]"
+                    t_name = msg.tool_result.name if msg.tool_result else None
+                    compact_text = fold_tool_observation(
+                        raw_content=raw_content,
+                        tool_name=t_name,
+                        max_chars=tool_char_limit,
                     )
                     compacted_msg = msg.model_copy(deep=True)
                     compacted_msg.content = compact_text
                     compacted_msg.body = compact_text
+                    if compacted_msg.tool_result is not None:
+                        compacted_msg.tool_result.output = compact_text
                     compacted_older.append(compacted_msg)
                     tools_summarized += 1
                 else:
