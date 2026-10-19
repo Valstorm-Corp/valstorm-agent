@@ -247,13 +247,26 @@ async def test_valstorm_passthrough_falls_back_to_openai_gateway_on_404():
 
 @pytest.mark.asyncio
 async def test_action_intent_nudge_handles_adverbs_and_resets_after_tool_calls():
-    from core.react import _has_unfulfilled_action_intent
+    from core.react import _has_unfulfilled_action_intent, evaluate_action_intent_s1
 
     assert _has_unfulfilled_action_intent("I will now write the Connecticut Market Research script at x.py.") is True
     assert _has_unfulfilled_action_intent("I will now query the Google Ads Keyword Planner API.") is True
-    # Should not false-trigger when asking a question or quoting in a markdown table
+    assert _has_unfulfilled_action_intent("Let me invoke the calculator tool to compute the total.") is True
+    assert _has_unfulfilled_action_intent("I'll go ahead and apply the patch to server.py now.") is True
+    # Should not false-trigger when asking a question, deferring until confirmation, or quoting in a markdown table
     assert _has_unfulfilled_action_intent("I will write a script. Would you like me to proceed?") is False
+    assert _has_unfulfilled_action_intent("I will modify those files once you confirm.") is False
+    assert _has_unfulfilled_action_intent("I will run the migration after you approve the plan.") is False
+    assert _has_unfulfilled_action_intent("If you want, I will create the database schema.") is False
     assert _has_unfulfilled_action_intent("Summary:\n\n| Turn | Text |\n| --- | --- |\n| 1 | I will write a script |") is False
+
+    s1_pos = evaluate_action_intent_s1("I will now write the Connecticut Market Research script at x.py.")
+    assert s1_pos["unfulfilled_intent"] is True
+    assert s1_pos["noul"] >= 0.55
+
+    s1_defer = evaluate_action_intent_s1("I will modify those files once you confirm.")
+    assert s1_defer["unfulfilled_intent"] is False
+    assert s1_defer["has_deferral"] is True
 
     provider = _Provider([
         Message(role="assistant", content="I will now write the research script."),

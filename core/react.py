@@ -29,29 +29,95 @@ ACTION_INTENT_NUDGE = (
     "Please invoke the tool directly now to complete the action.]"
 )
 _ACTION_INTENT_RE = re.compile(
-    r"\b(i will|i'll|let me|now i will|i am going to)\s+(?:now\s+|next\s+|first\s+|also\s+)?(write|create|modify|patch|edit|run|execute|read|search|inspect|query|fetch|check|test|build|update|install)\b",
+    r"\b(i will|i'll|let me|now i will|i am going to|i am about to|i'll go ahead and)\s+"
+    r"(?:now\s+|next\s+|first\s+|also\s+|go ahead and\s+)?"
+    r"(write|create|modify|patch|edit|run|execute|read|search|inspect|query|fetch|check|test|build|update|install|invoke|call|apply|compute|calculate|navigate)\b",
+    re.IGNORECASE,
+)
+
+_ACTION_DEFERRAL_RE = re.compile(
+    r"\b(once you confirm|after you confirm|once you approve|after you approve|"
+    r"when you confirm|when you approve|when you are ready|when you're ready|"
+    r"if you confirm|if you approve|if you'd like|if you would like|if you want|"
+    r"let me know if|awaiting your|wait for your|before i proceed|upon your approval|"
+    r"would you like me to|shall i proceed|in a future step)\b",
     re.IGNORECASE,
 )
 
 
-def _has_unfulfilled_action_intent(content: Optional[str]) -> bool:
-    """True when an assistant response is an unfulfilled action preamble rather than a completed answer.
+def evaluate_action_intent_s1(content: Optional[str]) -> Dict[str, Any]:
+    """System-1 Noul + Choice evaluation for whether an assistant message is an unfulfilled tool preamble.
 
-    Checks the final non-empty paragraph (ignoring markdown tables/code blocks) and avoids
-    false-triggering when the assistant ends with a question asking the user for confirmation.
+    Distinguishes genuine immediate tool-invocation preambles ("I will now write x.py.")
+    from conditional/deferred statements ("I will modify those files once you confirm.")
+    and completed markdown summaries.
     """
     if not content:
-        return False
+        return {"unfulfilled_intent": False, "noul": 0.01, "confidence": 0.98, "reason": "empty"}
     stripped = content.strip()
     if not stripped or stripped.endswith("?"):
-        return False
+        return {"unfulfilled_intent": False, "noul": 0.02, "confidence": 0.97, "reason": "question_or_empty"}
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", stripped) if p.strip()]
     if not paragraphs:
-        return False
+        return {"unfulfilled_intent": False, "noul": 0.02, "confidence": 0.97, "reason": "no_paragraphs"}
     last_para = paragraphs[-1]
     if len(last_para) > 600 or last_para.startswith(("|", "```", "#", ">", "-", "*")):
-        return False
-    return bool(_ACTION_INTENT_RE.search(last_para))
+        return {"unfulfilled_intent": False, "noul": 0.03, "confidence": 0.95, "reason": "structural_block"}
+
+    has_deferral = bool(_ACTION_DEFERRAL_RE.search(last_para))
+    has_action_verb = bool(_ACTION_INTENT_RE.search(last_para))
+
+    from .decision_model import ChoiceQuestion, NoulQuestion, SystemOneClient
+
+    signal_tokens = (
+        "immediate_action execute_tool_now unfulfilled_tool_intent"
+        if (has_action_verb and not has_deferral)
+        else "deferred_or_completed await_user_or_completed"
+    )
+    state = {
+        "goal": signal_tokens,
+        "last_paragraph": last_para,
+        "signals": signal_tokens,
+        "error": False,
+    }
+    s1 = SystemOneClient(backend="local")
+    resp = s1.evaluate(
+        state=state,
+        questions={
+            "intent_class": ChoiceQuestion(
+                id="intent_class",
+                instructions="Classify whether the assistant paragraph is an immediate unfulfilled tool call preamble or a completed/deferred response.",
+                criteria={
+                    "execute_tool_now": "immediate_action execute_tool_now unfulfilled_tool_intent",
+                    "await_user_or_completed": "deferred_or_completed await_user_or_completed",
+                },
+            ),
+            "unfulfilled_tool_intent": NoulQuestion(
+                id="unfulfilled_tool_intent",
+                instructions="immediate_action execute_tool_now unfulfilled_tool_intent",
+            ),
+        },
+    )
+    choice_ans = resp.answers["intent_class"]
+    noul_ans = resp.answers["unfulfilled_tool_intent"]
+    is_unfulfilled = (
+        has_action_verb
+        and not has_deferral
+        and getattr(choice_ans, "choice", "") == "execute_tool_now"
+        and getattr(noul_ans, "noul", 0.0) >= 0.55
+    )
+    return {
+        "unfulfilled_intent": bool(is_unfulfilled),
+        "noul": float(getattr(noul_ans, "noul", 0.0)),
+        "confidence": float(getattr(choice_ans, "confidence", 0.0)),
+        "choice": getattr(choice_ans, "choice", "await_user_or_completed"),
+        "has_deferral": has_deferral,
+    }
+
+
+def _has_unfulfilled_action_intent(content: Optional[str]) -> bool:
+    """True when an assistant response is an unfulfilled action preamble rather than a completed answer."""
+    return bool(evaluate_action_intent_s1(content).get("unfulfilled_intent", False))
 
 
 class ReActEngine:

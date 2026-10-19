@@ -23,6 +23,8 @@ def test_token_similarity():
 
 
 def test_is_memory_candidate_heuristics():
+    from core.memory_extractor import evaluate_memory_candidate_s1
+
     # Negative cases (transient tasks, commands, standard queries) -> 0 tokens spent
     assert not is_memory_candidate("run pytest tests/")
     assert not is_memory_candidate("fix the bug in AuthModal.tsx")
@@ -32,7 +34,12 @@ def test_is_memory_candidate_heuristics():
     assert not is_memory_candidate("")
     assert not is_memory_candidate(None)
 
-    # Positive cases (preferences, constraints, changes, roles) -> Should trigger extraction
+    # Adversarial negative cases where "always", "never", or "we use" appear in transient bug/question turns
+    assert not is_memory_candidate("Why does this loop always time out on line 42?")
+    assert not is_memory_candidate("This function never returns None when x > 0, fix the bug")
+    assert not is_memory_candidate("How can we use pytest fixtures in this test file?")
+
+    # Positive cases (preferences, constraints, changes, roles, architecture invariants) -> Should trigger extraction
     assert is_memory_candidate("I prefer 2-space indentation for all React components")
     assert is_memory_candidate("Always use uv instead of poetry in this monorepo")
     assert is_memory_candidate("Never push directly to the main branch")
@@ -40,6 +47,11 @@ def test_is_memory_candidate_heuristics():
     assert is_memory_candidate("My role is Chief Technology Officer")
     assert is_memory_candidate("We use PostgreSQL for all microservices")
     assert is_memory_candidate("Our endpoint is https://api.valstorm.com/v2")
+    assert is_memory_candidate("All shell scripts in scripts/ must retain chmod +x executable permissions.")
+
+    s1_res = evaluate_memory_candidate_s1("Always use uv instead of poetry in this monorepo")
+    assert s1_res["is_candidate"] is True
+    assert s1_res["noul"] >= 0.55
 
 
 def test_memory_store_reconcile_fact(tmp_path):

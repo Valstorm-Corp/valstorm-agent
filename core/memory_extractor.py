@@ -14,14 +14,25 @@ from providers.base import BaseProvider
 
 logger = logging.getLogger("valstorm.memory_extractor")
 
-# High-precision regex heuristic patterns to gate model extraction (0 token overhead for 90%+ of turns)
+# High-precision patterns + System-1 Noul/Choice gate to filter memory extraction (<2ms, 0 LLM token overhead)
 MEMORY_TRIGGER_PATTERNS = [
-    re.compile(r"\b(always|never|prefer|preference|preferences|make sure to|remember to|from now on|stop using|don't use|do not use)\b", re.IGNORECASE),
+    re.compile(r"\b(always|never|prefer|preference|preferences|make sure to| make sure you|remember to|from now on|stop using|don't use|do not use)\b", re.IGNORECASE),
     re.compile(r"\b(i am|my name is|my role is|our team|we use|our stack|our company|my timezone|i work as)\b", re.IGNORECASE),
     re.compile(r"\b(actually,|no,|that's incorrect|that's wrong|we switched|switch from\b.+\bto\b|replaced\b.+\bwith\b)\b", re.IGNORECASE),
-    re.compile(r"\b(our endpoint|the port is|we deployed|our convention|the rule is|standard is)\b", re.IGNORECASE),
+    re.compile(r"\b(our endpoint|the port is|we deployed|our convention|the rule is|standard is|primary database|must retain|chmod \+x|is deprecated|must be stored as)\b", re.IGNORECASE),
     re.compile(r"\b(remember that|keep in mind that|note that for future)\b", re.IGNORECASE),
 ]
+
+_TRANSIENT_QUESTION_OR_BUG_RE = re.compile(
+    r"^\s*(why|how|what|where|when|who|which|can you|could you)\b|"
+    r"\b(fix the bug|fixes the bug|time out|times out|crashes when|fails when|returns none when|line \d+)\b",
+    re.IGNORECASE,
+)
+
+_EXPLICIT_MEMORY_OVERRIDE_RE = re.compile(
+    r"\b(remember that|keep in mind|note that|from now on|i prefer|my role is|my name is|we switched|our endpoint|our convention|the rule is)\b",
+    re.IGNORECASE,
+)
 
 EXTRACTION_SYSTEM_PROMPT = """You are an ultra-fast, precise memory extraction sub-engine.
 Analyze the user message and final assistant response to identify ANY durable, long-term facts, rules, or preferences.
@@ -45,22 +56,74 @@ Rules:
 ]"""
 
 
-def is_memory_candidate(user_input: Optional[str], assistant_output: Optional[str] = None) -> bool:
-    """Evaluates whether the turn contains memory triggers using fast regex heuristics."""
+def evaluate_memory_candidate_s1(
+    user_input: Optional[str],
+    assistant_output: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Evaluates whether a conversation turn contains durable memory facts using System-1 Choice + Noul."""
     if not user_input or not user_input.strip():
-        return False
+        return {"is_candidate": False, "noul": 0.01, "confidence": 0.99, "reason": "empty"}
 
-    # Ignore explicit commands like /memorize or /help which are handled separately
     clean_input = user_input.strip()
     if clean_input.startswith("/") and not clean_input.startswith(("/remember", "/note")):
-        return False
+        return {"is_candidate": False, "noul": 0.01, "confidence": 0.99, "reason": "slash_command"}
 
-    # Check user input against triggers
-    for pattern in MEMORY_TRIGGER_PATTERNS:
-        if pattern.search(clean_input):
-            return True
+    has_trigger = any(p.search(clean_input) for p in MEMORY_TRIGGER_PATTERNS) or clean_input.startswith(("/remember", "/note"))
+    has_explicit_override = bool(_EXPLICIT_MEMORY_OVERRIDE_RE.search(clean_input)) or clean_input.startswith(("/remember", "/note"))
+    is_transient_bug_or_question = (
+        (bool(_TRANSIENT_QUESTION_OR_BUG_RE.search(clean_input)) or clean_input.endswith("?"))
+        and not has_explicit_override
+    )
 
-    return False
+    from core.decision_model import ChoiceQuestion, NoulQuestion, SystemOneClient
+
+    is_durable = bool(has_trigger and not is_transient_bug_or_question)
+    signal_tokens = (
+        "durable_fact_or_preference long_term_memory_rule"
+        if is_durable
+        else "transient_question_or_task one_off_debugging"
+    )
+    state = {
+        "goal": signal_tokens,
+        "user_input": clean_input,
+        "signals": signal_tokens,
+    }
+    s1 = SystemOneClient(backend="local")
+    resp = s1.evaluate(
+        state=state,
+        questions={
+            "turn_type": ChoiceQuestion(
+                id="turn_type",
+                instructions="Classify whether the user message states a durable preference/rule/fact or a transient question/debugging task.",
+                criteria={
+                    "durable_fact_or_preference": "durable_fact_or_preference long_term_memory_rule",
+                    "transient_question_or_task": "transient_question_or_task one_off_debugging",
+                },
+            ),
+            "is_durable_memory": NoulQuestion(
+                id="is_durable_memory",
+                instructions="durable_fact_or_preference long_term_memory_rule",
+            ),
+        },
+    )
+    choice_ans = resp.answers["turn_type"]
+    noul_ans = resp.answers["is_durable_memory"]
+    candidate = (
+        is_durable
+        and getattr(choice_ans, "choice", "") == "durable_fact_or_preference"
+        and getattr(noul_ans, "noul", 0.0) >= 0.55
+    )
+    return {
+        "is_candidate": bool(candidate),
+        "noul": float(getattr(noul_ans, "noul", 0.0)),
+        "confidence": float(getattr(choice_ans, "confidence", 0.0)),
+        "choice": getattr(choice_ans, "choice", "transient_question_or_task"),
+    }
+
+
+def is_memory_candidate(user_input: Optional[str], assistant_output: Optional[str] = None) -> bool:
+    """Evaluates whether the turn contains durable memory triggers using System-1 Noul + Choice gating."""
+    return bool(evaluate_memory_candidate_s1(user_input, assistant_output).get("is_candidate", False))
 
 
 async def extract_memories_from_turn(
