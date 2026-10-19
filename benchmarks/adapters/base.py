@@ -20,11 +20,19 @@ MODEL_PRICING_PER_1M: Dict[str, Dict[str, float]] = {
 }
 
 
-def estimate_cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> float:
-    """Estimates USD cost for a benchmark run based on model token pricing."""
+def estimate_cost_usd(
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+    cached_tokens: int = 0,
+) -> float:
+    """Estimates USD cost for a benchmark run based on model token pricing (with 75% discount on cached prefix tokens)."""
     rates = MODEL_PRICING_PER_1M.get(model, {"input": 0.50, "output": 1.50})
-    cost = (prompt_tokens / 1_000_000.0) * rates["input"] + (completion_tokens / 1_000_000.0) * rates["output"]
-    return round(cost, 6)
+    safe_cached = max(0, min(prompt_tokens, int(cached_tokens or 0)))
+    uncached_prompt = max(0, prompt_tokens - safe_cached)
+    input_cost = ((uncached_prompt * rates["input"]) + (safe_cached * rates["input"] * 0.25)) / 1_000_000.0
+    output_cost = (completion_tokens / 1_000_000.0) * rates["output"]
+    return round(input_cost + output_cost, 6)
 
 
 @dataclass

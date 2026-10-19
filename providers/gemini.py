@@ -94,6 +94,9 @@ class GeminiProvider(BaseProvider):
         self._compat_provider = compat_provider
         self._passthrough_unavailable = False
         self._thinking_disabled = False
+        self._compiled_tools_cache: Dict[str, List[Any]] = {}
+        self._prefix_cache_handles: Dict[str, Dict[str, Any]] = {}
+        self._explicit_cache_unsupported_models: set[str] = set()
 
     @property
     def provider_name(self) -> str:
@@ -179,14 +182,97 @@ class GeminiProvider(BaseProvider):
             _error_status(exc) in (400, None) or "invalid" in msg
         )
 
+    @staticmethod
+    def _compute_prefix_cache_key(
+        model_name: str,
+        system_instruction: Optional[str],
+        tools: Optional[List[Dict[str, Any]]],
+    ) -> Tuple[str, str, int]:
+        """Returns (prefix_cache_key, tools_hash, total_prefix_chars) deterministically."""
+        import hashlib
+        import json
+
+        tools_canonical = json.dumps(tools or [], sort_keys=True, ensure_ascii=False)
+        tools_hash = hashlib.sha256(tools_canonical.encode("utf-8")).hexdigest()[:24]
+        sys_str = system_instruction or ""
+        raw_prefix = f"{model_name}||{sys_str}||{tools_hash}"
+        prefix_key = hashlib.sha256(raw_prefix.encode("utf-8")).hexdigest()[:32]
+        return prefix_key, tools_hash, len(sys_str) + len(tools_canonical)
+
+    async def _resolve_or_create_cached_content(
+        self,
+        client: Any,
+        model_name: str,
+        system_instruction: Optional[str],
+        tools: Optional[List[Dict[str, Any]]],
+        gemini_tools: Optional[List[Any]],
+        kwargs: Dict[str, Any],
+    ) -> Optional[str]:
+        """Resolves an active Gemini CachedContent handle or creates one when prefix exceeds threshold."""
+        import os
+        import time
+        from google.genai import types
+
+        explicit_flag = kwargs.get("enable_explicit_cache")
+        if explicit_flag is None:
+            env_flag = os.environ.get("VALSTORM_GEMINI_EXPLICIT_CACHE", "").strip().lower()
+            explicit_flag = env_flag in ("1", "true", "yes", "on")
+        if not explicit_flag or model_name in self._explicit_cache_unsupported_models:
+            return None
+
+        prefix_key, _, prefix_chars = self._compute_prefix_cache_key(model_name, system_instruction, tools)
+        min_chars = int(kwargs.get("min_cache_chars", 12_000))
+        if prefix_chars < min_chars:
+            return None
+
+        now = time.time()
+        existing = self._prefix_cache_handles.get(prefix_key)
+        if existing and existing.get("expires_at", 0) > now + 30:
+            existing["hits"] = int(existing.get("hits", 0)) + 1
+            return str(existing["name"])
+
+        ttl_sec = int(kwargs.get("cache_ttl_sec") or os.environ.get("VALSTORM_GEMINI_CACHE_TTL_SEC", "1800"))
+        try:
+            caches_api = getattr(getattr(client, "aio", None), "caches", None)
+            if caches_api is None or not hasattr(caches_api, "create"):
+                return None
+            cache_cfg_kwargs: Dict[str, Any] = {"ttl": f"{ttl_sec}s"}
+            if system_instruction:
+                cache_cfg_kwargs["system_instruction"] = system_instruction
+            if gemini_tools:
+                cache_cfg_kwargs["tools"] = gemini_tools
+            created = await caches_api.create(
+                model=model_name,
+                config=types.CreateCachedContentConfig(**cache_cfg_kwargs),
+            )
+            cache_name = getattr(created, "name", None)
+            if cache_name:
+                self._prefix_cache_handles[prefix_key] = {
+                    "name": str(cache_name),
+                    "model": model_name,
+                    "prefix_chars": prefix_chars,
+                    "created_at": now,
+                    "expires_at": now + ttl_sec,
+                    "hits": 0,
+                }
+                return str(cache_name)
+        except Exception:
+            self._explicit_cache_unsupported_models.add(model_name)
+        return None
+
     def _build_config(self, system_instruction: Optional[str], gemini_tools: Optional[List[Any]], kwargs: Dict[str, Any]) -> Any:
         from google.genai import types
 
         config_args: Dict[str, Any] = {}
-        if system_instruction:
-            config_args["system_instruction"] = system_instruction
-        if gemini_tools:
-            config_args["tools"] = gemini_tools
+        cached_content_handle = kwargs.get("cached_content")
+        if cached_content_handle:
+            # When using an explicit CachedContent handle, Gemini forbids re-sending system_instruction or tools
+            config_args["cached_content"] = cached_content_handle
+        else:
+            if system_instruction:
+                config_args["system_instruction"] = system_instruction
+            if gemini_tools:
+                config_args["tools"] = gemini_tools
         for k in ("temperature", "top_p", "top_k", "max_output_tokens"):
             if k in kwargs:
                 config_args[k] = kwargs[k]
@@ -319,11 +405,22 @@ class GeminiProvider(BaseProvider):
         return self._client
 
     def _format_tools(self, tools: Optional[List[Dict[str, Any]]]) -> Optional[List[Any]]:
-        """Convert standard or OpenAI-format tool schemas into Gemini FunctionDeclarations."""
+        """Convert standard or OpenAI-format tool schemas into Gemini FunctionDeclarations (cached by SHA-256)."""
         if not tools:
             return None
 
+        import hashlib
+        import json
         from google.genai import types
+
+        try:
+            tools_canonical = json.dumps(tools, sort_keys=True, ensure_ascii=False)
+            tools_hash = hashlib.sha256(tools_canonical.encode("utf-8")).hexdigest()[:24]
+            cached = self._compiled_tools_cache.get(tools_hash)
+            if cached is not None:
+                return cached
+        except Exception:
+            tools_hash = None
 
         function_declarations: List[types.FunctionDeclaration] = []
         for t in tools:
@@ -347,7 +444,10 @@ class GeminiProvider(BaseProvider):
 
             function_declarations.append(types.FunctionDeclaration(**decl_kwargs))
 
-        return [types.Tool(function_declarations=function_declarations)]
+        compiled = [types.Tool(function_declarations=function_declarations)]
+        if tools_hash:
+            self._compiled_tools_cache[tools_hash] = compiled
+        return compiled
 
     def _format_messages(self, messages: List[Message]) -> Tuple[Optional[str], List[Any]]:
         """Convert unified Message list into system_instruction and Gemini Content objects."""
@@ -678,7 +778,18 @@ class GeminiProvider(BaseProvider):
             while True:
                 attempts += 1
                 client = self._get_client()
-                config = self._build_config(system_instruction, gemini_tools, {**kwargs, "model": model_name})
+                cached_handle = await self._resolve_or_create_cached_content(
+                    client=client,
+                    model_name=model_name,
+                    system_instruction=system_instruction,
+                    tools=tools,
+                    gemini_tools=gemini_tools,
+                    kwargs=kwargs,
+                )
+                cfg_kwargs = {**kwargs, "model": model_name}
+                if cached_handle:
+                    cfg_kwargs["cached_content"] = cached_handle
+                config = self._build_config(system_instruction, gemini_tools, cfg_kwargs)
                 try:
                     return await client.aio.models.generate_content_stream(
                         model=model_name,
@@ -863,7 +974,18 @@ class GeminiProvider(BaseProvider):
             while True:
                 attempts += 1
                 client = self._get_client()
-                config = self._build_config(system_instruction, gemini_tools, {**kwargs, "model": model_name})
+                cached_handle = await self._resolve_or_create_cached_content(
+                    client=client,
+                    model_name=model_name,
+                    system_instruction=system_instruction,
+                    tools=tools,
+                    gemini_tools=gemini_tools,
+                    kwargs=kwargs,
+                )
+                cfg_kwargs = {**kwargs, "model": model_name}
+                if cached_handle:
+                    cfg_kwargs["cached_content"] = cached_handle
+                config = self._build_config(system_instruction, gemini_tools, cfg_kwargs)
                 try:
                     response = await client.aio.models.generate_content(
                         model=model_name,

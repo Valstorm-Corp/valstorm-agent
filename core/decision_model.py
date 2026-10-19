@@ -63,6 +63,11 @@ _SYNONYM_CLUSTERS: List[frozenset[str]] = [
     frozenset({"vault", "file", "folder", "document", "vfs", "storage", "cloud", "share"}),
     frozenset({"contact", "lead", "deal", "account", "crm", "record", "datagrid", "table", "filter", "kanban"}),
     frozenset({"settings", "profile", "preferences", "config", "configuration", "permissions", "user", "admin"}),
+    frozenset({"delete", "remove", "discard", "trash", "erase", "destroy", "drop", "purge", "clear"}),
+    frozenset({"logout", "signout", "disconnect", "exit", "leave", "lock"}),
+    frozenset({"invoice", "billing", "payment", "subscription", "charge", "receipt", "checkout", "stripe", "pricing"}),
+    frozenset({"sms", "message", "chat", "conversation", "twilio", "phone", "call", "dial", "inbox"}),
+    frozenset({"deploy", "publish", "release", "ship", "push", "production", "rollout"}),
 ]
 
 _TOKEN_TO_CLUSTER_TERMS: Dict[str, frozenset[str]] = {}
@@ -488,7 +493,7 @@ class LocalSystemOneBackend:
                 weight = 2.2 if (tok in ctx_tokens and tok in inst_tokens) else 1.75
                 matched_direct += weight
             elif tok in ctx_expanded or tok in inst_expanded:
-                matched_synonym += 0.90
+                matched_synonym += 1.35
             elif not focus_text and tok in state_token_counts:
                 matched_direct += 1.0
 
@@ -515,10 +520,16 @@ class LocalSystemOneBackend:
         tri_ctx = _char_trigrams(f"{instructions} {focus_text[:600] if focus_text else state_str[:600]}")
         tri_sim = (len(tri_opt & tri_ctx) / max(1, len(tri_opt))) if tri_opt else 0.0
 
-        # 5. Penalize explicitly disabled or already-completed candidates if instructions ask for next action
+        # 5. Penalize explicitly disabled or antonym-conflicting candidates
         penalty = 0.0
         if any(w in opt_lower for w in ("disabled: true", "disabled=true", "[disabled]", "status: disabled")):
             penalty -= 1.5
+        destructive_verbs = {"delete", "remove", "discard", "trash", "erase", "destroy", "purge"}
+        constructive_verbs = {"save", "create", "add", "keep", "preserve"}
+        if (ctx_tokens & destructive_verbs) and (set(opt_tokens) & constructive_verbs) and not (set(opt_tokens) & destructive_verbs):
+            penalty -= 1.2
+        elif (ctx_tokens & constructive_verbs) and (set(opt_tokens) & destructive_verbs) and not (set(opt_tokens) & constructive_verbs):
+            penalty -= 1.2
 
         denom = math.sqrt(len(opt_tokens)) + 1.0
         norm_overlap = (matched_direct + matched_synonym) / denom

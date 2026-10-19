@@ -413,3 +413,104 @@ class TestToolsServerAndBenchmarkIntegration:
         assert s_adapt["avg_tokens"] < s_high["avg_tokens"]
         assert s_adapt["total_cost_usd"] < s_high["total_cost_usd"]
 
+    @pytest.mark.asyncio
+    async def test_gemini_prefix_cache_handle_and_compiled_tools_cache(self):
+        """Verify GeminiProvider caches compiled FunctionDeclarations and pins CachedContent prefix handles."""
+        from types import SimpleNamespace
+        from benchmarks.adapters.base import estimate_cost_usd
+        from providers.gemini import GeminiProvider
+
+        created_caches = []
+
+        class MockCachesAPI:
+            async def create(self, model: str, config: Any):
+                created_caches.append((model, config))
+                return SimpleNamespace(name=f"cachedContents/cache_{len(created_caches)}")
+
+        mock_client = SimpleNamespace(aio=SimpleNamespace(caches=MockCachesAPI()))
+        provider = GeminiProvider(api_key="test-key", client=mock_client, backend="aistudio")
+
+        tools = [
+            {
+                "name": f"tool_{i}",
+                "description": f"Tool description {i} " + ("x" * 350),
+                "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+            }
+            for i in range(35)
+        ]
+        sys_prompt = "You are a Valstorm Staff Software Engineer.\n" + ("guideline " * 400)
+
+        # 1. _format_tools caches compiled types.Tool objects by SHA-256 hash
+        compiled_1 = provider._format_tools(tools)
+        compiled_2 = provider._format_tools(tools)
+        assert compiled_1 is compiled_2
+        assert len(provider._compiled_tools_cache) == 1
+
+        # 2. _resolve_or_create_cached_content creates handle on iter 0 and reuses it on iter 1..N
+        h1 = await provider._resolve_or_create_cached_content(
+            client=mock_client,
+            model_name="gemini-flash-latest",
+            system_instruction=sys_prompt,
+            tools=tools,
+            gemini_tools=compiled_1,
+            kwargs={"enable_explicit_cache": True, "min_cache_chars": 5000},
+        )
+        assert h1 == "cachedContents/cache_1"
+        assert len(created_caches) == 1
+
+        h2 = await provider._resolve_or_create_cached_content(
+            client=mock_client,
+            model_name="gemini-flash-latest",
+            system_instruction=sys_prompt,
+            tools=tools,
+            gemini_tools=compiled_2,
+            kwargs={"enable_explicit_cache": True, "min_cache_chars": 5000},
+        )
+        assert h2 == "cachedContents/cache_1"
+        assert len(created_caches) == 1  # Reused without a 2nd API creation call!
+
+        # 3. _build_config with cached_content omits redundant system_instruction and tools
+        cfg = provider._build_config(
+            system_instruction=sys_prompt,
+            gemini_tools=compiled_1,
+            kwargs={"model": "gemini-flash-latest", "cached_content": h1},
+        )
+        assert cfg.cached_content == "cachedContents/cache_1"
+        assert cfg.system_instruction is None
+        assert cfg.tools is None
+
+        # 4. Verify 75% discount on cached prefix tokens in estimate_cost_usd
+        cost_uncached = estimate_cost_usd("gemini-pro-latest", prompt_tokens=100_000, completion_tokens=1_000, cached_tokens=0)
+        cost_cached = estimate_cost_usd("gemini-pro-latest", prompt_tokens=100_000, completion_tokens=1_000, cached_tokens=80_000)
+        assert cost_cached < cost_uncached * 0.50
+
+    def test_zero_lexical_overlap_semantic_routing(self):
+        """Verify System-1 LocalSystemOneBackend resolves zero-word-overlap synonym prompts."""
+        s1 = SystemOneClient(backend="local")
+        resp = s1.evaluate(
+            state={"goal": "Discard the draft item and check the receipt"},
+            questions={
+                "cleanup_btn": ChoiceQuestion(
+                    id="cleanup_btn",
+                    instructions="Select the button to discard the draft item.",
+                    criteria={
+                        "btn_save": "Save Draft Changes",
+                        "btn_delete": "Delete Entry Permanently",
+                        "btn_export": "Export CSV Table",
+                    },
+                ),
+                "billing_tab": ChoiceQuestion(
+                    id="billing_tab",
+                    instructions="Select the navigation tab to check the receipt.",
+                    criteria={
+                        "nav_crm": "Contacts & Leads",
+                        "nav_invoices": "Invoices & Subscriptions",
+                        "nav_canvas": "3D Scene Viewport",
+                    },
+                ),
+            },
+        )
+        assert resp.get_choice("cleanup_btn").choice == "btn_delete"
+        assert resp.get_choice("billing_tab").choice == "nav_invoices"
+
+
