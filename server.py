@@ -458,7 +458,7 @@ async def _sync_turn_to_valstorm(
     }
     if user_text:
         payload["user_text"] = user_text
-    if user_message_id:
+    if user_message_id and not str(user_message_id).startswith(("temp_", "optimistic_")):
         payload["user_message_id"] = user_message_id
     if error:
         payload["error"] = error[:4000]
@@ -547,14 +547,19 @@ async def _hydrate_session_from_cloud_if_needed(
                         if r_id and r_id in existing_msg_ids:
                             continue
 
-                        # 2. Skip if adjacent last message has identical role and body
+                        # 2. Skip temporary/optimistic duplicate records persisted by legacy clients
+                        if r_id and str(r_id).startswith(("temp_", "optimistic_")):
+                            if body in existing_contents_by_role.get(role, set()):
+                                continue
+
+                        # 3. Skip if adjacent last message has identical role and body
                         if session.messages:
                             last_msg = session.messages[-1]
                             if last_msg.role == role and (last_msg.content or "").strip() == body:
                                 continue
 
-                        # 3. Skip if non-trivial message content already exists for this role
-                        if body and len(body) > 20 and body in existing_contents_by_role.get(role, set()):
+                        # 4. Skip if message content already exists for this role
+                        if body and body in existing_contents_by_role.get(role, set()):
                             continue
 
                         tool_calls = None
@@ -770,6 +775,7 @@ async def _execute_agent_run(
                     "Briefly explain how to use `/memorize <fact or rule>` to commit facts to persistent memory, and provide 2-3 helpful examples.]"
                 )
 
+        iter_output_checkpoint = 0
         async for event in engine.run_turn_stream(
             session=session,
             user_input=effective_input,
@@ -779,16 +785,20 @@ async def _execute_agent_run(
             reasoning_effort=effective_reasoning_effort,
             auto_tune=payload.auto_tune,
         ):
-            if event.event_type == StreamEventType.TEXT_CHUNK and event.delta:
+            if event.event_type == StreamEventType.TEXT_CHUNK and (event.delta is not None):
+                if event.metadata.get("stream_reset"):
+                    full_output = full_output[:iter_output_checkpoint]
                 if event.metadata.get("failover"):
                     await queue.put({
                         "event": "provider.failover",
                         "run_id": run_id,
                         "failed_tier": event.metadata.get("failed_tier"),
-                        "target_tier": event.metadata.get("target_tier"),
-                        "target_model": event.metadata.get("target_model"),
-                        "reason": event.metadata.get("reason"),
+                        "target_tier": event.metadata.get("target_tier") or event.metadata.get("next_tier"),
+                        "target_model": event.metadata.get("target_model") or event.metadata.get("next_model"),
+                        "reason": event.metadata.get("reason") or event.metadata.get("error"),
                     })
+                    continue
+                if not event.delta:
                     continue
                 full_output += event.delta
                 await queue.put({
@@ -840,6 +850,7 @@ async def _execute_agent_run(
                 })
 
             elif event.event_type == StreamEventType.LLM_CALL_COMPLETE:
+                iter_output_checkpoint = len(full_output)
                 # Persist progress after every model call so a crash mid-turn doesn't lose work.
                 try:
                     session_store.save_session(session)

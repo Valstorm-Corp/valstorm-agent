@@ -2,10 +2,15 @@
 
 from abc import ABC, abstractmethod
 import base64
+from collections import OrderedDict
+import hashlib
+import io
 import mimetypes
 import os
 from pathlib import Path
 import re
+import threading
+import time
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, Union
 
 from core.models import Message, StreamEvent, StreamEventType, UsageMetadata
@@ -53,6 +58,125 @@ INLINE_IMAGE_EXT_MIME_MAP = {
 }
 
 MAX_INLINE_MEDIA_BYTES = int(os.environ.get("VALSTORM_MAX_INLINE_MEDIA_BYTES", str(15 * 1024 * 1024)))
+COMPRESS_IMAGE_THRESHOLD_BYTES = int(
+    os.environ.get("VALSTORM_COMPRESS_IMAGE_THRESHOLD_BYTES", str(512 * 1024))
+)
+IMAGE_CACHE_MAX_ITEMS = int(os.environ.get("VALSTORM_IMAGE_CACHE_MAX_ITEMS", "64"))
+IMAGE_CACHE_TTL_SEC = float(os.environ.get("VALSTORM_IMAGE_CACHE_TTL_SEC", "1800"))
+
+_IMAGE_CACHE_LOCK = threading.Lock()
+_RESOLVED_IMAGE_CACHE: "OrderedDict[str, Tuple[bytes, str, float]]" = OrderedDict()
+_IMAGE_FETCH_STATS: Dict[str, int] = {"hits": 0, "misses": 0, "compressed": 0}
+
+
+def clear_image_cache() -> None:
+    """Clears the in-memory resolved image cache and resets stats."""
+    with _IMAGE_CACHE_LOCK:
+        _RESOLVED_IMAGE_CACHE.clear()
+        _IMAGE_FETCH_STATS["hits"] = 0
+        _IMAGE_FETCH_STATS["misses"] = 0
+        _IMAGE_FETCH_STATS["compressed"] = 0
+
+
+def get_image_cache_stats() -> Dict[str, int]:
+    """Returns current cache hit/miss/compression counters for diagnostics and testing."""
+    with _IMAGE_CACHE_LOCK:
+        return {
+            **_IMAGE_FETCH_STATS,
+            "entries": len(_RESOLVED_IMAGE_CACHE),
+        }
+
+
+def _optimize_inline_image_bytes(raw_bytes: bytes, mime_type: str) -> Tuple[bytes, str]:
+    """Downsamples and compresses oversized still images (>512KB) to prevent multi-MB TLS stream fragmentation."""
+    threshold = int(
+        os.environ.get("VALSTORM_COMPRESS_IMAGE_THRESHOLD_BYTES", str(COMPRESS_IMAGE_THRESHOLD_BYTES))
+    )
+    if threshold <= 0 or len(raw_bytes) <= threshold:
+        return raw_bytes, mime_type
+    norm_mime = (mime_type or "").strip().lower()
+    if norm_mime not in ("image/png", "image/jpeg", "image/webp", "image/bmp"):
+        return raw_bytes, mime_type
+
+    try:
+        from PIL import Image  # type: ignore
+
+        with Image.open(io.BytesIO(raw_bytes)) as img:
+            max_dim = int(os.environ.get("VALSTORM_MAX_INLINE_IMAGE_DIMENSION", "1920"))
+            width, height = img.size
+            if max(width, height) > max_dim:
+                scale = max_dim / float(max(width, height))
+                new_size = (max(1, int(width * scale)), max(1, int(height * scale)))
+                resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS", Image.BICUBIC)
+                img = img.resize(new_size, resample)
+
+            if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+                bg = Image.new("RGB", img.size, (255, 255, 255))
+                alpha = img.convert("RGBA")
+                bg.paste(alpha, mask=alpha.split()[3])
+                img = bg
+            elif img.mode != "RGB":
+                img = img.convert("RGB")
+
+            out = io.BytesIO()
+            img.save(out, format="JPEG", quality=82, optimize=True)
+            compressed = out.getvalue()
+            if len(compressed) < len(raw_bytes):
+                with _IMAGE_CACHE_LOCK:
+                    _IMAGE_FETCH_STATS["compressed"] += 1
+                return compressed, "image/jpeg"
+    except Exception:
+        pass
+
+    # Fallback 2: Native macOS /usr/bin/sips (available on all macOS hosts without Pillow)
+    if os.path.exists("/usr/bin/sips"):
+        import shutil
+        import subprocess
+        import tempfile
+
+        ext_map = {
+            "image/png": ".png",
+            "image/jpeg": ".jpg",
+            "image/webp": ".webp",
+            "image/bmp": ".bmp",
+        }
+        in_ext = ext_map.get(norm_mime, ".png")
+        tmpdir = tempfile.mkdtemp(prefix="vsagent_img_")
+        try:
+            in_path = os.path.join(tmpdir, f"in{in_ext}")
+            out_path = os.path.join(tmpdir, "out.jpg")
+            with open(in_path, "wb") as f:
+                f.write(raw_bytes)
+            max_dim = int(os.environ.get("VALSTORM_MAX_INLINE_IMAGE_DIMENSION", "1920"))
+            needs_resize = False
+            if raw_bytes[:8] == b"\x89PNG\r\n\x1a\n" and len(raw_bytes) >= 24:
+                import struct
+
+                w, h = struct.unpack(">II", raw_bytes[16:24])
+                if max(w, h) > max_dim:
+                    needs_resize = True
+            cmd = ["/usr/bin/sips"]
+            if needs_resize:
+                cmd.extend(["-Z", str(max_dim)])
+            cmd.extend(["-s", "format", "jpeg", "-s", "formatOptions", "80", in_path, "--out", out_path])
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                timeout=5,
+            )
+            if proc.returncode == 0 and os.path.exists(out_path):
+                with open(out_path, "rb") as f:
+                    compressed = f.read()
+                if 0 < len(compressed) < len(raw_bytes):
+                    with _IMAGE_CACHE_LOCK:
+                        _IMAGE_FETCH_STATS["compressed"] += 1
+                    return compressed, "image/jpeg"
+        except Exception:
+            pass
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    return raw_bytes, mime_type
 
 
 VALID_MULTIMODAL_MIME_TYPES = set(IMAGE_EXT_MIME_MAP.values())
@@ -163,31 +287,70 @@ def resolve_image_source(src: str) -> Optional[Tuple[bytes, str]]:
             raw_bytes = base64.b64decode(b64_part.strip())
             if len(raw_bytes) > MAX_INLINE_MEDIA_BYTES:
                 return None
-            return raw_bytes, mime_type
+            return _optimize_inline_image_bytes(raw_bytes, mime_type)
         except Exception:
             return None
 
+    # Check in-memory LRU cache for VFS (cloud:// / file_) and HTTP/HTTPS sources
+    cache_key: Optional[str] = None
+    if src.startswith(("http://", "https://", "cloud://", "file_")):
+        cache_key = f"remote:{src.replace('cloud://', '').strip()}" if src.startswith(("cloud://", "file_")) else f"url:{src}"
+        now = time.monotonic()
+        with _IMAGE_CACHE_LOCK:
+            cached_entry = _RESOLVED_IMAGE_CACHE.get(cache_key)
+            if cached_entry is not None:
+                c_bytes, c_mime, c_ts = cached_entry
+                if (now - c_ts) <= IMAGE_CACHE_TTL_SEC:
+                    _RESOLVED_IMAGE_CACHE.move_to_end(cache_key)
+                    _IMAGE_FETCH_STATS["hits"] += 1
+                    return c_bytes, c_mime
+                else:
+                    _RESOLVED_IMAGE_CACHE.pop(cache_key, None)
+
+    resolved_pair: Optional[Tuple[bytes, str]] = None
+
     # 2. HTTP/HTTPS URL
     if src.startswith("http://") or src.startswith("https://"):
-        return fetch_http_image(src)
+        resolved_pair = fetch_http_image(src)
 
     # 3. Cloud / VFS (cloud://file_... or raw file_... ID)
-    if src.startswith("cloud://") or (src.startswith("file_") and not Path(os.path.expanduser(src)).exists()):
-        return fetch_vfs_image(src)
+    elif src.startswith("cloud://") or (src.startswith("file_") and not Path(os.path.expanduser(src)).exists()):
+        resolved_pair = fetch_vfs_image(src)
 
     # 4. Local File Path
-    try:
-        clean_path = os.path.expanduser(src)
-        p = Path(clean_path)
-        ext = p.suffix.lower()
-        if ext in IMAGE_EXT_MIME_MAP and p.exists() and p.is_file():
-            if p.stat().st_size > MAX_INLINE_MEDIA_BYTES:
-                return None
-            mime_type = IMAGE_EXT_MIME_MAP[ext]
-            raw_bytes = p.read_bytes()
-            return raw_bytes, mime_type
-    except Exception:
-        pass
+    else:
+        try:
+            clean_path = os.path.expanduser(src)
+            p = Path(clean_path)
+            ext = p.suffix.lower()
+            if ext in IMAGE_EXT_MIME_MAP and p.exists() and p.is_file():
+                stat = p.stat()
+                if stat.st_size > MAX_INLINE_MEDIA_BYTES:
+                    return None
+                local_key = f"file:{p.resolve()}:{stat.st_mtime_ns}:{stat.st_size}"
+                with _IMAGE_CACHE_LOCK:
+                    cached_local = _RESOLVED_IMAGE_CACHE.get(local_key)
+                    if cached_local is not None:
+                        _RESOLVED_IMAGE_CACHE.move_to_end(local_key)
+                        _IMAGE_FETCH_STATS["hits"] += 1
+                        return cached_local[0], cached_local[1]
+                cache_key = local_key
+                mime_type = IMAGE_EXT_MIME_MAP[ext]
+                raw_bytes = p.read_bytes()
+                resolved_pair = (raw_bytes, mime_type)
+        except Exception:
+            pass
+
+    if resolved_pair is not None:
+        opt_bytes, opt_mime = _optimize_inline_image_bytes(resolved_pair[0], resolved_pair[1])
+        if cache_key:
+            with _IMAGE_CACHE_LOCK:
+                _IMAGE_FETCH_STATS["misses"] += 1
+                _RESOLVED_IMAGE_CACHE[cache_key] = (opt_bytes, opt_mime, time.monotonic())
+                _RESOLVED_IMAGE_CACHE.move_to_end(cache_key)
+                while len(_RESOLVED_IMAGE_CACHE) > IMAGE_CACHE_MAX_ITEMS:
+                    _RESOLVED_IMAGE_CACHE.popitem(last=False)
+        return opt_bytes, opt_mime
 
     return None
 

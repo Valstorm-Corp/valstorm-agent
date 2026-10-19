@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import random
+import ssl
 from typing import Any, AsyncIterator, Callable, Coroutine, Optional, Set
 
 logger = logging.getLogger("vsagent.retry")
@@ -49,6 +50,15 @@ RETRYABLE_PHRASES = (
     "stream closed",
     "timed out",
     "timeout",
+    "bad record mac",
+    "sslv3_alert",
+    "tls alert",
+    "ssl/tls alert",
+    "decryption failed or bad record mac",
+    "eof occurred in violation of protocol",
+    "unexpected_eof_while_reading",
+    "ssl error",
+    "sslerror",
 )
 
 
@@ -77,17 +87,30 @@ def is_retryable_error(exc: BaseException) -> bool:
     if isinstance(exc, (KeyboardInterrupt, asyncio.CancelledError, SystemExit)):
         return False
 
-    # Check for known standard timeout and connection error classes
-    if isinstance(exc, (TimeoutError, ConnectionError, ConnectionResetError, ConnectionRefusedError, BrokenPipeError)):
+    # Check for known standard timeout, SSL/TLS, and connection error classes
+    if isinstance(
+        exc,
+        (
+            TimeoutError,
+            ConnectionError,
+            ConnectionResetError,
+            ConnectionRefusedError,
+            BrokenPipeError,
+            ssl.SSLError,
+        ),
+    ):
         return True
 
-    # Check for httpx/httpcore timeout, transport, and network errors across class hierarchy
+    # Check for httpx/httpcore timeout, SSL, transport, and network errors across class hierarchy
     mro_names = tuple(cls.__name__ for cls in type(exc).__mro__)
     if any(
         any(
             k in name
             for k in (
                 "Timeout",
+                "SSLError",
+                "SSLWantReadError",
+                "SSLWantWriteError",
                 "ConnectError",
                 "NetworkError",
                 "TransportError",

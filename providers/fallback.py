@@ -10,6 +10,7 @@ import inspect
 import logging
 import os
 import re
+import ssl
 import time
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Tuple, Union
 
@@ -31,7 +32,7 @@ def is_provider_failover_candidate(exc: BaseException) -> bool:
     if isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
         return False
 
-    if is_retryable_error(exc):
+    if isinstance(exc, ssl.SSLError) or is_retryable_error(exc):
         return True
 
     code = extract_status_code(exc)
@@ -322,6 +323,7 @@ class ChainedFallbackProvider(BaseProvider):
                 continue
             self._current_tier_index = index
             emitted_output = False  # becomes True once this tier has put text/tool calls in front of the consumer
+            emitted_tool_call = False  # becomes True once a TOOL_CALL_DETECTED event has been yielded
 
             # Cap provider-level retries while there is somewhere else to go (unless the caller set it explicitly).
             call_kwargs = dict(kwargs)
@@ -355,6 +357,8 @@ class ChainedFallbackProvider(BaseProvider):
                         async for item in stream:
                             if _is_output_item(item):
                                 emitted_output = True
+                            if isinstance(item, StreamEvent) and item.event_type == StreamEventType.TOOL_CALL_DETECTED:
+                                emitted_tool_call = True
                             if isinstance(item, StreamEvent) and item.event_type == StreamEventType.TURN_COMPLETE:
                                 item.metadata.setdefault("effective_tier", index + 1)
                                 item.metadata.setdefault("effective_label", tier.label)
@@ -367,6 +371,8 @@ class ChainedFallbackProvider(BaseProvider):
                         for item in stream:
                             if _is_output_item(item):
                                 emitted_output = True
+                            if isinstance(item, StreamEvent) and item.event_type == StreamEventType.TOOL_CALL_DETECTED:
+                                emitted_tool_call = True
                             if isinstance(item, StreamEvent) and item.event_type == StreamEventType.TURN_COMPLETE:
                                 item.metadata.setdefault("effective_tier", index + 1)
                                 item.metadata.setdefault("effective_label", tier.label)
@@ -454,11 +460,16 @@ class ChainedFallbackProvider(BaseProvider):
                         f"Key source: {tier.key_source or 'unknown'}. Fix the key/model and restart (or run `vsagent doctor`)."
                     )
 
-                if emitted_output:
-                    # Text or tool calls already reached the consumer. Cascading would replay the whole turn on another
-                    # model and duplicate that output (or re-run tool calls), so surface the error instead.
+                is_midstream_transport_drop = isinstance(exc, (ssl.SSLError, ConnectionError, TimeoutError)) or any(
+                    p in (str(exc) + " " + repr(exc)).lower()
+                    for p in ("bad record mac", "sslv3_alert", "tls alert", "eof occurred", "incomplete chunked read", "peer closed", "server disconnected")
+                )
+
+                if emitted_output and (emitted_tool_call or not is_midstream_transport_drop):
+                    # Tool calls already reached the consumer (or non-transport error after partial output).
+                    # Cascading after tool calls would re-run tools, so surface the error instead.
                     logger.warning(
-                        f"Tier {index + 1} ({tier.label}) failed AFTER emitting output; not failing over to avoid duplicate output."
+                        f"Tier {index + 1} ({tier.label}) failed AFTER emitting output (tool_call={emitted_tool_call}); not failing over to avoid duplicate output."
                     )
                     raise
 
@@ -494,6 +505,7 @@ class ChainedFallbackProvider(BaseProvider):
                         delta=failover_msg,
                         metadata={
                             "failover": True,
+                            "stream_reset": bool(emitted_output and not emitted_tool_call),
                             "failed_tier": tier.label,
                             "failed_model": target_model,
                             "next_tier": next_tier.label,

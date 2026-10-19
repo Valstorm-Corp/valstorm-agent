@@ -5,7 +5,7 @@ import re
 import uuid
 
 from core.models import Message, StreamEvent, StreamEventType, ToolCall, UsageMetadata, collapse_repeating_text
-from core.retry import execute_stream_with_retry, execute_with_retry
+from core.retry import execute_stream_with_retry, execute_with_retry, is_retryable_error
 from providers.base import BaseProvider, extract_and_resolve_images
 
 
@@ -451,7 +451,9 @@ class GeminiProvider(BaseProvider):
 
     def _format_messages(self, messages: List[Message]) -> Tuple[Optional[str], List[Any]]:
         """Convert unified Message list into system_instruction and Gemini Content objects."""
+        import hashlib
         import json
+        import os
         from google.genai import types
 
         system_parts: List[str] = []
@@ -464,7 +466,40 @@ class GeminiProvider(BaseProvider):
         unsigned_call_ids: set = set()
         unsigned_tool_names: set = set()
 
-        for msg in messages:
+        # Identify which user messages carry multimodal attachments so we only inline binary payloads
+        # for the most recent N visual user turns (preventing historical multi-MB screenshot re-bundling
+        # across long conversations while preserving text references for on-demand analyze_image calls).
+        max_image_turns = int(os.environ.get("VALSTORM_MAX_IMAGE_TURNS", "2"))
+        max_images_per_req = int(os.environ.get("VALSTORM_MAX_IMAGES_PER_REQUEST", "6"))
+        user_msg_indices_with_images: List[int] = []
+        for idx, m in enumerate(messages):
+            if m.role == "user":
+                m_text = m.content or m.body or ""
+                if getattr(m, "images", None) or (
+                    m_text
+                    and (
+                        "cloud://file_" in m_text
+                        or "Attached Image:" in m_text
+                        or "Screenshot:" in m_text
+                        or "![" in m_text
+                    )
+                ):
+                    user_msg_indices_with_images.append(idx)
+        allowed_image_msg_indices = (
+            set(user_msg_indices_with_images[-max_image_turns:])
+            if max_image_turns > 0
+            else set(user_msg_indices_with_images)
+        )
+        # Always allow the final user message in the list to resolve images
+        for idx in reversed(range(len(messages))):
+            if messages[idx].role == "user":
+                allowed_image_msg_indices.add(idx)
+                break
+
+        seen_request_image_hashes: set = set()
+        total_inlined_images = 0
+
+        for msg_idx, msg in enumerate(messages):
             if msg.role == "system":
                 continue
 
@@ -475,14 +510,22 @@ class GeminiProvider(BaseProvider):
                     cleaned_content = collapse_repeating_text(msg.content)
                     if cleaned_content:
                         parts.append(types.Part(text=cleaned_content))
-                # Multimodal image parts
-                images = extract_and_resolve_images(msg)
-                for img_bytes, mime_type in images:
-                    if not mime_type or mime_type.lower() == "application/octet-stream":
-                        continue
-                    if not (mime_type.startswith(("image/", "audio/", "video/")) or mime_type == "application/pdf"):
-                        continue
-                    parts.append(types.Part.from_bytes(data=img_bytes, mime_type=mime_type))
+                # Multimodal image parts (bounded by turn window and deduplicated by content hash)
+                if msg_idx in allowed_image_msg_indices and total_inlined_images < max_images_per_req:
+                    images = extract_and_resolve_images(msg)
+                    for img_bytes, mime_type in images:
+                        if total_inlined_images >= max_images_per_req:
+                            break
+                        if not mime_type or mime_type.lower() == "application/octet-stream":
+                            continue
+                        if not (mime_type.startswith(("image/", "audio/", "video/")) or mime_type == "application/pdf"):
+                            continue
+                        img_hash = hashlib.sha256(img_bytes).hexdigest()[:24]
+                        if img_hash in seen_request_image_hashes:
+                            continue
+                        seen_request_image_hashes.add(img_hash)
+                        parts.append(types.Part.from_bytes(data=img_bytes, mime_type=mime_type))
+                        total_inlined_images += 1
                 if not parts:
                     parts.append(types.Part(text="..."))
                 raw_contents.append(types.Content(role="user", parts=parts))
@@ -828,59 +871,77 @@ class GeminiProvider(BaseProvider):
             finish_reason: Optional[str] = None
             model_version: Optional[str] = None
 
-            async for chunk in stream:
-                if chunk.usage_metadata:
-                    last_usage_metadata = chunk.usage_metadata
-                if _as_str(getattr(chunk, "model_version", None)):
-                    model_version = chunk.model_version
+            stream_interrupted_exc: Optional[Exception] = None
+            try:
+                async for chunk in stream:
+                    if chunk.usage_metadata:
+                        last_usage_metadata = chunk.usage_metadata
+                    if _as_str(getattr(chunk, "model_version", None)):
+                        model_version = chunk.model_version
 
-                candidates = getattr(chunk, "candidates", None)
-                if candidates and len(candidates) > 0:
-                    fr = getattr(candidates[0], "finish_reason", None)
-                    if fr is not None:
-                        finish_reason = _normalize_gemini_finish(fr)
-                    content_obj = getattr(candidates[0], "content", None)
-                    if content_obj and getattr(content_obj, "parts", None):
-                        for part in content_obj.parts:
-                            if getattr(part, "thought", None):
-                                # Thought summaries (only if include_thoughts is on) are not answer text.
-                                continue
-                            p_text = getattr(part, "text", None)
-                            if p_text:
-                                all_text_parts.append(p_text)
-                                yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=p_text)
+                    candidates = getattr(chunk, "candidates", None)
+                    if candidates and len(candidates) > 0:
+                        fr = getattr(candidates[0], "finish_reason", None)
+                        if fr is not None:
+                            finish_reason = _normalize_gemini_finish(fr)
+                        content_obj = getattr(candidates[0], "content", None)
+                        if content_obj and getattr(content_obj, "parts", None):
+                            for part in content_obj.parts:
+                                if getattr(part, "thought", None):
+                                    # Thought summaries (only if include_thoughts is on) are not answer text.
+                                    continue
+                                p_text = getattr(part, "text", None)
+                                if p_text:
+                                    all_text_parts.append(p_text)
+                                    yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=p_text)
 
-                            p_fc = getattr(part, "function_call", None)
-                            if p_fc:
-                                fc_id = getattr(p_fc, "id", None) or str(uuid.uuid4())
-                                fc_name = getattr(p_fc, "name", "")
-                                fc_args = getattr(p_fc, "args", {})
-                                p_sig = getattr(part, "thought_signature", None)
-                                tc = ToolCall(
-                                    id=fc_id,
-                                    name=fc_name,
-                                    arguments=dict(fc_args) if isinstance(fc_args, dict) else {},
-                                    thought_signature=p_sig,
-                                )
-                                collected_tool_calls.append(tc)
-                                yield StreamEvent(event_type=StreamEventType.TOOL_CALL_DETECTED, tool_call=tc)
+                                p_fc = getattr(part, "function_call", None)
+                                if p_fc:
+                                    fc_id = getattr(p_fc, "id", None) or str(uuid.uuid4())
+                                    fc_name = getattr(p_fc, "name", "")
+                                    fc_args = getattr(p_fc, "args", {})
+                                    p_sig = getattr(part, "thought_signature", None)
+                                    tc = ToolCall(
+                                        id=fc_id,
+                                        name=fc_name,
+                                        arguments=dict(fc_args) if isinstance(fc_args, dict) else {},
+                                        thought_signature=p_sig,
+                                    )
+                                    collected_tool_calls.append(tc)
+                                    yield StreamEvent(event_type=StreamEventType.TOOL_CALL_DETECTED, tool_call=tc)
 
-                elif hasattr(chunk, "text") and chunk.text:
-                    all_text_parts.append(chunk.text)
-                    yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=chunk.text)
+                    elif hasattr(chunk, "text") and chunk.text:
+                        all_text_parts.append(chunk.text)
+                        yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=chunk.text)
+            except Exception as stream_exc:
+                if not getattr(self, "_injected_client", False) and is_retryable_error(stream_exc):
+                    self._client = None
+                if is_retryable_error(stream_exc) and not collected_tool_calls:
+                    stream_interrupted_exc = stream_exc
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        "Gemini SSE stream interrupted mid-turn (%s); attempting non-streaming generate_content recovery",
+                        stream_exc,
+                    )
+                else:
+                    raise
 
-            # Detect premature SSE stream truncation (e.g. proxy keepalive timeout during long functionCall
-            # generation where the stream closes before functionCall, finishReason, or usageMetadata arrive).
+            # Detect premature SSE stream truncation or mid-stream TLS/socket drop (e.g. SSLV3_ALERT_BAD_RECORD_MAC
+            # or proxy keepalive timeout during long functionCall generation).
             if (
-                finish_reason is None
-                and last_usage_metadata is None
-                and not collected_tool_calls
-                and self.backend == "valstorm"
+                stream_interrupted_exc is not None
+                or (
+                    finish_reason is None
+                    and last_usage_metadata is None
+                    and not collected_tool_calls
+                    and self.backend == "valstorm"
+                )
             ):
                 import logging
-                logging.getLogger(__name__).warning(
-                    "Valstorm SSE stream closed without finish_reason or usage_metadata; recovering via non-streaming generateContent"
-                )
+                if stream_interrupted_exc is None:
+                    logging.getLogger(__name__).warning(
+                        "Valstorm SSE stream closed without finish_reason or usage_metadata; recovering via non-streaming generateContent"
+                    )
                 try:
                     client = self._get_client()
                     config = self._build_config(system_instruction, gemini_tools, {**kwargs, "model": model_name})
@@ -890,17 +951,38 @@ class GeminiProvider(BaseProvider):
                         config=config,
                     )
                     recovered_msg, recovered_usage = self._parse_response(full_resp, model_name)
+                    emitted_so_far = "".join(all_text_parts)
                     if recovered_msg.tool_calls:
                         for tc in recovered_msg.tool_calls:
                             yield StreamEvent(event_type=StreamEventType.TOOL_CALL_DETECTED, tool_call=tc)
-                    elif recovered_msg.content and not all_text_parts:
-                        yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=recovered_msg.content)
+                    elif recovered_msg.content:
+                        if not emitted_so_far:
+                            yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=recovered_msg.content)
+                        elif recovered_msg.content.startswith(emitted_so_far):
+                            rem = recovered_msg.content[len(emitted_so_far):]
+                            if rem:
+                                yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta=rem)
+                        else:
+                            yield StreamEvent(
+                                event_type=StreamEventType.TEXT_CHUNK,
+                                delta=recovered_msg.content,
+                                metadata={"stream_reset": True},
+                            )
                     yield (recovered_msg, recovered_usage)
                     return
                 except Exception as rec_exc:
                     logging.getLogger(__name__).warning(
-                        "Non-streaming recovery after truncated SSE failed: %s", rec_exc
+                        "Non-streaming recovery after truncated/interrupted SSE failed: %s", rec_exc
                     )
+                    if stream_interrupted_exc is not None:
+                        if all_text_parts:
+                            # Signal consumer to reset partial text before execute_stream_with_retry retries
+                            yield StreamEvent(
+                                event_type=StreamEventType.TEXT_CHUNK,
+                                delta="",
+                                metadata={"stream_reset": True},
+                            )
+                        raise stream_interrupted_exc
                     finish_reason = "length"
 
             usage = UsageMetadata()
