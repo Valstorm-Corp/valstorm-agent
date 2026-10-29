@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 import re
 import shlex
+import subprocess
+import sys
 from typing import Any, Dict, List, Optional
 
 MAX_OUTPUT_BYTES = 16 * 1024  # 16 KB output truncation budget
@@ -24,6 +26,94 @@ MAX_OUTPUT_BYTES = 16 * 1024  # 16 KB output truncation budget
 # shell session) instead of silently resetting, which previously caused the agent to
 # believe it was in one directory while file tools edited another.
 _CWD_MARKER = "__VSAGENT_CWD__"
+
+_CACHED_WSL_DISTRO: Optional[str] = None
+
+
+def get_default_wsl_distro() -> str:
+    """Detects the default WSL distribution name on Windows (defaults to 'Ubuntu')."""
+    global _CACHED_WSL_DISTRO
+    if _CACHED_WSL_DISTRO:
+        return _CACHED_WSL_DISTRO
+    if sys.platform == "win32":
+        try:
+            res = subprocess.run(
+                ["wsl.exe", "-l", "-q"],
+                capture_output=True,
+                timeout=3,
+            )
+            if res.returncode == 0 and res.stdout:
+                raw = res.stdout.replace(b"\x00", b"").decode("utf-8", errors="ignore")
+                for line in raw.splitlines():
+                    cleaned = line.strip()
+                    if cleaned and not cleaned.lower().startswith("docker-desktop"):
+                        _CACHED_WSL_DISTRO = cleaned
+                        return cleaned
+        except Exception:
+            pass
+    _CACHED_WSL_DISTRO = os.environ.get("WSL_DISTRO_NAME") or "Ubuntu"
+    return _CACHED_WSL_DISTRO
+
+
+def translate_cross_os_path(raw_path: str, platform_override: Optional[str] = None) -> str:
+    """Translates paths seamlessly between Windows Host and WSL Linux Subsystem.
+
+    - On Linux/WSL:
+      - `\\\\wsl.localhost\\Ubuntu\\home\\user` -> `/home/user`
+      - `\\\\wsl$\\Ubuntu\\var\\www` -> `/var/www`
+      - `C:\\Users\\user\\project` -> `/mnt/c/Users/user/project`
+    - On Windows:
+      - `/mnt/c/Users/user/project` -> `C:\\Users\\user\\project`
+      - `/home/user/project` -> `\\\\wsl.localhost\\<distro>\\home\\user\\project`
+    """
+    if not raw_path or not isinstance(raw_path, str):
+        return raw_path
+
+    s = raw_path.strip()
+    plat = platform_override or sys.platform
+
+    if plat != "win32":
+        # 1. Check if a corrupted joined path contains \\wsl.localhost\ or \\wsl$\ inside it
+        wsl_unc_idx = -1
+        for marker in ("\\\\wsl.localhost\\", "\\\\wsl$\\", "//wsl.localhost/", "//wsl$/"):
+            idx = s.lower().find(marker)
+            if idx != -1:
+                wsl_unc_idx = idx
+                break
+        if wsl_unc_idx != -1:
+            s = s[wsl_unc_idx:]
+
+        # 2. Match \\wsl.localhost\<distro>\... or //wsl.localhost/<distro>/...
+        normalized_slashes = s.replace("\\", "/")
+        m_wsl = re.match(r"^//(?:wsl\.localhost|wsl\$)/([^/]+)(/.*)?$", normalized_slashes, re.IGNORECASE)
+        if m_wsl:
+            subpath = m_wsl.group(2) or "/"
+            return subpath if subpath.startswith("/") else f"/{subpath}"
+
+        # 3. Match Windows drive path C:\... or C:/...
+        m_drive = re.match(r"^([a-zA-Z]):[\\/](.*)$", s)
+        if m_drive:
+            drive = m_drive.group(1).lower()
+            rest = m_drive.group(2).replace("\\", "/")
+            return f"/mnt/{drive}/{rest}" if rest else f"/mnt/{drive}"
+
+        return s
+    else:
+        # Running on Windows (win32)
+        # 1. Match /mnt/<drive>/... -> <DRIVE>:\...
+        m_mnt = re.match(r"^/mnt/([a-zA-Z])(?:/(.*))?$", s)
+        if m_mnt:
+            drive = m_mnt.group(1).upper()
+            rest = (m_mnt.group(2) or "").replace("/", "\\")
+            return f"{drive}:\\{rest}"
+
+        # 2. Match Linux root path /... -> \\wsl.localhost\<distro>\...
+        if s.startswith("/") and not s.startswith("//"):
+            distro = get_default_wsl_distro()
+            rel = s.lstrip("/").replace("/", "\\")
+            return f"\\\\wsl.localhost\\{distro}\\{rel}" if rel else f"\\\\wsl.localhost\\{distro}"
+
+        return s
 
 
 def _truncate_output(text: str, max_bytes: int = MAX_OUTPUT_BYTES) -> str:
@@ -111,7 +201,8 @@ class BaseSandbox(ABC):
     def resolve_path(self, path: Optional[str]) -> Path:
         """Resolves a (possibly relative) path against the sandbox's current working directory."""
         cwd = getattr(self, "cwd", None)
-        p = Path(path or ".").expanduser()
+        translated = translate_cross_os_path(path or ".")
+        p = Path(translated).expanduser()
         if not p.is_absolute() and cwd is not None:
             p = Path(cwd) / p
         return p.resolve()
@@ -133,10 +224,19 @@ def resolve_default_workdir(base_dir: Optional[str] = None) -> Path:
     5. Isolated `~/.valstorm/workspace` directory (auto-created, zero macOS TCC prompts).
     """
     if base_dir and str(base_dir).strip():
-        return Path(str(base_dir).strip()).expanduser().resolve()
+        translated_base = translate_cross_os_path(str(base_dir).strip())
+        candidate = Path(translated_base).expanduser().resolve()
+        if candidate.is_dir() or not Path(str(base_dir).strip()).is_Absolute if hasattr(Path, "is_Absolute") else True:
+            # If translated candidate exists OR caller passed an explicit test/temp directory, return it;
+            # unless it was a stale cross-OS path that doesn't exist while cwd does.
+            if candidate.exists() or "/tmp" in str(candidate) or "pytest" in str(candidate):
+                return candidate
+            # Still return candidate if it looks like a valid absolute path on this OS
+            if not ("wsl.localhost" in str(candidate).lower() and sys.platform != "win32"):
+                return candidate
     env_dir = os.environ.get("VALSTORM_WORKSPACE_DIR", "").strip()
     if env_dir:
-        p = Path(env_dir).expanduser().resolve()
+        p = Path(translate_cross_os_path(env_dir)).expanduser().resolve()
         if p.is_dir():
             return p
     cwd = Path.cwd().resolve()
@@ -170,10 +270,11 @@ def resolve_default_workdir(base_dir: Optional[str] = None) -> Path:
 class HostSandbox(BaseSandbox):
     """Local host execution environment for Valstorm Desktop and local developer mode."""
 
-    def __init__(self, base_dir: Optional[str] = None):
+    def __init__(self, base_dir: Optional[str] = None, os_target: Optional[str] = None):
         self.base_dir = resolve_default_workdir(base_dir)
         # Session working directory: starts at base_dir and follows `cd` in terminal_exec.
         self.cwd = self.base_dir
+        self.os_target = (os_target or "").strip().lower() or None
         self._is_active = True
 
     async def start(self) -> None:
@@ -201,12 +302,25 @@ class HostSandbox(BaseSandbox):
         )
 
         try:
-            proc = await asyncio.create_subprocess_shell(
-                wrapped,
-                cwd=str(cwd),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
+            if sys.platform == "win32" and self.os_target == "linux":
+                linux_cwd = translate_cross_os_path(str(cwd), platform_override="linux")
+                proc = await asyncio.create_subprocess_exec(
+                    "wsl.exe",
+                    "--cd",
+                    linux_cwd,
+                    "bash",
+                    "-lc",
+                    wrapped,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+            else:
+                proc = await asyncio.create_subprocess_shell(
+                    wrapped,
+                    cwd=str(cwd),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
 
             try:
                 stdout_bytes, stderr_bytes = await asyncio.wait_for(

@@ -9,8 +9,11 @@ Provides fast, authenticated HTTP/2 access to Valstorm platform endpoints:
 """
 
 import contextvars
+from dataclasses import dataclass
 import json
 import os
+import re
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -18,14 +21,78 @@ import httpx
 
 from core.keystore import KeyStore
 
+
+@dataclass
+class TenantRuntimeContext:
+    """Active tenant execution context for memory, skill, and profile scoping."""
+    token: Optional[str] = None
+    base_url: Optional[str] = None
+    org_id: Optional[str] = None
+    user_id: Optional[str] = None
+    is_cloud_mode: bool = False
+    has_working_memory_injected: bool = False
+
+
 _current_valstorm_auth: contextvars.ContextVar[Optional[Tuple[str, str]]] = contextvars.ContextVar(
     "_current_valstorm_auth", default=None
 )
+_current_tenant_context: contextvars.ContextVar[Optional[TenantRuntimeContext]] = contextvars.ContextVar(
+    "_current_tenant_context", default=None
+)
 
 
-def set_current_valstorm_auth(token: Optional[str], base_url: Optional[str]) -> contextvars.Token:
-    """Sets the active scoped Valstorm credentials for the current async task/turn."""
-    return _current_valstorm_auth.set((token, base_url) if (token and base_url) else None)
+def get_current_tenant_context() -> Optional[TenantRuntimeContext]:
+    """Returns the active TenantRuntimeContext for the current async task/turn."""
+    return _current_tenant_context.get()
+
+
+def set_current_tenant_context(ctx: Optional[TenantRuntimeContext]) -> contextvars.Token:
+    """Sets the active TenantRuntimeContext for the current async task/turn."""
+    return _current_tenant_context.set(ctx)
+
+
+def set_current_valstorm_auth(
+    token: Optional[str],
+    base_url: Optional[str],
+    org_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    is_cloud_mode: Optional[bool] = None,
+    has_working_memory_injected: bool = False,
+) -> contextvars.Token:
+    """Sets the active scoped Valstorm credentials and TenantRuntimeContext for the current async task/turn."""
+    if not token and not base_url:
+        _current_tenant_context.set(None)
+        return _current_valstorm_auth.set(None)
+
+    effective_url = base_url or os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL") or "http://localhost:8010/v1"
+    resolved_org = org_id
+    resolved_user = user_id
+    if token and (not resolved_org or not resolved_user):
+        claims = decode_jwt_payload(token)
+        if isinstance(claims, dict):
+            if not resolved_org:
+                resolved_org = str(claims.get("organization_id") or claims.get("org_id") or "").strip() or None
+            if not resolved_user:
+                resolved_user = str(claims.get("user_id") or claims.get("id") or claims.get("sub") or "").strip() or None
+
+    if is_cloud_mode is None:
+        mode_env = os.environ.get("VALSTORM_AGENT_MODE", "host").strip().lower()
+        sb_env = os.environ.get("VALSTORM_DEFAULT_SANDBOX", "host").strip().lower()
+        resolved_cloud = mode_env == "cloud" or sb_env in ("cloud", "e2b", "serverless")
+    else:
+        resolved_cloud = bool(is_cloud_mode)
+
+    _current_tenant_context.set(
+        TenantRuntimeContext(
+            token=token,
+            base_url=effective_url,
+            org_id=resolved_org,
+            user_id=resolved_user,
+            is_cloud_mode=resolved_cloud,
+            has_working_memory_injected=bool(has_working_memory_injected),
+        )
+    )
+    return _current_valstorm_auth.set((token, effective_url) if (token and effective_url) else None)
 
 
 def get_current_valstorm_auth() -> Optional[Tuple[str, str]]:
@@ -891,6 +958,100 @@ class ValstormApiClient:
 
         return await self.records_create("list_filter", [record_payload])
 
+    @staticmethod
+    def _build_chart_settings(
+        title: str,
+        chart_type: str = "Bar",
+        x_field: Optional[str] = None,
+        y_field: Optional[str] = None,
+        aggregation: str = "Count",
+        group_by_time: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Builds a complete chart_settings dictionary matching @monorepo/charts baseSettings."""
+        color_wheel = [
+            "#FFB6C1", "#f68877", "#f6a577", "#f6b177", "#f6c377",
+            "#f6dc77", "#f6f477", "#dff677", "#c6f677", "#a2f677",
+            "#86f677", "#77f689", "#77f6ab", "#77f6c6", "#77f6df",
+            "#77f1f6", "#77e5f6", "#77caf6", "#77b1f6", "#7799f6",
+            "#7780f6", "#9377f6", "#ba77f6", "#d677f6", "#ee77f6",
+            "#f677df", "#f677ab",
+        ]
+        x_key = (x_field or "created_date").strip()
+        y_key = (y_field or x_field or "name").strip()
+        field_key = (x_field or y_field or "name").strip()
+        agg_norm = (aggregation or "Count").strip().title()
+        dt_group = group_by_time or "Month"
+
+        x_entry: Dict[str, Any] = {
+            "key": x_key,
+            "label": x_key.replace("_", " ").title(),
+        }
+        if group_by_time:
+            x_entry["groupByDateTime"] = group_by_time
+
+        y_entry: Dict[str, Any] = {
+            "key": y_key,
+            "label": y_key.replace("_", " ").title(),
+            "aggregate": agg_norm,
+        }
+        if agg_norm.lower() == "cumulative":
+            y_entry["cumulative"] = True
+
+        field_entry: Dict[str, Any] = {
+            "key": field_key,
+            "label": field_key.replace("_", " ").title(),
+            "aggregate": "Count" if agg_norm == "Value" else agg_norm,
+        }
+        if group_by_time:
+            field_entry["groupByDateTime"] = group_by_time
+
+        return {
+            "chartType": chart_type,
+            "title": title,
+            "xLabel": x_key.replace("_", " ").title() if x_field else "",
+            "yLabel": y_key.replace("_", " ").title() if y_field else "",
+            "x": [x_entry],
+            "y": [y_entry],
+            "field": [field_entry],
+            "plots": [],
+            "xAxisType": "auto",
+            "yAxisType": "auto",
+            "mainToggle": True,
+            "barValues": True,
+            "barColors": False,
+            "labels": True,
+            "xAxisInvert": False,
+            "yAxisInvert": False,
+            "linesH": True,
+            "linesV": True,
+            "averageLine": False,
+            "colorWheel": color_wheel,
+            "aggregate": agg_norm,
+            "summarizeBy": agg_norm.lower(),
+            "groupByDateTime": dt_group,
+            "guageLowSeg": {"value": 20, "color": "#FF0000"},
+            "guageMidSeg": {"value": 40, "color": "#FFFF00"},
+            "guageHighSeg": {"value": 60, "color": "#00FF00"},
+        }
+
+    @staticmethod
+    def _build_report_query_config(sql_query: str, object_api_name: str) -> Dict[str, Any]:
+        """Builds a report query dictionary compatible with both Dashboard.tsx and ReportPageSQL.tsx."""
+        clean_sql = sql_query.strip()
+        return {
+            "sql_query": clean_sql,
+            "query": clean_sql,
+            "query_mode": "Custom SQL",
+            "ui_configuration": {
+                "select": ["*"],
+                "from": object_api_name,
+                "where": {"logical_operator": "AND", "rules": []},
+                "order_by": [],
+                "limit": 10000,
+                "offset": 0,
+            },
+        }
+
     async def generate_report(
         self,
         name: str,
@@ -905,34 +1066,22 @@ class ValstormApiClient:
     ) -> Dict[str, Any]:
         """Creates and persists a report record with chart_settings and query configuration."""
         schema_info = await self.schema_get(object_api_name)
-        schema_id = schema_info.get("id") or object_api_name
+        schema_id = (schema_info.get("id") if isinstance(schema_info, dict) else None) or object_api_name
 
-        chart_settings: Dict[str, Any] = {
-            "chartType": chart_type,
-            "groupByDateTime": group_by_time,
-        }
-        if x_field:
-            chart_settings["x"] = [{"key": x_field, "label": x_field.replace("_", " ").title()}]
-        if y_field:
-            chart_settings["y"] = [{
-                "key": y_field,
-                "label": y_field.replace("_", " ").title(),
-                "aggregate": aggregation
-            }]
-        elif chart_type.lower() in ("donut", "pie", "funnel") and x_field:
-            chart_settings["field"] = [{
-                "key": x_field,
-                "label": x_field.replace("_", " ").title(),
-                "aggregate": aggregation
-            }]
+        chart_settings = self._build_chart_settings(
+            title=name,
+            chart_type=chart_type,
+            x_field=x_field,
+            y_field=y_field,
+            aggregation=aggregation,
+            group_by_time=group_by_time,
+        )
+        query_config = self._build_report_query_config(sql_query=sql_query, object_api_name=object_api_name)
 
         report_payload = {
             "name": name,
             "object": schema_id,
-            "query": {
-                "sql_query": sql_query,
-                "query_mode": "SQL",
-            },
+            "query": query_config,
             "chart_settings": chart_settings,
             "standard": False,
         }
@@ -940,6 +1089,222 @@ class ValstormApiClient:
             report_payload["app"] = app_id
 
         return await self.records_create("report", [report_payload])
+
+    async def generate_dashboard(
+        self,
+        name: str,
+        widgets: List[Dict[str, Any]],
+        app_id: Optional[str] = None,
+        dashboard_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Creates (or updates) a native Valstorm dashboard record and its underlying report widgets.
+
+        Automatically packs widgets onto the 12-column responsive grid (react-grid-layout)
+        and links each tile to a persisted report record or VFS file.
+        """
+        schema_cache: Dict[str, str] = {}
+        layout: List[Dict[str, Any]] = []
+        layout_items: List[Dict[str, Any]] = []
+        created_reports: List[Dict[str, Any]] = []
+
+        cur_x = 0
+        cur_y = 0
+        row_max_h = 0
+
+        for idx, w_cfg in enumerate(widgets or []):
+            if not isinstance(w_cfg, dict):
+                continue
+
+            chart_type = str(w_cfg.get("chart_type") or w_cfg.get("chartType") or "Bar").strip()
+            size_preset = str(w_cfg.get("size") or "").strip().lower()
+
+            if size_preset in ("kpi", "metric", "small", "quarter") or (
+                not size_preset and chart_type.lower() in ("metric", "guage", "gauge")
+            ):
+                default_w, default_h = 3, 3
+            elif size_preset in ("third", "medium"):
+                default_w, default_h = 4, 5
+            elif size_preset in ("full", "wide", "banner"):
+                default_w, default_h = 12, 6
+            else:
+                default_w, default_h = 6, 6
+
+            w = max(1, min(12, int(w_cfg.get("w") or default_w)))
+            h = max(1, int(w_cfg.get("h") or default_h))
+
+            if w_cfg.get("x") is not None and w_cfg.get("y") is not None:
+                x = max(0, min(11, int(w_cfg["x"])))
+                y = max(0, int(w_cfg["y"]))
+                cur_x = 0 if (x + w) >= 12 else (x + w)
+                cur_y = y + (h if (x + w) >= 12 else 0)
+                row_max_h = max(row_max_h, h)
+            else:
+                if cur_x + w > 12:
+                    cur_x = 0
+                    cur_y += row_max_h
+                    row_max_h = 0
+                x = cur_x
+                y = cur_y
+                cur_x += w
+                row_max_h = max(row_max_h, h)
+
+            item_key = str(w_cfg.get("i") or f"c-{idx}")
+            layout.append({
+                "i": item_key,
+                "x": x,
+                "y": y,
+                "w": w,
+                "h": h,
+                "moved": False,
+                "static": False,
+            })
+
+            # Case 1: VFS File Widget (e.g. SVG / custom card)
+            if w_cfg.get("file_id") or str(w_cfg.get("object") or "").lower() == "file":
+                file_id = str(w_cfg.get("file_id") or w_cfg.get("id") or "").replace("cloud://", "").strip()
+                component = {
+                    "id": file_id,
+                    "object": "File",
+                    "dashboardId": f"dash_file_{uuid.uuid4().hex[:12]}",
+                }
+                layout_items.append({"i": item_key, "component": component})
+                continue
+
+            # Case 2: Existing or Inline Report Widget
+            report_id = str(w_cfg.get("report_id") or w_cfg.get("id") or "").strip()
+            widget_title = str(w_cfg.get("title") or w_cfg.get("name") or f"Widget {idx + 1}").strip()
+            sql_query = str(
+                w_cfg.get("sql_query")
+                or (w_cfg.get("query", {}).get("sql_query") if isinstance(w_cfg.get("query"), dict) else w_cfg.get("query"))
+                or ""
+            ).strip()
+            object_api_name = str(w_cfg.get("object_api_name") or w_cfg.get("object") or "").strip()
+
+            existing_report: Optional[Dict[str, Any]] = None
+            if report_id and not sql_query:
+                try:
+                    q_res = await self.sql_query(f"SELECT * FROM report WHERE id = '{report_id}' LIMIT 1")
+                    recs = q_res.get("records", []) if isinstance(q_res, dict) else q_res
+                    if isinstance(recs, list) and recs:
+                        existing_report = recs[0]
+                except Exception:
+                    existing_report = None
+
+            if existing_report:
+                rep_obj = existing_report.get("object")
+                schema_id = rep_obj.get("id") if isinstance(rep_obj, dict) else str(rep_obj or "")
+                rep_query = existing_report.get("query") or {}
+                if isinstance(rep_query, dict):
+                    sql_str = rep_query.get("sql_query") or rep_query.get("query") or ""
+                    query_config = {
+                        **rep_query,
+                        "sql_query": sql_str,
+                        "query": sql_str,
+                    }
+                else:
+                    query_config = self._build_report_query_config(str(rep_query), object_api_name or "lead")
+                chart_settings = dict(existing_report.get("chart_settings") or {})
+                if w_cfg.get("title") or w_cfg.get("name"):
+                    chart_settings["title"] = widget_title
+                    chart_settings["labels"] = True
+            else:
+                if not object_api_name and sql_query:
+                    m = re.search(r"FROM\s+(\w+)", sql_query, re.IGNORECASE)
+                    if m:
+                        object_api_name = m.group(1)
+                if not object_api_name:
+                    object_api_name = "lead"
+                if not sql_query:
+                    sql_query = f"SELECT * FROM {object_api_name} LIMIT 10000"
+
+                if object_api_name.startswith("obj_"):
+                    schema_id = object_api_name
+                elif object_api_name in schema_cache:
+                    schema_id = schema_cache[object_api_name]
+                else:
+                    schema_info = await self.schema_get(object_api_name)
+                    schema_id = (
+                        (schema_info.get("id") if isinstance(schema_info, dict) else None)
+                        or object_api_name
+                    )
+                    schema_cache[object_api_name] = schema_id
+
+                x_field = w_cfg.get("x_field") or w_cfg.get("x")
+                if isinstance(x_field, list) and x_field and isinstance(x_field[0], dict):
+                    x_field = x_field[0].get("key")
+                y_field = w_cfg.get("y_field") or w_cfg.get("y")
+                if isinstance(y_field, list) and y_field and isinstance(y_field[0], dict):
+                    y_field = y_field[0].get("key")
+                aggregation = str(w_cfg.get("aggregation") or w_cfg.get("aggregate") or "Count").strip()
+                group_by_time = w_cfg.get("group_by_time") or w_cfg.get("groupByDateTime")
+
+                chart_settings = self._build_chart_settings(
+                    title=widget_title,
+                    chart_type=chart_type,
+                    x_field=str(x_field).strip() if x_field else None,
+                    y_field=str(y_field).strip() if y_field else None,
+                    aggregation=aggregation,
+                    group_by_time=str(group_by_time).strip() if group_by_time else None,
+                )
+                query_config = self._build_report_query_config(
+                    sql_query=sql_query,
+                    object_api_name=object_api_name,
+                )
+
+                if not report_id:
+                    report_payload: Dict[str, Any] = {
+                        "name": widget_title,
+                        "object": schema_id,
+                        "query": query_config,
+                        "chart_settings": chart_settings,
+                        "standard": False,
+                    }
+                    if app_id:
+                        report_payload["app"] = app_id
+                    rep_res = await self.records_create("report", [report_payload])
+                    if isinstance(rep_res, list) and rep_res and isinstance(rep_res[0], dict):
+                        report_id = str(rep_res[0].get("id") or "")
+                    elif isinstance(rep_res, dict):
+                        report_id = str(rep_res.get("id") or "")
+                    if report_id:
+                        created_reports.append({"id": report_id, "name": widget_title})
+
+            component = {
+                "id": report_id,
+                "dashboardId": str(w_cfg.get("dashboardId") or f"dash_widget_{uuid.uuid4().hex[:12]}"),
+                "object": schema_id,
+                "schema": schema_id,
+                "settings": chart_settings,
+                "query": query_config,
+            }
+            layout_items.append({"i": item_key, "component": component})
+
+        dashboard_payload: Dict[str, Any] = {
+            "name": name,
+            "layout": layout,
+            "layout_items": layout_items,
+        }
+        if app_id:
+            dashboard_payload["app"] = app_id
+
+        if dashboard_id:
+            dashboard_payload["id"] = dashboard_id.strip()
+            dash_res = await self.records_update("dashboard", [dashboard_payload])
+        else:
+            dash_res = await self.records_create("dashboard", [dashboard_payload])
+
+        dash_record = dash_res[0] if isinstance(dash_res, list) and dash_res else dash_res
+        resolved_dash_id = (
+            dash_record.get("id") if isinstance(dash_record, dict) else dashboard_id
+        )
+        return {
+            "id": resolved_dash_id,
+            "name": name,
+            "url": f"/view/dashboard/record/{resolved_dash_id}/standard" if resolved_dash_id else None,
+            "widgets_count": len(layout_items),
+            "reports_created": created_reports,
+            "dashboard": dash_record,
+        }
 
     # ==========================================
     # 5. Scheduling, Cron Loops & Drip Cadences

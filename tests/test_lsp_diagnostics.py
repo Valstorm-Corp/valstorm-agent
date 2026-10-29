@@ -1,16 +1,26 @@
 """Tests for the LSP and Compiler Diagnostics subsystem."""
 
+import asyncio
 import os
 from pathlib import Path
+import subprocess
+import sys
 import pytest
 
 from core.lsp.diagnostics import (
+    SingleFlightGate,
+    VALSTORM_DIAGNOSTIC_ENV_VAR,
+    _find_bin,
+    _run_command,
     check_go_diagnostics,
     check_json_syntax,
     check_python_syntax,
     check_rust_diagnostics,
+    check_typescript_syntax,
     check_yaml_syntax,
+    cleanup_stale_diagnostic_processes,
     get_file_diagnostics,
+    kill_process_tree,
 )
 from tools.developer_tools import patch_file, write_file
 
@@ -136,3 +146,181 @@ async def test_lsp_disabled_flag(tmp_path: Path, monkeypatch):
     result = await write_file(str(target), "def broken(\n")
     assert "Successfully wrote" in result
     assert "[LSP Compiler Diagnostics]" not in result
+
+
+# ====================================================================
+# Comprehensive Stale TSC & Process Exhaustion Prevention Tests
+# ====================================================================
+
+
+@pytest.mark.asyncio
+async def test_run_command_kills_process_on_timeout(tmp_path: Path):
+    """Verify that when a compiler/check times out, the process is killed immediately."""
+    pid_file = tmp_path / "child.pid"
+    script = (
+        "import os, time; "
+        f"open(r'{pid_file}', 'w').write(str(os.getpid())); "
+        "time.sleep(30)"
+    )
+
+    out = await _run_command([sys.executable, "-c", script], timeout_sec=0.3)
+    assert out is None
+
+    await asyncio.sleep(0.2)
+    assert pid_file.exists()
+    child_pid = int(pid_file.read_text().strip())
+
+    # Verify process was terminated and is no longer running
+    alive = False
+    try:
+        os.kill(child_pid, 0)
+        alive = True
+    except OSError:
+        alive = False
+
+    assert not alive, f"Subprocess {child_pid} was not killed on timeout and remained orphaned!"
+
+
+@pytest.mark.asyncio
+async def test_run_command_kills_process_on_cancellation(tmp_path: Path):
+    """Verify that when the outer coroutine is cancelled (e.g. user aborts turn), the process is killed."""
+    pid_file = tmp_path / "child_cancel.pid"
+    script = (
+        "import os, time; "
+        f"open(r'{pid_file}', 'w').write(str(os.getpid())); "
+        "time.sleep(30)"
+    )
+
+    task = asyncio.create_task(_run_command([sys.executable, "-c", script], timeout_sec=10.0))
+    await asyncio.sleep(0.25)
+    assert pid_file.exists()
+    child_pid = int(pid_file.read_text().strip())
+
+    # Cancel task externally
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    await asyncio.sleep(0.2)
+    alive = False
+    try:
+        os.kill(child_pid, 0)
+        alive = True
+    except OSError:
+        alive = False
+
+    assert not alive, f"Subprocess {child_pid} was not killed on cancellation!"
+
+
+@pytest.mark.asyncio
+async def test_single_flight_gate_preempts_older_checks():
+    """Verify SingleFlightGate cancels prior in-flight checks for the same workspace."""
+    gate = SingleFlightGate()
+    log = []
+
+    async def mock_check(name: str, delay: float):
+        log.append(f"start_{name}")
+        await asyncio.sleep(delay)
+        log.append(f"finish_{name}")
+        return f"result_{name}"
+
+    # Start check 1 (slow)
+    t1 = asyncio.create_task(gate.run("workspace_a", mock_check, "1", 0.4))
+    await asyncio.sleep(0.05)
+
+    # Start check 2 for same workspace (should cancel check 1)
+    t2 = asyncio.create_task(gate.run("workspace_a", mock_check, "2", 0.05))
+
+    res2 = await t2
+    assert res2 == "result_2"
+
+    assert "start_1" in log
+    assert "finish_1" not in log, "Check 1 should have been cancelled before completing!"
+    assert "start_2" in log
+    assert "finish_2" in log
+
+
+@pytest.mark.asyncio
+async def test_cleanup_stale_diagnostic_processes(tmp_path: Path):
+    """Verify cleanup_stale_diagnostic_processes reaps orphaned processes with diagnostic env marker."""
+    env = os.environ.copy()
+    env[VALSTORM_DIAGNOSTIC_ENV_VAR] = "1"
+    proc = await asyncio.create_subprocess_exec(
+        sys.executable, "-c", "import time; time.sleep(30)",
+        env=env,
+        start_new_session=True,
+    )
+    pid = proc.pid
+
+    try:
+        await asyncio.sleep(0.15)
+        reaped = cleanup_stale_diagnostic_processes()
+        assert pid in reaped
+
+        await asyncio.sleep(0.15)
+        alive = False
+        try:
+            os.kill(pid, 0)
+            alive = True
+        except OSError:
+            alive = False
+        assert not alive, f"Reaper did not terminate stale diagnostic process {pid}!"
+    finally:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
+
+def test_find_bin_traverses_parent_directories(tmp_path: Path):
+    """Verify _find_bin traverses monorepo parent directories to find hoisted binaries."""
+    root = tmp_path / "monorepo"
+    bin_dir = root / "node_modules" / ".bin"
+    bin_dir.mkdir(parents=True)
+    fake_esbuild = bin_dir / "esbuild"
+    fake_esbuild.write_text("#!/bin/sh\necho 1\n")
+    fake_esbuild.chmod(0o755)
+
+    deep_subpkg = root / "apps" / "valstorm-desktop" / "src" / "components"
+    deep_subpkg.mkdir(parents=True)
+
+    found = _find_bin("esbuild", deep_subpkg)
+    assert found == str(fake_esbuild)
+
+
+@pytest.mark.asyncio
+async def test_check_typescript_syntax_with_mock_esbuild(tmp_path: Path):
+    """Verify check_typescript_syntax correctly identifies errors using esbuild."""
+    bin_dir = tmp_path / "node_modules" / ".bin"
+    bin_dir.mkdir(parents=True)
+    fake_esbuild = bin_dir / "esbuild"
+    fake_esbuild.write_text(
+        "#!/bin/sh\n"
+        "echo 'X [ERROR] Unexpected token: Unclosed JSX element in Component.tsx:14:1'\n"
+        "exit 1\n"
+    )
+    fake_esbuild.chmod(0o755)
+
+    comp_file = tmp_path / "Component.tsx"
+    comp_file.write_text("export const Component = () => <div>;\n", encoding="utf-8")
+
+    errors = await check_typescript_syntax(comp_file)
+    assert errors is not None
+    assert len(errors) >= 1
+    assert "Unexpected token" in errors[0]
+
+
+@pytest.mark.asyncio
+async def test_check_typescript_syntax_clean_file(tmp_path: Path):
+    """Verify check_typescript_syntax returns None on clean file."""
+    bin_dir = tmp_path / "node_modules" / ".bin"
+    bin_dir.mkdir(parents=True)
+    fake_esbuild = bin_dir / "esbuild"
+    fake_esbuild.write_text("#!/bin/sh\nexit 0\n")
+    fake_esbuild.chmod(0o755)
+
+    comp_file = tmp_path / "Clean.tsx"
+    comp_file.write_text("export const Clean = () => <div>Hello</div>;\n", encoding="utf-8")
+
+    errors = await check_typescript_syntax(comp_file)
+    assert errors is None

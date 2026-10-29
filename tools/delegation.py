@@ -13,11 +13,19 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import re
 import time
 from typing import Any, Dict, List, Literal, Optional
 import uuid
 
-from core.context import BUILTIN_PROFILES, WorkspaceContextManager, list_available_profiles, load_profile
+from core.context import (
+    BUILTIN_PROFILES,
+    WorkspaceContextManager,
+    get_current_profile,
+    invalidate_tenant_profiles_cache,
+    list_available_profiles,
+    load_profile,
+)
 from core.keystore import KeyStore
 from core.models import Message, SessionState, ToolCall, ToolResult
 from core.tools import ToolRegistry, get_default_registry, tool
@@ -72,13 +80,31 @@ def set_subagent_provider_override(provider: Optional[Any]) -> None:
 
 
 def _get_subagent_provider(provider_name: str, api_key: Optional[str] = None) -> Optional[Any]:
-    """Resolves provider instance for subagent execution."""
+    """Resolves provider instance for subagent execution, supporting both direct keys and Valstorm gateway auth."""
     if _SUBAGENT_PROVIDER_OVERRIDE is not None:
         return _SUBAGENT_PROVIDER_OVERRIDE
 
     keystore = KeyStore()
     p_name = (provider_name or "gemini").lower()
     resolved_key = keystore.get_api_key(p_name, override_key=api_key)
+    clean_valstorm_base = None
+
+    try:
+        from tools.valstorm_client import get_current_valstorm_auth
+        scoped_auth = get_current_valstorm_auth()
+    except Exception:
+        scoped_auth = None
+
+    if p_name in ("valstorm", "hosted", "managed") and scoped_auth and scoped_auth[0]:
+        p_name = "valstorm"
+        resolved_key = scoped_auth[0]
+        base = (scoped_auth[1] or "").rstrip("/")
+        if base:
+            if base.endswith("/ai"):
+                base = base[:-3].rstrip("/")
+            if not base.endswith("/v1") and "/v1" not in base:
+                base = f"{base}/v1"
+            clean_valstorm_base = f"{base}/ai"
 
     if not resolved_key:
         for fallback in ["gemini", "digitalocean", "openai", "anthropic"]:
@@ -88,6 +114,17 @@ def _get_subagent_provider(provider_name: str, api_key: Optional[str] = None) ->
                 p_name = fallback
                 break
 
+    if not resolved_key and scoped_auth and scoped_auth[0]:
+        p_name = "valstorm"
+        resolved_key = scoped_auth[0]
+        base = (scoped_auth[1] or "").rstrip("/")
+        if base:
+            if base.endswith("/ai"):
+                base = base[:-3].rstrip("/")
+            if not base.endswith("/v1") and "/v1" not in base:
+                base = f"{base}/v1"
+            clean_valstorm_base = f"{base}/ai"
+
     if not resolved_key:
         return None
 
@@ -95,6 +132,8 @@ def _get_subagent_provider(provider_name: str, api_key: Optional[str] = None) ->
     return build_fallback_chain(
         primary_provider=p_name,
         keystore=keystore,
+        api_key=resolved_key if p_name == "valstorm" else None,
+        base_url=clean_valstorm_base if p_name == "valstorm" else None,
     )
 
 
@@ -651,13 +690,430 @@ async def subagent_manage(
     )
 
 
+def _get_all_known_tool_names() -> set[str]:
+    """Returns the complete set of valid runtime tool names for profile validation."""
+    known: set[str] = {
+        "delegate_task",
+        "subagent_manage",
+        "agent_manage",
+        "skill_manage",
+        "skill_view",
+        "skill_list",
+    }
+    for prof in BUILTIN_PROFILES.values():
+        for t_name in prof.get("allowed_tools", []):
+            known.add(str(t_name))
+    try:
+        reg = _build_base_subagent_tool_registry()
+        for t_name in reg.list_tools():
+            known.add(str(t_name))
+    except Exception:
+        pass
+    return known
+
+
+def _resolve_writable_profiles_dir() -> Path:
+    """Resolves the writable directory for saving custom profile JSON files on disk."""
+    custom = os.environ.get("VALSTORM_PROFILES_DIR")
+    if custom and custom.strip():
+        p = Path(custom).expanduser().resolve()
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+    prof_dir = (Path.home() / ".valstorm" / "profiles").resolve()
+    prof_dir.mkdir(parents=True, exist_ok=True)
+    return prof_dir
+
+
+async def _persist_agent_to_cloud(
+    record_payload: Dict[str, Any],
+    existing_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Creates or updates an `ai_agent` record in the authenticated tenant's MongoDB."""
+    try:
+        from tools.valstorm_client import ValstormApiClient, get_current_valstorm_auth
+        scoped_auth = get_current_valstorm_auth()
+    except Exception:
+        scoped_auth = None
+
+    if not scoped_auth or not scoped_auth[0] or not scoped_auth[1]:
+        return None
+
+    token, base_url = scoped_auth
+    try:
+        async with ValstormApiClient(token=token, base_url=base_url) as client:
+            if existing_id:
+                upd = dict(record_payload)
+                upd["id"] = existing_id
+                res = await client.records_update("ai_agent", [upd])
+            else:
+                res = await client.records_create("ai_agent", [record_payload])
+            if isinstance(res, list) and res:
+                return res[0] if isinstance(res[0], dict) else {"id": existing_id}
+            if isinstance(res, dict):
+                recs = res.get("records") or res.get("data")
+                if isinstance(recs, list) and recs and isinstance(recs[0], dict):
+                    return recs[0]
+                return res
+    except Exception:
+        pass
+    return None
+
+
+async def _delete_agent_from_cloud(record_id: str) -> bool:
+    """Deletes an `ai_agent` record from the authenticated tenant's MongoDB."""
+    if not record_id:
+        return False
+    try:
+        from tools.valstorm_client import ValstormApiClient, get_current_valstorm_auth
+        scoped_auth = get_current_valstorm_auth()
+    except Exception:
+        scoped_auth = None
+
+    if not scoped_auth or not scoped_auth[0] or not scoped_auth[1]:
+        return False
+
+    token, base_url = scoped_auth
+    try:
+        async with ValstormApiClient(token=token, base_url=base_url) as client:
+            await client.records_delete("ai_agent", [record_id])
+            return True
+    except Exception:
+        return False
+
+
+async def execute_agent_mutation(
+    action: str,
+    slug: Optional[str] = None,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    system_prompt: Optional[str] = None,
+    model: Optional[str] = None,
+    model_tier: Optional[str] = None,
+    provider: Optional[str] = None,
+    reasoning_effort: Optional[str] = None,
+    allowed_tools: Optional[List[str]] = None,
+    skill_slugs: Optional[List[str]] = None,
+    tags: Optional[List[str]] = None,
+    vaults: Optional[List[str]] = None,
+    scoped_paths: Optional[List[str]] = None,
+    max_turns: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Executes a validated agent profile mutation and returns a structured receipt."""
+    act = (action or "").strip().lower()
+    if act not in ("create", "update", "attach_skills", "detach_skills", "delete", "list"):
+        return {
+            "status": "error",
+            "message": (
+                f"Error: Invalid action '{action}'. Must be one of: "
+                "'create', 'update', 'attach_skills', 'detach_skills', 'delete', 'list'."
+            ),
+        }
+
+    if act == "list":
+        profs = list_available_profiles()
+        lines = [f"🤖 Available Agent Profiles ({len(profs)} total):"]
+        for p in profs:
+            p_slug = p.get("api_name") or "unknown"
+            p_name = p.get("name") or p_slug
+            p_tools = len(p.get("allowed_tools") or [])
+            p_skills = p.get("attached_skill_slugs") or []
+            skills_str = f" | skills: [{', '.join(p_skills[:4])}]" if p_skills else ""
+            lines.append(f"• {p_slug} ({p_name}) — {p_tools} tools{skills_str}")
+        return {"status": "success", "action": "list", "profiles": profs, "message": "\n".join(lines)}
+
+    clean_slug = re.sub(r"[^a-z0-9\-]", "-", (slug or name or "").strip().lower().replace("_", "-").replace(" ", "-").strip("-"))
+    if not clean_slug or len(clean_slug) < 2:
+        return {"status": "error", "message": "Error: A valid kebab-case profile `slug` is required."}
+
+    try:
+        from tools.valstorm_client import get_current_tenant_context
+        ctx = get_current_tenant_context()
+    except Exception:
+        ctx = None
+
+    is_cloud_mode = bool(ctx and ctx.is_cloud_mode)
+    org_id = ctx.org_id if ctx else None
+
+    all_profs = list_available_profiles()
+    existing = next((p for p in all_profs if str(p.get("api_name", "")).lower() == clean_slug), None)
+
+    # 1. Handle DELETE
+    if act == "delete":
+        if clean_slug in BUILTIN_PROFILES:
+            return {
+                "status": "error",
+                "message": f"Error: Profile '{clean_slug}' is a built-in core profile and cannot be deleted.",
+            }
+        if not existing:
+            return {"status": "error", "message": f"Error: Profile '{clean_slug}' not found."}
+
+        prof_dir = _resolve_writable_profiles_dir()
+        disk_file = prof_dir / f"{clean_slug}.json"
+        deleted_disk = False
+        if disk_file.is_file():
+            disk_file.unlink()
+            deleted_disk = True
+
+        deleted_cloud = False
+        if existing.get("id"):
+            deleted_cloud = await _delete_agent_from_cloud(str(existing["id"]))
+
+        invalidate_tenant_profiles_cache(org_id)
+        return {
+            "status": "success",
+            "action": "delete",
+            "slug": clean_slug,
+            "deleted_disk": deleted_disk,
+            "deleted_cloud": deleted_cloud,
+            "message": f"Deleted agent profile '{clean_slug}'.",
+        }
+
+    # 2. Validate allowed_tools & enforce privilege escalation guard
+    if allowed_tools is not None:
+        known_tools = _get_all_known_tool_names()
+        unknown = [t for t in allowed_tools if t not in known_tools]
+        if unknown:
+            return {
+                "status": "error",
+                "message": (
+                    f"Error: Unknown tool name(s) in `allowed_tools`: {', '.join(unknown)}. "
+                    f"Only registered runtime tools may be assigned to an agent profile."
+                ),
+            }
+
+        caller_prof = get_current_profile()
+        if caller_prof and isinstance(caller_prof.get("allowed_tools"), list):
+            caller_slug = str(caller_prof.get("api_name") or "").lower()
+            if caller_slug not in ("chief-of-staff", "orchestrator"):
+                caller_allowed = set(caller_prof["allowed_tools"])
+                escalated = [t for t in allowed_tools if t not in caller_allowed]
+                if escalated:
+                    return {
+                        "status": "error",
+                        "message": (
+                            f"Error: Privilege escalation blocked. Active profile '{caller_slug}' "
+                            f"cannot grant tool(s) outside its own whitelist: {', '.join(escalated)}."
+                        ),
+                    }
+
+    # 3. Build skill slug -> cloud ID map
+    try:
+        from tools.skill_tool import _index_all_skills
+        indexed_skills = await asyncio.to_thread(_index_all_skills)
+        slug_to_skill_id = {s["slug"]: s.get("id") for s in indexed_skills if s.get("slug")}
+    except Exception:
+        slug_to_skill_id = {}
+
+    if act in ("attach_skills", "detach_skills"):
+        if not existing:
+            return {"status": "error", "message": f"Error: Profile '{clean_slug}' not found."}
+        current_skills = list(existing.get("attached_skill_slugs") or [])
+        target_slugs = [str(s).strip().lower() for s in (skill_slugs or []) if str(s).strip()]
+        if act == "attach_skills":
+            for s in target_slugs:
+                if s not in current_skills:
+                    current_skills.append(s)
+        else:
+            current_skills = [s for s in current_skills if s not in target_slugs]
+        updated_prof = dict(existing)
+        updated_prof["attached_skill_slugs"] = current_skills
+    else:
+        # create or update
+        base_prof = dict(existing) if existing else {}
+        eff_name = (name or base_prof.get("name") or clean_slug.replace("-", " ").title()).strip()
+        eff_desc = (description if description is not None else (base_prof.get("description") or f"Specialist agent for {eff_name}.")).strip()
+        eff_prompt = (system_prompt if system_prompt is not None else (base_prof.get("system_prompt") or f"You are {eff_name}.")).strip()
+        eff_provider = (provider or base_prof.get("provider") or "valstorm").strip().lower()
+        eff_model = (model or base_prof.get("model") or "gemini-flash-latest").strip()
+        eff_tier = (model_tier or base_prof.get("model_tier") or "tier_2").strip()
+        eff_effort = reasoning_effort if reasoning_effort is not None else base_prof.get("reasoning_effort", "medium")
+        eff_tools = (
+            list(allowed_tools)
+            if allowed_tools is not None
+            else list(base_prof.get("allowed_tools") or ["valstorm_sql_query", "skill_view", "skill_list", "calculator"])
+        )
+        eff_skills = (
+            [str(s).strip().lower() for s in skill_slugs if str(s).strip()]
+            if skill_slugs is not None
+            else list(base_prof.get("attached_skill_slugs") or [])
+        )
+        eff_tags = list(tags) if tags is not None else list(base_prof.get("tag") or [])
+        eff_vaults = list(vaults) if vaults is not None else list(base_prof.get("knowledge_vaults") or base_prof.get("vaults") or [])
+        eff_paths = list(scoped_paths) if scoped_paths is not None else list(base_prof.get("scoped_paths") or [])
+        eff_turns = int(max_turns or base_prof.get("max_turns") or 25)
+
+        updated_prof = {
+            "id": base_prof.get("id"),
+            "name": eff_name,
+            "api_name": clean_slug,
+            "description": eff_desc,
+            "provider": eff_provider,
+            "model": eff_model,
+            "model_tier": eff_tier,
+            "reasoning_effort": eff_effort,
+            "system_prompt": eff_prompt,
+            "allowed_tools": eff_tools,
+            "attached_skill_slugs": eff_skills,
+            "tag": eff_tags,
+            "knowledge_vaults": eff_vaults,
+            "vaults": eff_vaults,
+            "scoped_paths": eff_paths,
+            "max_turns": eff_turns,
+        }
+
+    # Resolve cloud ai_skills IDs where available
+    cloud_ai_skill_ids = [
+        str(slug_to_skill_id[s])
+        for s in updated_prof.get("attached_skill_slugs", [])
+        if slug_to_skill_id.get(s)
+    ]
+    if cloud_ai_skill_ids:
+        updated_prof["ai_skills"] = cloud_ai_skill_ids
+
+    target_path_str = ""
+    if not is_cloud_mode or os.environ.get("VALSTORM_PROFILES_DIR"):
+        prof_dir = _resolve_writable_profiles_dir()
+        target_file = prof_dir / f"{clean_slug}.json"
+        target_file.write_text(json.dumps(updated_prof, indent=2), encoding="utf-8")
+        target_path_str = str(target_file)
+
+    cloud_payload = {
+        "name": updated_prof["name"],
+        "api_name": clean_slug,
+        "description": updated_prof.get("description", ""),
+        "provider": "Valstorm" if updated_prof.get("provider") == "valstorm" else updated_prof.get("provider", "Gemini").title(),
+        "model": updated_prof.get("model", "gemini-flash-latest"),
+        "model_tier": updated_prof.get("model_tier", "tier_2"),
+        "reasoning_effort": updated_prof.get("reasoning_effort") or "medium",
+        "system_prompt": updated_prof.get("system_prompt", ""),
+        "allowed_tools": updated_prof.get("allowed_tools", []),
+        "ai_skills": cloud_ai_skill_ids,
+        "tag": updated_prof.get("tag", []),
+        "vaults": updated_prof.get("knowledge_vaults", []),
+        "scoped_paths": updated_prof.get("scoped_paths", []),
+        "is_active": True,
+    }
+    cloud_rec = await _persist_agent_to_cloud(
+        cloud_payload,
+        existing_id=str(updated_prof["id"]) if updated_prof.get("id") else None,
+    )
+    if isinstance(cloud_rec, dict) and cloud_rec.get("id") and not updated_prof.get("id"):
+        updated_prof["id"] = cloud_rec["id"]
+        if target_path_str:
+            Path(target_path_str).write_text(json.dumps(updated_prof, indent=2), encoding="utf-8")
+
+    invalidate_tenant_profiles_cache(org_id)
+    verb = {
+        "create": "Created",
+        "update": "Updated",
+        "attach_skills": "Attached skills to",
+        "detach_skills": "Detached skills from",
+    }.get(act, "Updated")
+    receipt = {
+        "status": "success",
+        "action": act,
+        "slug": clean_slug,
+        "profile": updated_prof,
+        "path": target_path_str,
+        "record_id": updated_prof.get("id"),
+        "message": (
+            f"{verb} agent profile '{clean_slug}' ({updated_prof['name']}) "
+            f"with {len(updated_prof.get('allowed_tools', []))} tools and "
+            f"skills={updated_prof.get('attached_skill_slugs', [])}."
+        ),
+    }
+    try:
+        from server import get_current_event_queue
+        eq = get_current_event_queue()
+        if eq is not None:
+            eq.put_nowait({
+                "event": "agent.updated",
+                "action": act,
+                "slug": clean_slug,
+                "name": updated_prof.get("name") or clean_slug,
+            })
+    except Exception:
+        pass
+    return receipt
+
+
+@tool
+async def agent_manage(
+    action: str,
+    slug: Optional[str] = None,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    system_prompt: Optional[str] = None,
+    model: Optional[str] = None,
+    model_tier: Optional[str] = None,
+    provider: Optional[str] = None,
+    reasoning_effort: Optional[str] = None,
+    allowed_tools: Optional[List[str]] = None,
+    skill_slugs: Optional[List[str]] = None,
+    tags: Optional[List[str]] = None,
+    vaults: Optional[List[str]] = None,
+    scoped_paths: Optional[List[str]] = None,
+    max_turns: Optional[int] = None,
+) -> str:
+    """Creates, updates, equips, lists, or deletes specialist agent profiles (`ai_agent`).
+
+    Newly created or updated profiles are immediately available to spawn via `delegate_task(profile='<slug>', goal='...')`.
+
+    Actions:
+      - 'create': Creates a new specialist agent persona with scoped tools, attached skills, and knowledge vaults.
+      - 'update': Updates an existing agent persona's prompt, tools, skills, or vaults.
+      - 'attach_skills': Attaches one or more procedural `skill_slugs` to an existing agent profile.
+      - 'detach_skills': Removes one or more `skill_slugs` from an existing agent profile.
+      - 'delete': Deletes a custom agent profile (built-in core profiles cannot be deleted).
+      - 'list': Lists all available agent profiles and their attached skills.
+
+    Args:
+        action: Mutation action ('create', 'update', 'attach_skills', 'detach_skills', 'delete', 'list').
+        slug: Kebab-case identifier for the agent profile (e.g. 'finance-controller', 'migration-specialist').
+        name: Human-readable display name for the agent.
+        description: Short description of the specialist's domain and responsibilities.
+        system_prompt: Core persona instructions and operating directives for the agent.
+        model: Target LLM model identifier (default: 'gemini-flash-latest').
+        model_tier: Complexity tier ('tier_1', 'tier_2', 'tier_3', 'tier_4').
+        provider: LLM provider ('valstorm', 'gemini', 'openai', 'anthropic').
+        reasoning_effort: Thinking budget ('off', 'low', 'medium', 'high').
+        allowed_tools: List of valid runtime tool names this specialist is permitted to execute.
+        skill_slugs: List of procedural skill slugs to attach to this agent's system prompt.
+        tags: Optional list of Knowledge Graph domain tags.
+        vaults: Optional list of Knowledge Vault IDs (`vaul_...`) scoped to this agent.
+        scoped_paths: Optional list of repository path globs prioritized for this agent.
+        max_turns: Maximum ReAct iterations per delegated run (default: 25).
+
+    Returns:
+        Confirmation summary of the created or updated agent profile.
+    """
+    receipt = await execute_agent_mutation(
+        action=action,
+        slug=slug,
+        name=name,
+        description=description,
+        system_prompt=system_prompt,
+        model=model,
+        model_tier=model_tier,
+        provider=provider,
+        reasoning_effort=reasoning_effort,
+        allowed_tools=allowed_tools,
+        skill_slugs=skill_slugs,
+        tags=tags,
+        vaults=vaults,
+        scoped_paths=scoped_paths,
+        max_turns=max_turns,
+    )
+    return str(receipt.get("message") or json.dumps(receipt))
+
+
 def create_delegation_tools() -> List[Any]:
-    """Returns list of delegation tool functions."""
-    return [delegate_task, subagent_manage]
+    """Returns list of delegation and agent management tool functions."""
+    return [delegate_task, subagent_manage, agent_manage]
 
 
 def register_delegation_tools(registry: ToolRegistry) -> ToolRegistry:
-    """Registers delegation tools into the provided ToolRegistry."""
+    """Registers delegation and agent management tools into the provided ToolRegistry."""
     for tool_fn in create_delegation_tools():
         registry.register(tool_fn)
     return registry

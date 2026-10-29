@@ -1,0 +1,90 @@
+[
+    {
+        "id": "CR-01",
+        "complexity": "Medium",
+        "category": "creative_photocraft_psd",
+        "profile": "developer",
+        "goal": "Create a PhotoCraft layered 9:16 vertical ad plate specification in 'ad_plate.psd.json' with document size 1080x1920, a roundedRect UI card ('shape.create' with rect [80, 520, 920, 600], radii 36), a drop shadow ('layer.layerStyle.dropShadow'), a non-destructive Curves adjustment layer ('layer.newAdjustmentLayer.curves'), and a bounded headline text layer ('type.create' with 'box': [120, 300, 840, 200] to prevent horizontal overflow). Then run analyze_image on 'ad_preview.png' to execute mandatory closed-loop visual QA.",
+        "tool_chain": [
+            "write_file",
+            "analyze_image"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "file": "ad_plate.psd.json",
+            "content_regex": "(?=[\\s\\S]*shape\\.create)(?=[\\s\\S]*type\\.create)(?=[\\s\\S]*\"box\")",
+            "verify_command": "python3 -c \"import json; d=open('ad_plate.psd.json').read(); assert 'type.create' in d and 'box' in d and '1080' in d and '1920' in d\"",
+            "cleanup": [
+                "ad_plate.psd.json"
+            ]
+        }
+    },
+    {
+        "id": "CR-02",
+        "complexity": "High",
+        "category": "creative_filmcraft_nle",
+        "profile": "developer",
+        "goal": "Write a FilmCraft NLE timeline command script to 'reel_timeline.fcproj' that: 1. Creates a 1080x1920 @ 30fps vertical sequence ('file.newSequence'), 2. Places video selects on track 'V1' and voiceover on 'A1' ('timeline.place'), 3. Normalizes audio gain to -1.0 dB ('clip.audioGain' with mode 'normalizeMax'), 4. Adds a subtitle track ('captions.newTrack' and 'captions.setStyle' with safe-zone 'margin': 0.22), and 5. Exports Final Cut Pro XML ('file.exportFcpxml' to 'edit.fcpxml'). Execute 'filmcraft-cli export edit.fcpxml' via terminal_exec.",
+        "tool_chain": [
+            "write_file",
+            "terminal_exec"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "files_exist": [
+                "reel_timeline.fcproj"
+            ],
+            "file": "reel_timeline.fcproj",
+            "content_regex": "file\\.newSequence[\\s\\S]*timeline\\.place[\\s\\S]*captions\\.setStyle[\\s\\S]*0\\.22",
+            "verify_command": "grep -q 'file.newSequence' reel_timeline.fcproj && grep -q '0.22' reel_timeline.fcproj && grep -q 'file.exportFcpxml' reel_timeline.fcproj",
+            "cleanup": [
+                "reel_timeline.fcproj",
+                "edit.fcpxml"
+            ]
+        }
+    },
+    {
+        "id": "CR-03",
+        "complexity": "High",
+        "category": "creative_effectcraft_lottie",
+        "profile": "developer",
+        "goal": "Create an EffectCraft motion graphics project file 'lower_third.ecproj' containing a 'Main' composition with keyframed 'transform/position' ([540, 960]), 'transform/scale' ([105, 105]), an opacity expression 'wiggle(2, 15)', and a 'file.exportLottie' command targeting 'overlay.json'. Write the exported Lottie JSON to 'overlay.json' and call analyze_image on 'check.png' to complete closed-loop visual QA.",
+        "tool_chain": [
+            "write_file",
+            "analyze_image"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "files_exist": [
+                "lower_third.ecproj",
+                "overlay.json"
+            ],
+            "file": "lower_third.ecproj",
+            "content_regex": "wiggle\\(2,\\s*15\\)[\\s\\S]*exportLottie",
+            "verify_command": "test -f lower_third.ecproj && test -f overlay.json && grep -q 'wiggle' lower_third.ecproj",
+            "cleanup": [
+                "lower_third.ecproj",
+                "overlay.json"
+            ]
+        }
+    },
+    {
+        "id": "CR-04",
+        "complexity": "Medium",
+        "category": "creative_soundcraft_daw",
+        "profile": "developer",
+        "goal": "Write a SoundCraft DAW session specification to 'podcast_master.scraft' configured at 48000 Hz / 24-bit ('session.new') that imports 'vo.wav' and 'music.wav' ('file.import_audio') and applies the 5-stage dialogue sweetening chain: 1. 80 Hz high-pass filter, 2. 5-8 kHz de-esser, 3. 300 Hz parametric EQ scoop, 4. 3:1 compressor, and 5. -1.0 dBFS true-peak limiter targeting -14 LUFS loudness normalization.",
+        "tool_chain": [
+            "write_file"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "file": "podcast_master.scraft",
+            "content_regex": "48000[\\s\\S]*24[\\s\\S]*(-14|-1\\.0)",
+            "verify_command": "grep -q '48000' podcast_master.scraft && grep -qi 'limiter' podcast_master.scraft",
+            "cleanup": [
+                "podcast_master.scraft"
+            ]
+        }
+    }
+]

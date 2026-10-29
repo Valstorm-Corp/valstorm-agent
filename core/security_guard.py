@@ -139,6 +139,22 @@ SECRET_PATTERNS: List[Tuple[str, re.Pattern]] = [
     ),
 ]
 
+# Untrusted external content ingestion tools (Vector 2 of The Lethal Trifecta)
+UNTRUSTED_INGESTION_TOOLS: Set[str] = {
+    "web_scrape",
+    "web_search",
+    "web_crawl_domain",
+    "web_content_diff",
+    "web_feed_poll",
+}
+
+# External communication / exfiltration-capable tools (Vector 3 of The Lethal Trifecta)
+EXFILTRATION_SENSITIVE_TOOLS: Set[str] = {
+    "slack_post_message",
+    "slack_update_message",
+    "valstorm_send_sms",
+}
+
 
 class SecurityGuard:
     """Enterprise security perimeter enforcer and artifact quarantine engine."""
@@ -375,3 +391,47 @@ class SecurityGuard:
                 redacted = pattern.sub(lambda m: m.group(0)[:6] + "..." + "[REDACTED]", redacted)
 
         return redacted
+
+    # =================================================================
+    # 5. Lethal Trifecta Taint Guard (Untrusted Input + Outbound Exfil)
+    # =================================================================
+
+    @staticmethod
+    def is_untrusted_ingestion_tool(tool_name: Optional[str]) -> bool:
+        """Returns True if the tool ingests untrusted external web/feed content."""
+        if not tool_name:
+            return False
+        return tool_name.strip() in UNTRUSTED_INGESTION_TOOLS
+
+    @staticmethod
+    def is_exfiltration_sensitive_tool(tool_name: Optional[str]) -> bool:
+        """Returns True if the tool sends external communications capable of data exfiltration."""
+        if not tool_name:
+            return False
+        return tool_name.strip() in EXFILTRATION_SENSITIVE_TOOLS
+
+    @staticmethod
+    def check_lethal_trifecta_guard(
+        tool_name: Optional[str],
+        tool_args: Optional[Dict[str, Any]],
+        untrusted_tainted: bool,
+        confirmation_approved: bool = False,
+    ) -> Tuple[bool, Optional[str]]:
+        """Enforces human-in-the-loop confirmation before outbound messaging when session is tainted by untrusted content."""
+        if not untrusted_tainted or confirmation_approved:
+            return True, None
+        if os.environ.get("YOLO_MODE", "").lower() in ("true", "1", "yes"):
+            return True, None
+        if not SecurityGuard.is_exfiltration_sensitive_tool(tool_name):
+            return True, None
+
+        clean_name = (tool_name or "").strip()
+        return (
+            False,
+            (
+                f"🛑 [LETHAL TRIFECTA GUARD]: Outbound communication tool '{clean_name}' blocked because "
+                f"untrusted external web/feed content was ingested earlier in this session. "
+                f"To prevent prompt-injection data exfiltration, you MUST call `confirmation_required` "
+                f"first and obtain explicit human approval before executing '{clean_name}'."
+            ),
+        )

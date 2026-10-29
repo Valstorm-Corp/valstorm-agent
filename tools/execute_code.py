@@ -33,7 +33,7 @@ from tools.developer_tools import (
     terminal_exec,
     write_file,
 )
-from tools.skill_tool import skill_list, skill_view
+from tools.skill_tool import skill_list, skill_manage, skill_view
 from tools.vision_tool import analyze_image, vision_analyze
 
 
@@ -96,6 +96,7 @@ def _build_execution_environment(
         "read_local_file": _wrap_sync(read_local_file),
         "skill_view": _wrap_sync(skill_view),
         "skill_list": _wrap_sync(skill_list),
+        "skill_manage": _wrap_sync(skill_manage),
         "analyze_image": _wrap_sync(analyze_image),
         "vision_analyze": _wrap_sync(vision_analyze),
     }

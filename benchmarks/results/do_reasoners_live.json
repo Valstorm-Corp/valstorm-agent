@@ -1,0 +1,736 @@
+[
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "geap_gemini_3_8_flash",
+    "config_label": "GEAP Baseline Reasoner (`gemini-3.8-flash`, 1M/64K)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 2.0,
+    "turns_taken": 4,
+    "duration_sec": 45.002,
+    "prompt_tokens": 15241,
+    "completion_tokens": 234,
+    "total_tokens": 15475,
+    "estimated_cost_usd": 0.024616,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "Timed out after 45.0s"
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_qwen3_5_397b_a17b",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`qwen3.5-397b-a17b`, 17B Active MoE)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 1.5,
+    "turns_taken": 4,
+    "duration_sec": 19.751,
+    "prompt_tokens": 15653,
+    "completion_tokens": 588,
+    "total_tokens": 16241,
+    "estimated_cost_usd": 0.010667,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_deepseek_v4_1_flash",
+    "config_label": "DO Open Reasoner (`deepseek-v4.1-flash`, 552B Vision, $0.006 Cache)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 1.5,
+    "turns_taken": 4,
+    "duration_sec": 15.673,
+    "prompt_tokens": 15501,
+    "completion_tokens": 1031,
+    "total_tokens": 16532,
+    "estimated_cost_usd": 0.005888,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_deepseek_3_2",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`deepseek-3.2`, 680B, 163K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 2.5,
+    "turns_taken": 5,
+    "duration_sec": 8.928,
+    "prompt_tokens": 19304,
+    "completion_tokens": 541,
+    "total_tokens": 19845,
+    "estimated_cost_usd": 0.010518,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_glm_5_2",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`glm-5.2`, MIT, 262K/131K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 1.5,
+    "turns_taken": 4,
+    "duration_sec": 13.897,
+    "prompt_tokens": 14946,
+    "completion_tokens": 1188,
+    "total_tokens": 16134,
+    "estimated_cost_usd": 0.026152,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_nemotron_3_ultra",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`nemotron-3-ultra-550b`, 550B)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 2.5,
+    "turns_taken": 5,
+    "duration_sec": 9.735,
+    "prompt_tokens": 19445,
+    "completion_tokens": 511,
+    "total_tokens": 19956,
+    "estimated_cost_usd": 0.018369,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_minimax_m2_5",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`minimax-m2.5`, 230B, 65K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 1.5,
+    "turns_taken": 4,
+    "duration_sec": 14.584,
+    "prompt_tokens": 13894,
+    "completion_tokens": 836,
+    "total_tokens": 14730,
+    "estimated_cost_usd": 0.005171,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "geap_gemini_3_8_flash",
+    "config_label": "GEAP Baseline Reasoner (`gemini-3.8-flash`, 1M/64K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 10.048,
+    "prompt_tokens": 14071,
+    "completion_tokens": 417,
+    "total_tokens": 14488,
+    "estimated_cost_usd": 0.024234,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_qwen3_5_397b_a17b",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`qwen3.5-397b-a17b`, 17B Active MoE)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 16.695,
+    "prompt_tokens": 14219,
+    "completion_tokens": 442,
+    "total_tokens": 14661,
+    "estimated_cost_usd": 0.009367,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_deepseek_v4_1_flash",
+    "config_label": "DO Open Reasoner (`deepseek-v4.1-flash`, 552B Vision, $0.006 Cache)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 10.429,
+    "prompt_tokens": 14106,
+    "completion_tokens": 500,
+    "total_tokens": 14606,
+    "estimated_cost_usd": 0.004832,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_deepseek_3_2",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`deepseek-3.2`, 680B, 163K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 22.28,
+    "prompt_tokens": 14370,
+    "completion_tokens": 827,
+    "total_tokens": 15197,
+    "estimated_cost_usd": 0.008508,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_glm_5_2",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`glm-5.2`, MIT, 262K/131K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 21.958,
+    "prompt_tokens": 13100,
+    "completion_tokens": 1327,
+    "total_tokens": 14427,
+    "estimated_cost_usd": 0.024179,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_nemotron_3_ultra",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`nemotron-3-ultra-550b`, 550B)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 6.847,
+    "prompt_tokens": 14161,
+    "completion_tokens": 524,
+    "total_tokens": 14685,
+    "estimated_cost_usd": 0.013636,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_minimax_m2_5",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`minimax-m2.5`, 230B, 65K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 7.889,
+    "prompt_tokens": 12989,
+    "completion_tokens": 514,
+    "total_tokens": 13503,
+    "estimated_cost_usd": 0.004514,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "geap_gemini_3_8_flash",
+    "config_label": "GEAP Baseline Reasoner (`gemini-3.8-flash`, 1M/64K)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:ad_plate.psd.json",
+      "content_regex_match:ad_plate.psd.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "analyze_image",
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.5,
+    "turns_taken": 3,
+    "duration_sec": 45.001,
+    "prompt_tokens": 17596,
+    "completion_tokens": 1471,
+    "total_tokens": 19067,
+    "estimated_cost_usd": 0.037427,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "Timed out after 45.0s"
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_qwen3_5_397b_a17b",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`qwen3.5-397b-a17b`, 17B Active MoE)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.0,
+    "checks_passed": [],
+    "checks_failed": [
+      "missing_target_file:ad_plate.psd.json",
+      "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+    ],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [],
+    "tool_overhead_ratio": 0.0,
+    "turns_taken": 0,
+    "duration_sec": 38.001,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "estimated_cost_usd": 0.0,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "missing_target_file:ad_plate.psd.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_deepseek_v4_1_flash",
+    "config_label": "DO Open Reasoner (`deepseek-v4.1-flash`, 552B Vision, $0.006 Cache)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:ad_plate.psd.json",
+      "content_regex_match:ad_plate.psd.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 1,
+    "duration_sec": 45.001,
+    "prompt_tokens": 3593,
+    "completion_tokens": 2101,
+    "total_tokens": 5694,
+    "estimated_cost_usd": 0.003599,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "Timed out after 45.0s"
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_deepseek_3_2",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`deepseek-3.2`, 680B, 163K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:ad_plate.psd.json",
+      "content_regex_match:ad_plate.psd.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 2,
+    "duration_sec": 38.002,
+    "prompt_tokens": 9061,
+    "completion_tokens": 2119,
+    "total_tokens": 11180,
+    "estimated_cost_usd": 0.007921,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "Timed out after 38.0s"
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_glm_5_2",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`glm-5.2`, MIT, 262K/131K)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.0,
+    "checks_passed": [],
+    "checks_failed": [
+      "missing_target_file:ad_plate.psd.json",
+      "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+    ],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [],
+    "tool_overhead_ratio": 0.0,
+    "turns_taken": 0,
+    "duration_sec": 38.002,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "estimated_cost_usd": 0.0,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "missing_target_file:ad_plate.psd.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_nemotron_3_ultra",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`nemotron-3-ultra-550b`, 550B)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:ad_plate.psd.json",
+      "content_regex_match:ad_plate.psd.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 16.867,
+    "prompt_tokens": 12754,
+    "completion_tokens": 1572,
+    "total_tokens": 14326,
+    "estimated_cost_usd": 0.014151,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_minimax_m2_5",
+    "config_label": "DO Open Reasoner [Dedicated+Serverless] (`minimax-m2.5`, 230B, 65K)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.333,
+    "checks_passed": [
+      "target_file_exists:ad_plate.psd.json"
+    ],
+    "checks_failed": [
+      "content_regex_mismatch:ad_plate.psd.json (expected /(?=[\\s\\S]*shape\\.create)(?=[\\s\\S]*type\\.create)(?=[\\s\\S]*\"box\")/, got '{\n  \"format\": \"PhotoCraft Layer Specification\",\n  \"version\": \"1.0.0\",\n  \"documen')",
+      "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+    ],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 27.753,
+    "prompt_tokens": 13550,
+    "completion_tokens": 2208,
+    "total_tokens": 15758,
+    "estimated_cost_usd": 0.006715,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "content_regex_mismatch:ad_plate.psd.json (expected /(?=[\\s\\S]*shape\\.create)(?=[\\s\\S]*type\\.create)(?=[\\s\\S]*\"box\")/, got '{\n  \"format\": \"PhotoCraft Layer Specification\",\n  \"version\": \"1.0.0\",\n  \"documen'); verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+  }
+]

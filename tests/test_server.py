@@ -196,6 +196,22 @@ async def test_server_health():
         assert "default_sandbox" in data
 
 
+def test_server_preloads_provider_and_websocket_dependencies_at_startup():
+    """Verify server startup preloads google.genai and websockets submodules into sys.modules."""
+    import sys
+
+    server._preload_runtime_dependencies()
+    for expected_mod in (
+        "websockets",
+        "websockets.exceptions",
+        "websockets.http11",
+        "websockets.client",
+        "google.genai",
+        "google.genai.types",
+    ):
+        assert expected_mod in sys.modules, f"Expected {expected_mod} to be preloaded in sys.modules"
+
+
 @pytest.mark.asyncio
 async def test_server_create_run_and_404_events(monkeypatch):
     async def fake_run_turn_stream(self, **kwargs):
@@ -603,5 +619,48 @@ async def test_agent_run_failure_emits_error_delta_and_syncs_error(monkeypatch):
     assert "thought_signature" in sync_calls[0]["error"]
 
 
+@pytest.mark.asyncio
+async def test_cancel_run_by_chat_id_and_custom_profile_fallback(monkeypatch):
+    """Verify runs can be cancelled by chat_id/session_id and fallback profiles retain Valstorm tools."""
+    import asyncio
+    from core.context import load_profile
 
+    fallback_prof = load_profile("aia_unlisted_org_custom_agent")
+    assert "valstorm_sql_query" in fallback_prof["allowed_tools"]
+    assert "valstorm_record_cud" in fallback_prof["allowed_tools"]
+    assert "valstorm_vfs_search" in fallback_prof["allowed_tools"]
+    assert "delegate_task" in fallback_prof["allowed_tools"]
 
+    gate = asyncio.Event()
+
+    async def slow_run_turn_stream(self, **kwargs):
+        yield StreamEvent(event_type=StreamEventType.TEXT_CHUNK, delta="Working...")
+        await gate.wait()
+
+    monkeypatch.setattr(server, "SessionStore", _SessionStoreStub)
+    monkeypatch.setattr(server, "MemoryStore", lambda: object())
+    monkeypatch.setattr(server, "_get_provider_instance", lambda *_: (object(), "gemini-flash", "valstorm"))
+    monkeypatch.setattr(server, "_build_server_tool_registry", lambda **_: object())
+    monkeypatch.setattr(server.ReActEngine, "run_turn_stream", slow_run_turn_stream)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post("/v1/runs", json={
+            "input": "Long cloud task",
+            "chat_id": "aich_cancel_target_99",
+            "session_id": "aich_cancel_target_99",
+            "execution_environment": "cloud",
+        })
+        assert created.status_code == 200
+        run_id = created.json()["run_id"]
+
+        # Cancel using the chat_id rather than run_id
+        cancel_res = await ac.delete("/v1/runs/aich_cancel_target_99")
+        assert cancel_res.status_code == 200
+        assert cancel_res.json()["run_id"] == run_id
+        assert cancel_res.json()["status"] == "cancelling"
+
+        events_res = await ac.get(f"/v1/runs/{run_id}/events")
+        assert events_res.status_code == 200
+        events = _sse_events(events_res.text)
+        assert any(e.get("event") == "run.cancelled" for e in events)

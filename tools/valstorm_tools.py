@@ -577,6 +577,63 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         return json.dumps(res, indent=2, default=str)
 
     @tool
+    async def valstorm_generate_dashboard(
+        name: str,
+        widgets: Union[str, List[Dict[str, Any]]],
+        app_id: Optional[str] = None,
+        dashboard_id: Optional[str] = None,
+    ) -> str:
+        """Generates and saves a multi-widget Valstorm dashboard record on the 12-column responsive grid.
+
+        Automatically creates the underlying report records for inline widget definitions,
+        packs widget coordinates (x, y, w, h) so tiles never overlap, and returns the live dashboard URL.
+
+        Args:
+            name: Human-readable dashboard name (e.g. 'Marketing & Growth Attribution' or 'Sales Pipeline Executive Dashboard').
+            widgets: List of widget dictionaries (or JSON string). Each widget can specify:
+                - title (str): Widget title (e.g. 'Open Pipeline Volume ($)' or 'Leads by Source').
+                - object_api_name (str): Target schema API name (e.g. 'lead', 'opportunity', 'campaign', 'call').
+                - sql_query (str): SQL query string (e.g. "SELECT lead_source, detailed_lead_source FROM lead WHERE created_date = 'this_year' LIMIT 10000").
+                - chart_type (str): 'Metric', 'Bar', 'Horizontal Bar', 'Line', 'Area', 'Pie', 'Donut', or 'Guage'.
+                - x_field (str, optional): Category / X-axis field API name (e.g. 'lead_source', 'status', 'created_date').
+                - y_field (str, optional): Value / Y-axis field API name (e.g. 'amount', 'loan_amount', 'total_spent', 'name').
+                - aggregation (str, optional): 'Count', 'Sum', 'Average', 'Min', 'Max', 'Value' (for stacked bar breakdown), or 'Cumulative'.
+                - group_by_time (str, optional): 'Day', 'Week', 'Month', 'Quarter', 'Year' (when x_field is a date-time field).
+                - size (str, optional): Layout preset — 'kpi' (w=3, h=3, 4 per row), 'third' (w=4, h=5, 3 per row), 'half' (w=6, h=6, 2 per row), or 'full' (w=12, h=6). Can also pass explicit w, h, x, y.
+                - report_id (str, optional): Existing 'rep_...' ID to mount an existing report without creating a new one.
+                - file_id (str, optional): Existing VFS 'file_...' ID to mount a File widget.
+            app_id: Optional App ID to scope the dashboard and reports under.
+            dashboard_id: Optional existing 'dash_...' ID to update an existing dashboard in-place.
+        """
+        resolved_widgets: List[Dict[str, Any]] = []
+        if isinstance(widgets, str):
+            raw = widgets.strip()
+            if raw:
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        resolved_widgets = [w for w in parsed if isinstance(w, dict)]
+                    elif isinstance(parsed, dict):
+                        resolved_widgets = [parsed]
+                except Exception as exc:
+                    return json.dumps({"error": f"Invalid JSON in widgets parameter: {exc}"})
+        elif isinstance(widgets, list):
+            resolved_widgets = [w for w in widgets if isinstance(w, dict)]
+        elif isinstance(widgets, dict):
+            resolved_widgets = [widgets]
+
+        if not resolved_widgets:
+            return json.dumps({"error": "widgets must be a non-empty list of widget configuration dictionaries."})
+
+        res = await api_client.generate_dashboard(
+            name=name.strip(),
+            widgets=resolved_widgets,
+            app_id=app_id.strip() if app_id else None,
+            dashboard_id=dashboard_id.strip() if dashboard_id else None,
+        )
+        return json.dumps(res, indent=2, default=str)
+
+    @tool
     async def valstorm_analytics_compute(
         sql_query: str,
         chart_type: str = "Bar",
@@ -781,6 +838,7 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         valstorm_get_log_detail,
         valstorm_create_list_filter,
         valstorm_generate_report,
+        valstorm_generate_dashboard,
         valstorm_analytics_compute,
         valstorm_create_scheduled_task,
         valstorm_create_drip_cadence,

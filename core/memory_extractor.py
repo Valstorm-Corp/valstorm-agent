@@ -131,15 +131,21 @@ async def extract_memories_from_turn(
     assistant_output: str,
     provider: BaseProvider,
     model: Optional[str] = None,
+    untrusted_tainted: bool = False,
 ) -> List[Dict[str, Any]]:
     """Extracts structured declarative facts from a conversation turn via lightweight LLM call."""
     if not is_memory_candidate(user_input, assistant_output):
         return []
 
+    safe_assistant_excerpt = (
+        "[Redacted: turn ingested untrusted external web content — extract only explicit user statements from User Message]"
+        if untrusted_tainted
+        else (assistant_output or "").strip()[:1500]
+    )
     # Prepare lightweight payload (clean text only, no raw tool logs or bloated JSON)
     prompt_text = (
         f"User Message:\n{user_input.strip()}\n\n"
-        f"Assistant Final Answer:\n{(assistant_output or '').strip()[:1500]}"
+        f"Assistant Output:\n{safe_assistant_excerpt}"
     )
 
     try:
@@ -195,14 +201,17 @@ async def extract_and_commit_turn_memory(
     memory_store: MemoryStore,
     provider: BaseProvider,
     model: Optional[str] = None,
+    chat_id: Optional[str] = None,
+    untrusted_tainted: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Asynchronous background worker that extracts and saves facts into MemoryStore."""
+    """Asynchronous background worker that extracts and saves facts into MemoryStore and syncs to cloud when authenticated."""
     try:
         extracted = await extract_memories_from_turn(
             user_input=user_input,
             assistant_output=assistant_output,
             provider=provider,
             model=model,
+            untrusted_tainted=untrusted_tainted,
         )
 
         results = []
@@ -211,11 +220,19 @@ async def extract_and_commit_turn_memory(
             fact_text = item["fact"]
             supersedes = item.get("supersedes")
 
-            reconcile_res = memory_store.reconcile_fact(
-                target=cat,
-                content=fact_text,
-                supersedes=supersedes,
-            )
+            if hasattr(memory_store, "reconcile_fact_async"):
+                reconcile_res = await memory_store.reconcile_fact_async(
+                    target=cat,
+                    content=fact_text,
+                    supersedes=supersedes,
+                    source_chat_id=chat_id,
+                )
+            else:
+                reconcile_res = memory_store.reconcile_fact(
+                    target=cat,
+                    content=fact_text,
+                    supersedes=supersedes,
+                )
             results.append(reconcile_res)
             logger.info(f"[SmartMemory] Extracted and committed fact: {reconcile_res}")
 

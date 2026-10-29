@@ -1,0 +1,730 @@
+[
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "geap_gemini_3_5_flash_lite",
+    "config_label": "GEAP Baseline Worker (`gemini-3.5-flash-lite`, 1M/64K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 1.5,
+    "turns_taken": 4,
+    "duration_sec": 5.757,
+    "prompt_tokens": 13986,
+    "completion_tokens": 467,
+    "total_tokens": 14453,
+    "estimated_cost_usd": 0.005363,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_deepseek_v4_flash_0731",
+    "config_label": "DO Open Worker (`deepseek-v4-flash-0731`, 284B, 1M/1M, $0.14/$0.28)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "terminal_exec",
+      "terminal_exec",
+      "write_file",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 2.5,
+    "turns_taken": 4,
+    "duration_sec": 32.002,
+    "prompt_tokens": 16108,
+    "completion_tokens": 1112,
+    "total_tokens": 17220,
+    "estimated_cost_usd": 0.002566,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "Timed out after 32.0s"
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_glm_5_3_flash",
+    "config_label": "DO Open Worker (`glm-5.3-flash`, 320B Multimodal, $0.15/$0.50)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "write_file",
+      "terminal_exec",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 2.5,
+    "turns_taken": 5,
+    "duration_sec": 15.542,
+    "prompt_tokens": 17667,
+    "completion_tokens": 2806,
+    "total_tokens": 20473,
+    "estimated_cost_usd": 0.004053,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_llama_4_maverick",
+    "config_label": "DO Open Worker [Dedicated+Serverless] (`llama-4-maverick`, 17B-128E, 16K Out)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.0,
+    "checks_passed": [],
+    "checks_failed": [
+      "missing_file:setup_env.sh",
+      "missing_file:temp_proj/.gitignore",
+      "missing_target_file:setup_env.sh",
+      "verify_command_failed(exit=1): "
+    ],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [],
+    "tool_overhead_ratio": 0.0,
+    "turns_taken": 1,
+    "duration_sec": 29.435,
+    "prompt_tokens": 3229,
+    "completion_tokens": 415,
+    "total_tokens": 3644,
+    "estimated_cost_usd": 0.001168,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "missing_file:setup_env.sh; missing_file:temp_proj/.gitignore; missing_target_file:setup_env.sh; verify_command_failed(exit=1): "
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_gpt_oss_120b",
+    "config_label": "DO Open Worker [Dedicated+Serverless] (`openai-gpt-oss-120b`, 4K Max Out)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 1.5,
+    "turns_taken": 4,
+    "duration_sec": 12.312,
+    "prompt_tokens": 13392,
+    "completion_tokens": 711,
+    "total_tokens": 14103,
+    "estimated_cost_usd": 0.001837,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_gemma_4_31b",
+    "config_label": "DO Open Worker [1x GPU Dedicated] (`gemma-4-31B-it`, 31B, 256K/8K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 1.5,
+    "turns_taken": 4,
+    "duration_sec": 9.303,
+    "prompt_tokens": 14510,
+    "completion_tokens": 401,
+    "total_tokens": 14911,
+    "estimated_cost_usd": 0.002812,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "G-H03",
+    "complexity": "High",
+    "category": "terminal_ops",
+    "config_id": "do_mistral_3_14b",
+    "config_label": "DO Open Worker [1x GPU Dedicated] (`mistral-3-14B`, 14B, 262K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "file_exists:setup_env.sh",
+      "file_exists:temp_proj/.gitignore",
+      "target_file_exists:setup_env.sh",
+      "executable_permission:setup_env.sh",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "terminal_exec"
+    ],
+    "actual_tools": [
+      "write_file",
+      "terminal_exec",
+      "terminal_exec",
+      "terminal_exec",
+      "terminal_exec"
+    ],
+    "tool_overhead_ratio": 2.5,
+    "turns_taken": 5,
+    "duration_sec": 8.045,
+    "prompt_tokens": 17496,
+    "completion_tokens": 410,
+    "total_tokens": 17906,
+    "estimated_cost_usd": 0.003581,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "geap_gemini_3_5_flash_lite",
+    "config_label": "GEAP Baseline Worker (`gemini-3.5-flash-lite`, 1M/64K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 2.882,
+    "prompt_tokens": 13317,
+    "completion_tokens": 269,
+    "total_tokens": 13586,
+    "estimated_cost_usd": 0.004668,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_deepseek_v4_flash_0731",
+    "config_label": "DO Open Worker (`deepseek-v4-flash-0731`, 284B, 1M/1M, $0.14/$0.28)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 29.825,
+    "prompt_tokens": 14335,
+    "completion_tokens": 1873,
+    "total_tokens": 16208,
+    "estimated_cost_usd": 0.002531,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_glm_5_3_flash",
+    "config_label": "DO Open Worker (`glm-5.3-flash`, 320B Multimodal, $0.15/$0.50)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 5.215,
+    "prompt_tokens": 13123,
+    "completion_tokens": 776,
+    "total_tokens": 13899,
+    "estimated_cost_usd": 0.002356,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_llama_4_maverick",
+    "config_label": "DO Open Worker [Dedicated+Serverless] (`llama-4-maverick`, 17B-128E, 16K Out)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.333,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json"
+    ],
+    "checks_failed": [
+      "content_regex_mismatch:valstorm_sandbox_db.json (expected /(?=[\\s\\S]*Q4 Enterprise Open Model Launch)(?=[\\s\\S]*Carousel)/, got '{\n  \"schemas\": {\n    \"lead\": {\n      \"api_name\": \"lead\",\n      \"title\": \"Lead\",\n')",
+      "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+    ],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [],
+    "tool_overhead_ratio": 0.0,
+    "turns_taken": 1,
+    "duration_sec": 10.365,
+    "prompt_tokens": 4124,
+    "completion_tokens": 147,
+    "total_tokens": 4271,
+    "estimated_cost_usd": 0.001159,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "content_regex_mismatch:valstorm_sandbox_db.json (expected /(?=[\\s\\S]*Q4 Enterprise Open Model Launch)(?=[\\s\\S]*Carousel)/, got '{\n  \"schemas\": {\n    \"lead\": {\n      \"api_name\": \"lead\",\n      \"title\": \"Lead\",\n'); verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_gpt_oss_120b",
+    "config_label": "DO Open Worker [Dedicated+Serverless] (`openai-gpt-oss-120b`, 4K Max Out)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 7.538,
+    "prompt_tokens": 12801,
+    "completion_tokens": 410,
+    "total_tokens": 13211,
+    "estimated_cost_usd": 0.001567,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_gemma_4_31b",
+    "config_label": "DO Open Worker [1x GPU Dedicated] (`gemma-4-31B-it`, 31B, 256K/8K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 7.992,
+    "prompt_tokens": 13629,
+    "completion_tokens": 205,
+    "total_tokens": 13834,
+    "estimated_cost_usd": 0.002556,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "OF-02",
+    "complexity": "Medium",
+    "category": "office_crm_cud_compliance",
+    "config_id": "do_mistral_3_14b",
+    "config_label": "DO Open Worker [1x GPU Dedicated] (`mistral-3-14B`, 14B, 262K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:valstorm_sandbox_db.json",
+      "content_regex_match:valstorm_sandbox_db.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "actual_tools": [
+      "valstorm_schema_inspect",
+      "valstorm_record_cud"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 2,
+    "duration_sec": 5.708,
+    "prompt_tokens": 8807,
+    "completion_tokens": 343,
+    "total_tokens": 9150,
+    "estimated_cost_usd": 0.00183,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "geap_gemini_3_5_flash_lite",
+    "config_label": "GEAP Baseline Worker (`gemini-3.5-flash-lite`, 1M/64K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:ad_plate.psd.json",
+      "content_regex_match:ad_plate.psd.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 4.78,
+    "prompt_tokens": 11867,
+    "completion_tokens": 1025,
+    "total_tokens": 12892,
+    "estimated_cost_usd": 0.006123,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_deepseek_v4_flash_0731",
+    "config_label": "DO Open Worker (`deepseek-v4-flash-0731`, 284B, 1M/1M, $0.14/$0.28)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.0,
+    "checks_passed": [],
+    "checks_failed": [
+      "missing_target_file:ad_plate.psd.json",
+      "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+    ],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [],
+    "tool_overhead_ratio": 0.0,
+    "turns_taken": 0,
+    "duration_sec": 38.001,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "estimated_cost_usd": 0.0,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "missing_target_file:ad_plate.psd.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_glm_5_3_flash",
+    "config_label": "DO Open Worker (`glm-5.3-flash`, 320B Multimodal, $0.15/$0.50)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.0,
+    "checks_passed": [],
+    "checks_failed": [
+      "missing_target_file:ad_plate.psd.json",
+      "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+    ],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [],
+    "tool_overhead_ratio": 0.0,
+    "turns_taken": 0,
+    "duration_sec": 38.002,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "estimated_cost_usd": 0.0,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "missing_target_file:ad_plate.psd.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_llama_4_maverick",
+    "config_label": "DO Open Worker [Dedicated+Serverless] (`llama-4-maverick`, 17B-128E, 16K Out)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.0,
+    "checks_passed": [],
+    "checks_failed": [
+      "missing_target_file:ad_plate.psd.json",
+      "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+    ],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 1,
+    "duration_sec": 32.051,
+    "prompt_tokens": 3388,
+    "completion_tokens": 264,
+    "total_tokens": 3652,
+    "estimated_cost_usd": 0.001077,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "missing_target_file:ad_plate.psd.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_gpt_oss_120b",
+    "config_label": "DO Open Worker [Dedicated+Serverless] (`openai-gpt-oss-120b`, 4K Max Out)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.333,
+    "checks_passed": [
+      "target_file_exists:ad_plate.psd.json"
+    ],
+    "checks_failed": [
+      "content_regex_mismatch:ad_plate.psd.json (expected /(?=[\\s\\S]*shape\\.create)(?=[\\s\\S]*type\\.create)(?=[\\s\\S]*\"box\")/, got '{\n  \"document\": {\n    \"width\": 1080,\n    \"height\": 1920\n  },\n  \"layers\": [\n    {')",
+      "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+    ],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 3,
+    "duration_sec": 22.221,
+    "prompt_tokens": 10734,
+    "completion_tokens": 1403,
+    "total_tokens": 12137,
+    "estimated_cost_usd": 0.002056,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "content_regex_mismatch:ad_plate.psd.json (expected /(?=[\\s\\S]*shape\\.create)(?=[\\s\\S]*type\\.create)(?=[\\s\\S]*\"box\")/, got '{\n  \"document\": {\n    \"width\": 1080,\n    \"height\": 1920\n  },\n  \"layers\": [\n    {'); verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_gemma_4_31b",
+    "config_label": "DO Open Worker [1x GPU Dedicated] (`gemma-4-31B-it`, 31B, 256K/8K)",
+    "harness": "vsagent",
+    "passed": true,
+    "score": 1.0,
+    "checks_passed": [
+      "target_file_exists:ad_plate.psd.json",
+      "content_regex_match:ad_plate.psd.json",
+      "verify_command_exit_0"
+    ],
+    "checks_failed": [],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.0,
+    "turns_taken": 2,
+    "duration_sec": 21.35,
+    "prompt_tokens": 7737,
+    "completion_tokens": 860,
+    "total_tokens": 8597,
+    "estimated_cost_usd": 0.001823,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": null
+  },
+  {
+    "task_id": "CR-01",
+    "complexity": "Medium",
+    "category": "creative_photocraft_psd",
+    "config_id": "do_mistral_3_14b",
+    "config_label": "DO Open Worker [1x GPU Dedicated] (`mistral-3-14B`, 14B, 262K)",
+    "harness": "vsagent",
+    "passed": false,
+    "score": 0.333,
+    "checks_passed": [
+      "target_file_exists:ad_plate.psd.json"
+    ],
+    "checks_failed": [
+      "content_regex_mismatch:ad_plate.psd.json (expected /(?=[\\s\\S]*shape\\.create)(?=[\\s\\S]*type\\.create)(?=[\\s\\S]*\"box\")/, got '{\n  \"document\": {\n    \"name\": \"9x16_Vertical_Ad_Plate_Template\",\n    \"width\": 10')",
+      "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+    ],
+    "expected_tools": [
+      "write_file",
+      "analyze_image"
+    ],
+    "actual_tools": [
+      "write_file",
+      "write_file",
+      "analyze_image"
+    ],
+    "tool_overhead_ratio": 1.5,
+    "turns_taken": 4,
+    "duration_sec": 28.712,
+    "prompt_tokens": 17845,
+    "completion_tokens": 1874,
+    "total_tokens": 19719,
+    "estimated_cost_usd": 0.003944,
+    "subagents_spawned": 0,
+    "parallel_speedup": 1.0,
+    "failure_reason": "content_regex_mismatch:ad_plate.psd.json (expected /(?=[\\s\\S]*shape\\.create)(?=[\\s\\S]*type\\.create)(?=[\\s\\S]*\"box\")/, got '{\n  \"document\": {\n    \"name\": \"9x16_Vertical_Ad_Plate_Template\",\n    \"width\": 10'); verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; d=open('ad_plate.psd.json').r"
+  }
+]

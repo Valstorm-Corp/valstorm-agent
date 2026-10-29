@@ -14,10 +14,15 @@ from tools.confirmation import (
     register_confirmation_tools,
 )
 from tools.delegation import (
-    delegate_task,
-    subagent_manage,
+    SubagentRegistry,
+    SubagentTaskSession,
+    agent_manage,
     create_delegation_tools,
+    delegate_task,
+    execute_agent_mutation,
     register_delegation_tools,
+    set_subagent_provider_override,
+    subagent_manage,
 )
 from tools.developer_tools import (
     create_developer_tools,
@@ -44,8 +49,12 @@ from tools.process_manager import (
 )
 from tools.skill_tool import (
     create_skill_tools,
+    execute_skill_mutation,
+    get_skill_id_to_slug_map,
+    invalidate_tenant_skills_cache,
     register_skill_tools,
     skill_list,
+    skill_manage,
     skill_view,
 )
 from tools.slack_tools import (
@@ -53,13 +62,18 @@ from tools.slack_tools import (
     register_slack_tools,
 )
 from tools.valstorm_client import (
+    TenantRuntimeContext,
     ValstormApiClient,
     decode_jwt_payload,
+    get_current_tenant_context,
+    get_current_valstorm_auth,
     is_jwt_expired,
     refresh_valstorm_tokens_async,
     refresh_valstorm_tokens_sync,
     resolve_valstorm_auth_context,
     resolve_valstorm_credentials,
+    set_current_tenant_context,
+    set_current_valstorm_auth,
 )
 from tools.valstorm_tools import (
     create_valstorm_tools,
@@ -99,9 +113,11 @@ def create_tier1_tools() -> List[Any]:
         execute_code,
         delegate_task,
         subagent_manage,
+        agent_manage,
         process_manage,
         skill_view,
         skill_list,
+        skill_manage,
         web_scrape,
         web_search,
         web_crawl_domain,
@@ -149,6 +165,11 @@ __all__ = [
     "register_execute_code_tools",
     "delegate_task",
     "subagent_manage",
+    "agent_manage",
+    "execute_agent_mutation",
+    "SubagentRegistry",
+    "SubagentTaskSession",
+    "set_subagent_provider_override",
     "create_delegation_tools",
     "register_delegation_tools",
     "process_manage",
@@ -156,6 +177,10 @@ __all__ = [
     "register_process_manager_tools",
     "skill_view",
     "skill_list",
+    "skill_manage",
+    "execute_skill_mutation",
+    "invalidate_tenant_skills_cache",
+    "get_skill_id_to_slug_map",
     "create_skill_tools",
     "register_skill_tools",
     "analyze_image",

@@ -34,11 +34,24 @@ def create_memory_tools(
             content: The text of the fact to add (required when action='add').
             old_text: Substring text identifying the fact to remove (required when action='remove').
         """
-        token, base_url = resolve_valstorm_credentials()
-        # If in cloud/remote mode and managing user memory, route mutations to tenant FastAPI
-        if token and base_url and target == "user":
+        from tools.valstorm_client import get_current_valstorm_auth
+        scoped_auth = get_current_valstorm_auth()
+        if scoped_auth and scoped_auth[0]:
+            token, base_url = scoped_auth
+        elif not getattr(mem_store, "_explicit_file_path", False):
+            token, base_url = resolve_valstorm_credentials()
+        else:
+            token, base_url = "", ""
+
+        cloud_category = "user_fact" if target == "user" else "environment_note"
+        # If in cloud/remote mode and managing user or environment memory, route mutations to tenant FastAPI
+        if token and base_url and target in ("user", "memory"):
+            clean_base = base_url.rstrip("/")
+            if not clean_base.endswith("/v1") and "/v1" not in clean_base:
+                clean_base = f"{clean_base}/v1"
+            auth_header = token if str(token).startswith("Bearer ") else f"Bearer {token}"
             headers = {
-                "Authorization": f"Bearer {token}",
+                "Authorization": auth_header,
                 "Content-Type": "application/json",
             }
             client_timeout = httpx.Timeout(10.0)
@@ -47,19 +60,21 @@ def create_memory_tools(
                     if action == "add":
                         if not content:
                             return "Error: `content` is required when action='add'."
+                        mem_store.add_fact(target=target, content=content)
                         resp = await http_client.post(
-                            f"{base_url}/ai/memory/fact",
+                            f"{clean_base}/ai/memory/fact",
                             headers=headers,
-                            json={"fact": content, "category": "user_fact"},
+                            json={"fact": content, "category": cloud_category},
                         )
-                        if resp.status_code == 200:
+                        if resp.status_code in (200, 201):
                             return f"Saved fact to tenant memory: {content}"
                     elif action == "remove":
                         if not old_text:
                             return "Error: `old_text` is required when action='remove'."
+                        mem_store.remove_fact(target=target, old_text=old_text)
                         req = http_client.build_request(
                             "DELETE",
-                            f"{base_url}/ai/memory/fact",
+                            f"{clean_base}/ai/memory/fact",
                             headers=headers,
                             json={"old_text": old_text},
                         )
@@ -68,14 +83,15 @@ def create_memory_tools(
                             return f"Removed fact matching '{old_text}' from tenant memory."
                     elif action == "list":
                         resp = await http_client.get(
-                            f"{base_url}/ai/memory/working-context",
+                            f"{clean_base}/ai/memory/working-context",
                             headers=headers,
                         )
                         if resp.status_code == 200:
                             data = resp.json()
-                            return json.dumps(data.get("declarative_facts", []), indent=2)
-                except Exception as e:
-                    # Fallback to local SQLite store on network failure
+                            if isinstance(data, dict) and "declarative_facts" in data:
+                                return json.dumps(data.get("declarative_facts", []), indent=2)
+                except Exception:
+                    # Fallback to local store on network failure
                     pass
 
         # Default local SQLite store handling

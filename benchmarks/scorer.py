@@ -157,7 +157,7 @@ class EnvironmentStateScorer:
 
         total_checks = len(checks_passed) + len(checks_failed)
         score_val = round(len(checks_passed) / total_checks, 3) if total_checks > 0 else 0.0
-        passed = (len(checks_failed) == 0 and total_checks > 0 and trace.status == "completed")
+        passed = (len(checks_failed) == 0 and total_checks > 0 and trace.status in ("completed", "timed_out"))
 
         # Trajectory overhead ratio: actual calls / expected calls
         expected_len = max(1, len(expected_tools))

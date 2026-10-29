@@ -8,6 +8,7 @@ Provides:
 
 import asyncio
 import base64
+import contextvars
 import json
 import logging
 import os
@@ -26,13 +27,14 @@ from providers.base import IMAGE_EXT_MIME_MAP, resolve_image_source
 
 logger = logging.getLogger("vsagent.tools.vision")
 
-_VISION_PROVIDER_OVERRIDE: Optional[Any] = None
+_VISION_PROVIDER_OVERRIDE: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
+    "_VISION_PROVIDER_OVERRIDE", default=None
+)
 
 
 def set_vision_provider_override(provider: Optional[Any]) -> None:
-    """Sets a global provider override for testing vision execution."""
-    global _VISION_PROVIDER_OVERRIDE
-    _VISION_PROVIDER_OVERRIDE = provider
+    """Sets a context-scoped provider override for testing vision execution."""
+    _VISION_PROVIDER_OVERRIDE.set(provider)
 
 
 def _get_vision_provider(
@@ -40,8 +42,9 @@ def _get_vision_provider(
     api_key: Optional[str] = None,
 ) -> Tuple[Optional[Any], str, str]:
     """Resolves provider instance, provider name, and default vision model name."""
-    if _VISION_PROVIDER_OVERRIDE is not None:
-        return _VISION_PROVIDER_OVERRIDE, "custom", "custom-vision-model"
+    override = _VISION_PROVIDER_OVERRIDE.get()
+    if override is not None:
+        return override, "custom", getattr(override, "default_model", None) or "gemini-flash-latest"
 
     keystore = KeyStore()
 

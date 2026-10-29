@@ -4,20 +4,217 @@ Provides zero-overhead, real-time diagnostic checks for modified files:
 - Python: In-process AST syntax validation + optional ruff/flake8/pyright
 - JSON: In-process parser validation
 - YAML: In-process PyYAML safe loader validation
-- TypeScript / JavaScript: Project-aware syntax & typecheck diagnostics (tsc)
+- TypeScript / JavaScript: Fast single-file syntax check (esbuild/biome/node) + gated tsc typecheck
 - Go: Native `go vet` compiler syntax and type checking
 - Rust: `cargo check` and `rustc` compiler diagnostics
 - Immediate error feedback appended directly to tool call observations
+- Guaranteed process-tree termination on timeout and cancellation (no orphaned tsc zombies)
+- Single-Flight concurrency gate per workspace root
+- Startup and periodic stale diagnostic process reaper
 """
 
 import ast
 import asyncio
 import json
+import logging
 import os
 import shutil
+import signal
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Callable, Dict, List, Optional
+
+logger = logging.getLogger("valstorm.lsp")
+
+VALSTORM_DIAGNOSTIC_ENV_VAR = "VALSTORM_DIAGNOSTIC_SUBPROCESS"
+
+
+def kill_process_tree(pid: int) -> None:
+    """Forcefully terminates a process and its child processes cross-platform."""
+    if not pid or pid <= 0:
+        return
+    if sys.platform == "win32":
+        try:
+            # /F = forcefully terminate, /T = terminate process tree, /PID = target pid
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(pid)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=5,
+            )
+        except Exception:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+    else:
+        # POSIX: If target process is its own process group leader (pgid == pid),
+        # kill the entire process group. Otherwise, terminate the individual pid
+        # to prevent collateral termination of parent or sibling processes.
+        try:
+            pgid = os.getpgid(pid)
+            if pgid == pid:
+                os.killpg(pgid, signal.SIGKILL)
+            else:
+                os.kill(pid, signal.SIGKILL)
+        except (ProcessLookupError, OSError):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+
+
+def cleanup_stale_diagnostic_processes() -> List[int]:
+    """Scans for and forcefully terminates orphaned tsc or diagnostic subprocesses.
+
+    Identifies:
+    1. Any process bearing VALSTORM_DIAGNOSTIC_SUBPROCESS=1 in its environment.
+    2. Any orphaned tsc / node process running with '--noEmit' and '--skipLibCheck'.
+
+    Returns:
+        List of terminated process IDs.
+    """
+    killed_pids: List[int] = []
+    my_pid = os.getpid()
+
+    # 1. Linux /proc inspection (zero-dependency, universally available on Linux)
+    if os.path.exists("/proc"):
+        try:
+            for entry in os.listdir("/proc"):
+                if not entry.isdigit():
+                    continue
+                pid = int(entry)
+                if pid == my_pid or pid == 1:
+                    continue
+
+                cmdline_path = f"/proc/{pid}/cmdline"
+                environ_path = f"/proc/{pid}/environ"
+
+                is_target = False
+                try:
+                    with open(cmdline_path, "rb") as f:
+                        cmdline_bytes = f.read()
+                    cmdline = cmdline_bytes.decode("utf-8", errors="ignore").replace(chr(0), " ")
+
+                    # Target criteria 1: tsc --noEmit --skipLibCheck
+                    if ("tsc" in cmdline or "node" in cmdline) and "--noEmit" in cmdline and "--skipLibCheck" in cmdline:
+                        is_target = True
+
+                    # Target criteria 2: VALSTORM_DIAGNOSTIC_SUBPROCESS in environ
+                    if not is_target and os.path.exists(environ_path):
+                        try:
+                            with open(environ_path, "rb") as ef:
+                                env_bytes = ef.read()
+                            if b"VALSTORM_DIAGNOSTIC_SUBPROCESS=1" in env_bytes:
+                                is_target = True
+                        except (PermissionError, ProcessLookupError, FileNotFoundError):
+                            pass
+
+                except (FileNotFoundError, ProcessLookupError, PermissionError):
+                    continue
+
+                if is_target:
+                    try:
+                        kill_process_tree(pid)
+                        killed_pids.append(pid)
+                    except Exception:
+                        pass
+            if killed_pids:
+                return killed_pids
+        except Exception:
+            pass
+
+    # 2. Darwin / macOS / BSD fallback via ps
+    if sys.platform != "win32":
+        try:
+            ps_bin = shutil.which("ps")
+            if ps_bin:
+                ps_out = subprocess.run(
+                    [ps_bin, "-eo", "pid,args"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    timeout=3,
+                    check=False,
+                )
+                for line in ps_out.stdout.splitlines():
+                    line = line.strip()
+                    if not line or "ps -eo" in line:
+                        continue
+                    parts = line.split(maxsplit=1)
+                    if len(parts) != 2 or not parts[0].isdigit():
+                        continue
+                    pid = int(parts[0])
+                    args = parts[1]
+                    if pid == my_pid:
+                        continue
+                    if ("tsc" in args or "node" in args) and "--noEmit" in args and "--skipLibCheck" in args:
+                        try:
+                            kill_process_tree(pid)
+                            killed_pids.append(pid)
+                        except Exception:
+                            pass
+            if killed_pids:
+                return killed_pids
+        except Exception:
+            pass
+
+    # 3. Windows fallback
+    if sys.platform == "win32":
+        try:
+            cmd = 'wmic process where "CommandLine like '%--noEmit%' and CommandLine like '%--skipLibCheck%'" get ProcessId'
+            res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=5)
+            for line in res.stdout.splitlines():
+                line = line.strip()
+                if line.isdigit():
+                    pid = int(line)
+                    if pid != my_pid:
+                        kill_process_tree(pid)
+                        killed_pids.append(pid)
+        except Exception:
+            pass
+
+    return killed_pids
+
+
+class SingleFlightGate:
+    """Ensures at most one diagnostic check runs per workspace at any time.
+
+    If a new check starts while a previous check is still running for the same workspace,
+    the older in-flight check is cancelled immediately (preemptive latest-wins).
+    """
+
+    def __init__(self):
+        self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._lock = asyncio.Lock()
+
+    async def run(self, key: str, coro_fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        """Runs coro_fn(*args, **kwargs), cancelling any in-flight task for `key`."""
+        current_task = asyncio.current_task()
+        async with self._lock:
+            existing = self._active_tasks.get(key)
+            if existing and not existing.done() and existing != current_task:
+                existing.cancel()
+                try:
+                    await asyncio.wait([existing], timeout=0.5)
+                except Exception:
+                    pass
+
+            task = asyncio.create_task(coro_fn(*args, **kwargs))
+            self._active_tasks[key] = task
+
+        try:
+            return await task
+        finally:
+            async with self._lock:
+                if self._active_tasks.get(key) is task:
+                    self._active_tasks.pop(key, None)
+
+
+_global_single_flight_gate = SingleFlightGate()
 
 
 def check_python_syntax(content: str, filename: str = "<string>") -> Optional[List[str]]:
@@ -63,20 +260,136 @@ def check_yaml_syntax(content: str) -> Optional[List[str]]:
         return [f"YAMLError: {str(e)}"]
 
 
-async def _run_command(cmd: List[str], cwd: Optional[Path] = None, timeout_sec: float = 2.0) -> Optional[str]:
-    """Runs a diagnostic CLI tool asynchronously with a strict timeout."""
+def _find_bin(name: str, start_dir: Path) -> Optional[str]:
+    """Finds a tool binary walking up the directory tree or in global PATH."""
+    cur = start_dir
+    for _ in range(8):
+        cand = cur / "node_modules" / ".bin" / name
+        if cand.is_file() and os.access(cand, os.X_OK):
+            return str(cand)
+        if sys.platform == "win32":
+            for ext in (".cmd", ".exe", ".bat"):
+                cand_win = cur / "node_modules" / ".bin" / f"{name}{ext}"
+                if cand_win.is_file():
+                    return str(cand_win)
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    return shutil.which(name)
+
+
+async def _run_command(
+    cmd: List[str],
+    cwd: Optional[Path] = None,
+    timeout_sec: float = 2.0,
+    env: Optional[Dict[str, str]] = None,
+) -> Optional[str]:
+    """Runs a diagnostic CLI tool asynchronously with strict timeout and guaranteed cleanup.
+
+    Spawns in a new process group / session and forcefully terminates the process tree
+    on timeout, cancellation, or exception to prevent orphaned zombie processes.
+    """
+    proc = None
+    sub_env = os.environ.copy()
+    if env:
+        sub_env.update(env)
+    sub_env[VALSTORM_DIAGNOSTIC_ENV_VAR] = "1"
+
+    kwargs: Dict[str, Any] = {
+        "stdout": asyncio.subprocess.PIPE,
+        "stderr": asyncio.subprocess.PIPE,
+        "cwd": cwd,
+        "env": sub_env,
+    }
+
+    # On POSIX, create a new process group leader so os.killpg() wipes all children
+    if sys.platform != "win32":
+        kwargs["start_new_session"] = True
+
     try:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=cwd,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout_sec)
+        proc = await asyncio.create_subprocess_exec(*cmd, **kwargs)
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout_sec)
+        except (asyncio.TimeoutError, asyncio.CancelledError, BaseException) as e:
+            if proc and proc.returncode is None:
+                kill_process_tree(proc.pid)
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=1.0)
+                except Exception:
+                    pass
+            if isinstance(e, asyncio.CancelledError):
+                raise
+            return None
+
         out_text = (stdout.decode("utf-8", errors="ignore") + stderr.decode("utf-8", errors="ignore")).strip()
         return out_text if out_text else None
     except Exception:
         return None
+    finally:
+        # Guarantee cleanup even on unexpected termination flow
+        if proc and proc.returncode is None:
+            kill_process_tree(proc.pid)
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=0.5)
+            except Exception:
+                pass
+
+
+async def check_typescript_syntax(file_path: Path, timeout_sec: float = 2.0) -> Optional[List[str]]:
+    """Runs instant single-file syntax check using esbuild, biome, or node.
+
+    Takes 5-20 milliseconds with ~25 MB RAM instead of 45 seconds and 1.5 GB RAM.
+    """
+    ext = file_path.suffix.lower()
+
+    # 1. Try esbuild (installed in Vite / Next.js / TypeScript projects)
+    esbuild_bin = _find_bin("esbuild", file_path.parent)
+    if esbuild_bin:
+        loader_map = {
+            ".ts": "ts",
+            ".tsx": "tsx",
+            ".js": "js",
+            ".jsx": "jsx",
+            ".mjs": "js",
+            ".cjs": "js",
+        }
+        loader = loader_map.get(ext, "tsx")
+        cmd = [esbuild_bin, str(file_path), f"--loader={loader}", "--no-bundle"]
+        out = await _run_command(cmd, cwd=file_path.parent, timeout_sec=min(timeout_sec, 2.0))
+        if out and ("error:" in out.lower() or "unexpected" in out.lower() or "syntax" in out.lower()):
+            lines = [
+                line.strip()
+                for line in out.splitlines()
+                if line.strip() and not line.startswith("▲ [WARNING]")
+            ]
+            if lines:
+                return lines[:5]
+        return None
+
+    # 2. Try biome check
+    biome_bin = _find_bin("biome", file_path.parent)
+    if biome_bin:
+        cmd = [biome_bin, "check", str(file_path)]
+        out = await _run_command(cmd, cwd=file_path.parent, timeout_sec=min(timeout_sec, 2.0))
+        if out and ("error" in out.lower() or "parse" in out.lower()):
+            lines = [line.strip() for line in out.splitlines() if line.strip() and "error" in line.lower()]
+            if lines:
+                return lines[:5]
+        return None
+
+    # 3. For pure JS files, fall back to node --check (instant built-in AST parse)
+    if ext in (".js", ".mjs", ".cjs"):
+        node_bin = shutil.which("node")
+        if node_bin:
+            cmd = [node_bin, "--check", str(file_path)]
+            out = await _run_command(cmd, cwd=file_path.parent, timeout_sec=min(timeout_sec, 2.0))
+            if out:
+                lines = [line.strip() for line in out.splitlines() if line.strip() and "error" in line.lower()]
+                if lines:
+                    return lines[:5]
+            return None
+
+    return None
 
 
 async def check_go_diagnostics(file_path: Path, timeout_sec: float = 2.0) -> Optional[List[str]]:
@@ -85,7 +398,6 @@ async def check_go_diagnostics(file_path: Path, timeout_sec: float = 2.0) -> Opt
     if not go_bin:
         return None
 
-    # Check for go.mod directory
     go_mod_dir = None
     cur = file_path.parent
     for _ in range(6):
@@ -153,6 +465,34 @@ async def check_rust_diagnostics(file_path: Path, timeout_sec: float = 2.0) -> O
     return None
 
 
+async def _run_tsc_diagnostics(
+    file_path: Path,
+    workspace_root: Path,
+    tsc_bin: str,
+    timeout_sec: float,
+) -> Optional[List[str]]:
+    """Runs tsc compiler check scoped to workspace with relative error filtering."""
+    tsc_out = await _run_command(
+        [tsc_bin, "--noEmit", "--skipLibCheck", "--pretty", "false"],
+        cwd=workspace_root,
+        timeout_sec=timeout_sec,
+    )
+    if tsc_out:
+        fname = file_path.name
+        try:
+            rel_path = str(file_path.relative_to(workspace_root)).replace(chr(92), "/")
+        except ValueError:
+            rel_path = fname
+
+        matching_lines = [
+            line.strip() for line in tsc_out.splitlines()
+            if (rel_path in line or fname in line) and ("error TS" in line or "error" in line.lower())
+        ]
+        if matching_lines:
+            return matching_lines[:5]
+    return None
+
+
 async def get_file_diagnostics(file_path: Path, timeout_sec: float = 2.0) -> Optional[str]:
     """Inspects a file on disk and returns compiler / linter diagnostics if any errors exist.
 
@@ -212,33 +552,36 @@ async def get_file_diagnostics(file_path: Path, timeout_sec: float = 2.0) -> Opt
 
     # 4. TypeScript / JavaScript (.ts, .tsx, .js, .jsx)
     elif ext in (".ts", ".tsx", ".js", ".jsx"):
-        workspace_root = file_path.parent
-        cur = file_path.parent
-        for _ in range(5):
-            if (cur / "tsconfig.json").exists() or (cur / "package.json").exists():
-                workspace_root = cur
-                break
-            if cur.parent == cur:
-                break
-            cur = cur.parent
+        # Step 4A: Fast single-file syntax check (5-20ms, 25MB RAM)
+        fast_errors = await check_typescript_syntax(file_path, timeout_sec=min(timeout_sec, 1.0))
+        if fast_errors:
+            errors.extend(fast_errors)
+        else:
+            # Step 4B: Gated tsc typecheck (Single-Flight per workspace)
+            workspace_root = file_path.parent
+            cur = file_path.parent
+            for _ in range(8):
+                if (cur / "tsconfig.json").exists() or (cur / "package.json").exists():
+                    workspace_root = cur
+                    break
+                if cur.parent == cur:
+                    break
+                cur = cur.parent
 
-        tsc_local = workspace_root / "node_modules" / ".bin" / "tsc"
-        tsc_bin = str(tsc_local) if tsc_local.exists() else shutil.which("tsc")
+            tsc_bin = _find_bin("tsc", file_path.parent)
 
-        if tsc_bin and (workspace_root / "tsconfig.json").exists():
-            tsc_out = await _run_command(
-                [tsc_bin, "--noEmit", "--skipLibCheck", "--pretty", "false"],
-                cwd=workspace_root,
-                timeout_sec=timeout_sec,
-            )
-            if tsc_out:
-                fname = file_path.name
-                matching_lines = [
-                    line.strip() for line in tsc_out.splitlines()
-                    if fname in line and ("error TS" in line or "error" in line.lower())
-                ]
-                if matching_lines:
-                    errors.extend(matching_lines[:5])
+            if tsc_bin and (workspace_root / "tsconfig.json").exists():
+                gate_key = f"tsc:{workspace_root.resolve()}"
+                tsc_errors = await _global_single_flight_gate.run(
+                    gate_key,
+                    _run_tsc_diagnostics,
+                    file_path=file_path,
+                    workspace_root=workspace_root,
+                    tsc_bin=tsc_bin,
+                    timeout_sec=timeout_sec,
+                )
+                if tsc_errors:
+                    errors.extend(tsc_errors)
 
     # 5. Go (.go)
     elif ext == ".go":
@@ -256,5 +599,6 @@ async def get_file_diagnostics(file_path: Path, timeout_sec: float = 2.0) -> Opt
         return None
 
     header = "[LSP Compiler Diagnostics]:"
-    bulleted = "\n".join(f"- {err}" for err in errors)
-    return f"{header}\n{bulleted}\n\nNotice: Please resolve the above diagnostic errors on your next turn."
+    nl = chr(10)
+    bulleted = nl.join(f"- {err}" for err in errors)
+    return f"{header}{nl}{bulleted}{nl}{nl}Notice: Please resolve the above diagnostic errors on your next turn."

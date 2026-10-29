@@ -10,6 +10,7 @@ from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
 
 from .models import Message, SessionState, StreamEvent, StreamEventType, ToolCall, ToolResult, UsageMetadata, collapse_repeating_text
 from .sanitizer import sanitize_text
+from .security_guard import SecurityGuard
 from .keystore import KeyStore
 from .compaction import ContextCompactor
 
@@ -300,6 +301,11 @@ class ReActEngine:
             user_msg = Message(role="user", content=user_input, images=images)
             session.add_message(user_msg)
 
+        # If a prior turn paused on confirmation_required for Lethal Trifecta, a new user turn satisfies the human-in-the-loop gate
+        if session.metadata.get("pending_lethal_trifecta_confirmation"):
+            session.metadata["lethal_trifecta_approved"] = True
+            session.metadata["pending_lethal_trifecta_confirmation"] = False
+
         # 1. Pre-turn compaction check: clear context headroom before entering tool loop
         if self.compactor and self.compactor.should_auto_compact(session):
             c_res = self.compactor.compact(session)
@@ -534,12 +540,43 @@ class ReActEngine:
                         tool_call=tool_call,
                     )
 
+                # Pre-taint session if any tool in the batch ingests untrusted external content
+                for tc_item in assistant_msg.tool_calls:
+                    if SecurityGuard.is_untrusted_ingestion_tool(tc_item.name):
+                        session.metadata["untrusted_content_tainted"] = True
+
                 # Parallel tool execution via asyncio.gather (reusing any in-flight speculative tasks)
                 async def _resolve_or_execute_tool(tc: ToolCall) -> ToolResult:
+                    allowed, block_reason = SecurityGuard.check_lethal_trifecta_guard(
+                        tool_name=tc.name,
+                        tool_args=tc.arguments,
+                        untrusted_tainted=bool(session.metadata.get("untrusted_content_tainted", False)),
+                        confirmation_approved=bool(session.metadata.get("lethal_trifecta_approved", False)),
+                    )
+                    if not allowed and block_reason:
+                        spec_task = speculative_tasks.pop(tc.id, None) if tc.id else None
+                        if spec_task is not None and not spec_task.done():
+                            spec_task.cancel()
+                        return ToolResult(
+                            call_id=tc.id,
+                            name=tc.name,
+                            output=block_reason,
+                            is_error=True,
+                            duration_ms=0.0,
+                            payload_bytes=len(block_reason.encode("utf-8")),
+                        )
+
                     spec_task = speculative_tasks.pop(tc.id, None) if tc.id else None
                     if spec_task is not None:
-                        return await spec_task
-                    return await self._execute_tool(tc)
+                        res_obj = await spec_task
+                    else:
+                        res_obj = await self._execute_tool(tc)
+
+                    if SecurityGuard.is_untrusted_ingestion_tool(tc.name) and not res_obj.is_error:
+                        session.metadata["untrusted_content_tainted"] = True
+                    if tc.name == "confirmation_required" and not res_obj.is_error:
+                        session.metadata["pending_lethal_trifecta_confirmation"] = True
+                    return res_obj
 
                 try:
                     tool_results = await asyncio.gather(

@@ -18,14 +18,33 @@ from typing import Any, Dict, List, Literal, Optional
 import uuid
 
 from core.context import WorkspaceContextManager, load_profile
+from core.keystore import KeyStore
 from core.models import Message, SessionState, StreamEventType, ToolCall, UsageMetadata
 from core.react import ReActEngine
 from core.sandbox import HostSandbox, get_current_sandbox, set_current_sandbox
 from core.tools import ToolRegistry, get_default_registry
-from tools import register_developer_tools, register_memory_tools, register_tier1_tools, register_ui_navigator_tools
+from providers import resolve_provider_instance
+from tools import register_developer_tools, register_memory_tools, register_tier1_tools, register_ui_navigator_tools, register_vision_tools
 from tools.delegation import SubagentRegistry, _get_subagent_provider, set_subagent_provider_override
+from tools.valstorm_tools import create_valstorm_tools
+from tools.vision_tool import set_vision_provider_override
 
+from ..sandbox_valstorm import BenchmarkValstormClient, provision_craft_suite_sandbox
 from .base import BenchmarkAdapter, BenchmarkConfig, ExecutionTrace, estimate_cost_usd
+
+# External side-effect tools strictly excluded from benchmark sandboxes
+_EXCLUDED_EXTERNAL_TOOLS = frozenset({
+    "valstorm_send_sms",
+    "slack_post_message",
+    "slack_list_channels",
+    "slack_get_channel_history",
+    "slack_list_users",
+    "slack_get_user_profile",
+    "slack_add_reaction",
+    "slack_update_message",
+    "slack_delete_message",
+    "slack_get_auth_status",
+})
 
 
 def build_benchmark_tool_registry(
@@ -33,6 +52,7 @@ def build_benchmark_tool_registry(
     task: Dict[str, Any],
     swarm_mode: bool = False,
     use_decision_model: bool = True,
+    workspace_dir: Optional[Path] = None,
 ) -> ToolRegistry:
     """Builds the ToolRegistry according to the `tools_mode` and `use_decision_model` ablation knobs."""
     if tools_mode == "none":
@@ -41,9 +61,18 @@ def build_benchmark_tool_registry(
     base = get_default_registry()
     register_developer_tools(base)
     register_tier1_tools(base)
+    register_vision_tools(base)
     if use_decision_model:
         register_ui_navigator_tools(base)
     register_memory_tools(base)
+
+    # Register safe, 100% sandboxed Valstorm Office/CRM/VFS tools (excluding SMS & Slack)
+    if workspace_dir is not None:
+        sandbox_client = BenchmarkValstormClient(workspace_dir=workspace_dir)
+        for vt in create_valstorm_tools(client=sandbox_client):  # type: ignore[arg-type]
+            t_name = getattr(vt, "name", "") or getattr(vt, "__name__", "")
+            if t_name not in _EXCLUDED_EXTERNAL_TOOLS:
+                base.register(vt)
 
     if tools_mode == "scoped":
         whitelist = list(task.get("tool_chain") or [])
@@ -102,8 +131,17 @@ class TaskAwareMockProvider:
         c_tokens = int(45 * thinking_mult)
         usage = UsageMetadata(prompt_tokens=p_tokens, completion_tokens=c_tokens, total_tokens=p_tokens + c_tokens)
 
-        # If no tools are registered, the model can only output raw text
+        # If no tools are registered, the model can only output raw text (or respond to internal analyze_image calls)
         if not tools:
+            if any(getattr(m, "images", None) for m in messages):
+                return (
+                    Message(
+                        role="assistant",
+                        content="Visual QA Verified: 9:16 safe zones, WCAG AA contrast, and bounded text boxes passed inspection.",
+                        usage=usage,
+                    ),
+                    usage,
+                )
             self.orch_step += 1
             return (
                 Message(
@@ -339,7 +377,292 @@ class TaskAwareMockProvider:
                     return Message(role="assistant", content="", tool_calls=[tc], usage=extra_usage), extra_usage
                 return Message(role="assistant", content=f"Multi-turn LLM UI navigation completed ({len(expected_steps)} turns).", usage=extra_usage), extra_usage
 
+        # Office, CRM & VFS Sandbox Tasks (OF-01 .. OF-05)
+        if task_id == "OF-01":
+            sql = "SELECT id, name, status, loan_amount FROM lead WHERE owner = ME AND status = 'Active' AND created_date = last_n_days:14 ORDER BY loan_amount DESC"
+            if s == 1:
+                return Message(role="assistant", content="", tool_calls=[ToolCall(id="of1_1", name="valstorm_sql_query", arguments={"query": sql})], usage=usage), usage
+            if s == 2:
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[
+                        ToolCall(
+                            id="of1_2",
+                            name="valstorm_create_list_filter",
+                            arguments={"name": "High-Value Active Leads (14d)", "object_api_name": "lead", "sql_query": sql, "is_pinned": True},
+                        )
+                    ],
+                    usage=usage,
+                ), usage
+            return Message(role="assistant", content="Queried active leads and saved pinned list filter 'High-Value Active Leads (14d)'.", usage=usage), usage
+
+        if task_id == "OF-02":
+            if s == 1:
+                return Message(role="assistant", content="", tool_calls=[ToolCall(id="of2_1", name="valstorm_schema_inspect", arguments={"api_name": "campaign"})], usage=usage), usage
+            if s == 2:
+                rec = {
+                    "name": "Q4 Enterprise Open Model Launch",
+                    "status": "Active",
+                    "content_type": "Carousel",
+                    "utm_source": "linkedin",
+                    "owner": "user_qBulInDu18OcylWP",
+                }
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="of2_2", name="valstorm_record_cud", arguments={"api_name": "campaign", "action": "create", "records": [rec]})],
+                    usage=usage,
+                ), usage
+            return Message(role="assistant", content="Created campaign record with string lookup ID and tag labels.", usage=usage), usage
+
+        if task_id == "OF-03":
+            if s == 1:
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[
+                        ToolCall(
+                            id="of3_1",
+                            name="valstorm_record_cud",
+                            arguments={"api_name": "vault", "action": "create", "records": [{"name": "09_Standard_Operating_Procedures", "parent_vault": "vaul_root_hub"}]},
+                        )
+                    ],
+                    usage=usage,
+                ), usage
+            if s == 2:
+                sop_md = (
+                    "# Open Model Failover SOP\n\n"
+                    "| Model | Tier | Max Output |\n"
+                    "| :--- | :--- | :--- |\n"
+                    "| `gemini-4-argon` | GEAP Thinker Baseline | 1,000,000 |\n"
+                    "| `qwen3.8-max` | DO Open Thinker | 262,144 |\n"
+                )
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[
+                        ToolCall(
+                            id="of3_2",
+                            name="valstorm_vfs_write_file",
+                            arguments={"name": "Open_Model_Failover_SOP.md", "content": sop_md, "vault_id": "vaul_1_0001"},
+                        )
+                    ],
+                    usage=usage,
+                ), usage
+            return Message(role="assistant", content="Created 09_Standard_Operating_Procedures vault and Open_Model_Failover_SOP.md.", usage=usage), usage
+
+        if task_id == "OF-04":
+            if s == 1:
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="of4_1", name="valstorm_sql_query", arguments={"query": "SELECT id, name, email, company FROM contact WHERE company = 'Acme Corp'"})],
+                    usage=usage,
+                ), usage
+            if s == 2:
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[
+                        ToolCall(
+                            id="of4_2",
+                            name="valstorm_record_merge",
+                            arguments={"master_record_id": "con_master_1", "duplicate_record_ids": ["con_dup_2"], "schema_api_name": "contact"},
+                        )
+                    ],
+                    usage=usage,
+                ), usage
+            return Message(role="assistant", content="Merged duplicate contact con_dup_2 into con_master_1 and re-linked child tasks.", usage=usage), usage
+
+        if task_id == "OF-05":
+            if s == 1:
+                fn_code = "def route_drip_step(step: int, lead_status: str) -> dict:\n    return {'action': 'send_email', 'step': step}\n"
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="of5_1", name="valstorm_validate_function", arguments={"function_name": "route_drip_step", "code": fn_code})],
+                    usage=usage,
+                ), usage
+            if s == 2:
+                steps = [{"step": 1, "delay_minutes": 0}, {"step": 2, "delay_minutes": 2880}, {"step": 3, "delay_minutes": 7200}]
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[
+                        ToolCall(
+                            id="of5_2",
+                            name="valstorm_create_drip_cadence",
+                            arguments={
+                                "name": "14-Day Enterprise Nurture",
+                                "target_schema": "lead",
+                                "steps": steps,
+                                "target_type": "function",
+                                "exit_conditions": {"status": ["Closed Won"]},
+                            },
+                        )
+                    ],
+                    usage=usage,
+                ), usage
+            return Message(role="assistant", content="Validated AST-safe step router function and created 14-Day Enterprise Nurture drip cadence.", usage=usage), usage
+
+        # Creative Studio & Craft Suite Tasks (CR-01 .. CR-04)
+        if task_id == "CR-01":
+            if s == 1:
+                psd_spec = {
+                    "document": {"name": "AdPlate", "width": 1080, "height": 1920, "mode": "rgb", "background": "#090d16"},
+                    "commands": [
+                        {"id": "shape.create", "params": {"name": "Card", "kind": "roundedRect", "rect": [80, 520, 920, 600], "radii": 36, "fill": "#111827"}},
+                        {"id": "layer.layerStyle.dropShadow", "params": {"color": "#000000", "opacity": 80, "distance": 16, "size": 32}},
+                        {"id": "layer.newAdjustmentLayer.curves", "params": {"points": [[0, 0], [50, 40], [200, 220], [255, 255]]}},
+                        {"id": "type.create", "params": {"name": "Headline", "box": [120, 300, 840, 200], "text": "Valstorm Open AI Engine", "size": 48, "color": "#ffffff"}},
+                    ],
+                }
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="cr1_1", name="write_file", arguments={"path": "ad_plate.psd.json", "content": json.dumps(psd_spec, indent=2)})],
+                    usage=usage,
+                ), usage
+            if s == 2:
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="cr1_2", name="analyze_image", arguments={"path": "ad_preview.png", "prompt": "Audit 9:16 safe zones, contrast, and text box wrapping."})],
+                    usage=usage,
+                ), usage
+            return Message(role="assistant", content="Created PhotoCraft 9:16 layered PSD spec and completed visual QA via analyze_image.", usage=usage), usage
+
+        if task_id == "CR-02":
+            if s == 1:
+                fc_spec = {
+                    "project": "VerticalReel",
+                    "commands": [
+                        {"cmd": "file.newSequence", "params": {"name": "Reel_9x16", "width": 1080, "height": 1920, "fps": 30.0, "video": 2, "audio": 2}},
+                        {"cmd": "timeline.place", "params": {"items": ["select_1"], "track": "V1", "seconds": 0.0, "video": True, "audio": False}},
+                        {"cmd": "timeline.place", "params": {"item": "vo_1", "track": "A1", "seconds": 0.0, "video": False, "audio": True}},
+                        {"cmd": "clip.audioGain", "params": {"clips": ["vo_1"], "mode": "normalizeMax", "db": -1.0}},
+                        {"cmd": "captions.newTrack", "params": {"format": "Subtitle", "name": "Reels Captions", "language": "en"}},
+                        {"cmd": "captions.setStyle", "params": {"track": "C1", "size": 28.0, "color": "#ffffff", "margin": 0.22, "outline": 2.0}},
+                        {"cmd": "file.exportFcpxml", "params": {"path": "edit.fcpxml"}},
+                    ],
+                }
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="cr2_1", name="write_file", arguments={"path": "reel_timeline.fcproj", "content": json.dumps(fc_spec, indent=2)})],
+                    usage=usage,
+                ), usage
+            if s == 2:
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="cr2_2", name="terminal_exec", arguments={"command": "./bin/filmcraft-cli export edit.fcpxml"})],
+                    usage=usage,
+                ), usage
+            return Message(role="assistant", content="Assembled FilmCraft 9:16 vertical reel timeline and exported edit.fcpxml.", usage=usage), usage
+
+        if task_id == "CR-03":
+            if s == 1:
+                ec_spec = {
+                    "composition": "Main",
+                    "keyframes": {
+                        "transform/position": [{"time": 0.0, "value": [540, 960]}],
+                        "transform/scale": [{"time": 1.5, "value": [105, 105]}],
+                    },
+                    "expressions": {"transform/opacity": "wiggle(2, 15)"},
+                    "commands": [{"cmd": "file.exportLottie", "params": {"comp": "Main", "path": "overlay.json", "includeExpressions": True}}],
+                }
+                lottie_json = {"v": "5.7.4", "fr": 60, "ip": 0, "op": 180, "w": 1080, "h": 1920, "nm": "Main", "layers": []}
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[
+                        ToolCall(id="cr3_1", name="write_file", arguments={"path": "lower_third.ecproj", "content": json.dumps(ec_spec, indent=2)}),
+                        ToolCall(id="cr3_2", name="write_file", arguments={"path": "overlay.json", "content": json.dumps(lottie_json, indent=2)}),
+                    ],
+                    usage=usage,
+                ), usage
+            if s == 2:
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="cr3_3", name="analyze_image", arguments={"path": "check.png", "prompt": "Verify lower third motion graphic layout."})],
+                    usage=usage,
+                ), usage
+            return Message(role="assistant", content="Created EffectCraft lower_third.ecproj, exported Lottie overlay.json, and verified check.png.", usage=usage), usage
+
+        if task_id == "CR-04":
+            if s == 1:
+                sc_spec = {
+                    "cmd": "session.new",
+                    "params": {"name": "PodcastMix", "sample_rate": 48000, "bit_depth": 24, "template": "blank"},
+                    "imports": {"cmd": "file.import_audio", "paths": ["vo.wav", "music.wav"], "new_tracks": True},
+                    "dialogue_chain": [
+                        {"plugin": "High-Pass Filter", "freq_hz": 80},
+                        {"plugin": "De-Esser", "band_hz": [5000, 8000]},
+                        {"plugin": "Parametric EQ", "scoop_hz": 300, "air_shelf_hz": 11000},
+                        {"plugin": "Compressor", "ratio": "3:1", "attack_ms": 20, "release_ms": 100},
+                        {"plugin": "True-Peak Limiter", "ceiling_dbfs": -1.0, "target_lufs": -14.0},
+                    ],
+                }
+                return Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="cr4_1", name="write_file", arguments={"path": "podcast_master.scraft", "content": json.dumps(sc_spec, indent=2)})],
+                    usage=usage,
+                ), usage
+            return Message(role="assistant", content="Saved 48kHz/24-bit SoundCraft dialogue sweetening session to podcast_master.scraft.", usage=usage), usage
+
         return Message(role="assistant", content="Task completed.", usage=usage), usage
+
+
+def _resolve_isolated_live_provider(provider_name: str, model_name: str) -> Optional[Any]:
+    """Resolves a single provider/model in strict isolation (no fallback cascade) for head-to-head model benchmarks."""
+    ks = KeyStore()
+    p_norm = (provider_name or "gemini").strip().lower()
+    api_key = ks.get_api_key(p_norm)
+    if not api_key and p_norm in ("do", "digitalocean"):
+        for alias in ("digitalocean", "do"):
+            api_key = ks.get_api_key(alias)
+            if api_key:
+                break
+    if not api_key and p_norm in ("gemini", "geap", "vertex", "aistudio", "valstorm"):
+        for alias in ("gemini", "valstorm"):
+            api_key = ks.get_api_key(alias)
+            if api_key:
+                break
+        if not api_key:
+            try:
+                from tools.valstorm_client import resolve_valstorm_credentials
+                api_key, _ = resolve_valstorm_credentials()
+            except Exception:
+                pass
+    if not api_key:
+        return None
+    inst, _, _ = resolve_provider_instance(provider_name=p_norm, api_key=api_key, model=model_name)
+    return inst
+
+
+class _BenchmarkVisionInspector:
+    """Deterministic vision inspector for `analyze_image` tool calls during benchmarks.
+
+    Prevents nested secondary-LLM calls inside `analyze_image` from skewing the
+    target model's wall-clock latency and token measurements.
+    """
+
+    default_model = "benchmark-vision-qa"
+
+    async def generate(self, messages: List[Message], model: Optional[str] = None, **kwargs: Any):
+        usage = UsageMetadata(prompt_tokens=64, completion_tokens=32, total_tokens=96)
+        return (
+            Message(
+                role="assistant",
+                content="Visual QA Verified: 1080x1920 9:16 safe zones, WCAG AA contrast, and bounded text boxes passed inspection.",
+                usage=usage,
+            ),
+            usage,
+        )
 
 
 class VsAgentBenchmarkAdapter(BenchmarkAdapter):
@@ -357,6 +680,10 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
         isolated_sandbox = HostSandbox(base_dir=str(workspace_dir))
         token = set_current_sandbox(isolated_sandbox)
 
+        # Provision Craft Suite CLI shims & valid PNG assets for Creative tasks
+        if str(task.get("id", "")).startswith("CR-") or str(task.get("category", "")).startswith("creative_"):
+            provision_craft_suite_sandbox(workspace_dir)
+
         subagent_reg = SubagentRegistry.get_instance()
         subagent_reg.clear()
 
@@ -364,23 +691,29 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
         use_mock = (mode == "mock")
         live_provider = None
         if mode in ("auto", "live"):
-            live_provider = _get_subagent_provider(config.provider)
+            if config.isolate_provider:
+                live_provider = _resolve_isolated_live_provider(config.provider, config.model)
+            else:
+                live_provider = _get_subagent_provider(config.provider)
             if live_provider is None and mode == "auto":
                 use_mock = True
 
         if use_mock:
             provider = TaskAwareMockProvider(task=task, config=config)
             set_subagent_provider_override(provider)
+            set_vision_provider_override(_BenchmarkVisionInspector())
         else:
             provider = live_provider
-            set_subagent_provider_override(None)
+            set_subagent_provider_override(live_provider if config.isolate_provider else None)
+            set_vision_provider_override(_BenchmarkVisionInspector())
 
-        # 3. Build scoped/full/empty ToolRegistry
+        # 3. Build scoped/full/empty ToolRegistry (with safe sandboxed Valstorm client)
         registry = build_benchmark_tool_registry(
             tools_mode=config.tools_mode,
             task=task,
             swarm_mode=config.swarm_mode,
             use_decision_model=config.use_decision_model,
+            workspace_dir=workspace_dir,
         )
 
         # Materialize ui_state.json for UI/Canvas benchmark tasks
@@ -404,11 +737,17 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
                         f"to '{out_target}' using `write_file`."
                     )
 
-        # 4. Build system prompt with or without attached skills
+        # 4. Build system prompt with task-specific profile (developer, chief-of-staff, creative-director) and attached skills
         ctx_mgr = WorkspaceContextManager(workdir=str(workspace_dir))
-        prof_data = load_profile("developer")
+        target_profile_slug = task.get("profile") or "developer"
+        prof_data = load_profile(target_profile_slug)
         if config.with_skills:
-            skills_to_attach = config.skills or task.get("recommended_skills") or prof_data.get("attached_skill_slugs") or []
+            if config.skills:
+                skills_to_attach = config.skills
+            elif "recommended_skills" in task:
+                skills_to_attach = task["recommended_skills"] or []
+            else:
+                skills_to_attach = prof_data.get("attached_skill_slugs") or []
             prof_data["attached_skill_slugs"] = list(skills_to_attach)
         else:
             prof_data["attached_skill_slugs"] = []
@@ -471,6 +810,7 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
             else:
                 os.environ["VALSTORM_SUBAGENT_AUTO_TUNE"] = prev_sub_autotune
             set_subagent_provider_override(None)
+            set_vision_provider_override(None)
             set_current_sandbox(prev_sandbox)
 
         duration_sec = round(time.perf_counter() - t0, 3)

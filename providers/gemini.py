@@ -8,6 +8,17 @@ from core.models import Message, StreamEvent, StreamEventType, ToolCall, UsageMe
 from core.retry import execute_stream_with_retry, execute_with_retry, is_retryable_error
 from providers.base import BaseProvider, extract_and_resolve_images
 
+# Eagerly import google.genai and websockets client modules at module load time so a long-running
+# daemon process never hits a split-brain ImportError (e.g. StatusLineTooLong) if `uv tool upgrade`
+# mutates site-packages on disk before the first chat turn executes.
+try:
+    from google import genai as _preload_genai  # noqa: F401
+    from google.genai import types as _preload_genai_types  # noqa: F401
+    import websockets.exceptions as _preload_ws_exc  # noqa: F401
+    import websockets.client as _preload_ws_client  # noqa: F401
+except Exception:
+    pass
+
 
 def _normalize_gemini_finish(raw: Any) -> Optional[str]:
     """Maps Gemini FinishReason enums/strings to the runtime's normalized vocabulary."""

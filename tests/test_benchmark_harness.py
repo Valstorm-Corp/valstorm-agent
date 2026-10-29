@@ -245,3 +245,71 @@ async def test_ablation_matrix_execution_skills_react_and_swarm():
     md = format_markdown_report(swarm_report)
     assert "Configuration Ablation Summary" in md
     assert "SW-01" in md
+
+
+def test_office_creative_and_do_open_models_presets(tmp_path: Path):
+    """Verify office, creative, and full task suites and DO open-model ablation presets."""
+    office_tasks = load_tasks(suite="office")
+    creative_tasks = load_tasks(suite="creative")
+    full_tasks = load_tasks(suite="full")
+
+    assert len(office_tasks) == 5
+    assert [t["id"] for t in office_tasks] == ["OF-01", "OF-02", "OF-03", "OF-04", "OF-05"]
+    assert len(creative_tasks) == 4
+    assert [t["id"] for t in creative_tasks] == ["CR-01", "CR-02", "CR-03", "CR-04"]
+    assert len(full_tasks) == 24  # 9 core + 2 swarm + 4 ui + 5 office + 4 creative
+
+    # Verify DO open models preset contains explicit GEAP baselines + DO open models (no closed 3rd-party models)
+    do_cfgs = get_ablation_configs("do_open_models")
+    models = [c.model for c in do_cfgs]
+    assert "gemini-4-argon" in models
+    assert "gemini-3.8-flash" in models
+    assert "gemini-3.5-flash-lite" in models
+    assert "qwen3.8-max" in models
+    assert "deepseek-v4.1-flash" in models
+    assert "kimi-k2.6" in models
+    assert "mimo-v2.5-pro" in models
+    assert "gemma-4-31B-it" in models
+    assert all(not m.startswith(("claude-", "anthropic-", "gpt-4", "gpt-5", "gpt-6", "o1", "o3")) for m in models)
+
+    # Verify external side-effect tools (SMS, Slack) are strictly excluded even in full mode
+    full_reg = build_benchmark_tool_registry("full", office_tasks[0], workspace_dir=tmp_path)
+    tool_names = set(full_reg.list_tools())
+    assert "valstorm_sql_query" in tool_names
+    assert "valstorm_record_cud" in tool_names
+    assert "valstorm_send_sms" not in tool_names
+    assert "slack_post_message" not in tool_names
+
+
+@pytest.mark.asyncio
+async def test_office_and_creative_suites_execution_and_guardrails(tmp_path: Path):
+    """Verify Office (OF-01..OF-05) and Creative (CR-01..CR-04) suites pass 100% and enforce data guardrails."""
+    from benchmarks.sandbox_valstorm import BenchmarkValstormClient
+
+    # 1. Verify BenchmarkValstormClient catches dictionary lookup & tag_ ID picklist violations
+    client = BenchmarkValstormClient(workspace_dir=tmp_path)
+    bad_res = await client.records_create(
+        "campaign",
+        [{"name": "Bad Campaign", "owner": {"id": "user_123"}, "status": "tag_active_999"}],
+    )
+    assert bad_res["status"] == "validation_warning"
+    assert len(bad_res["errors"]) == 2
+
+    # Verify AST gatekeeper blocks forbidden imports
+    bad_fn = await client.function_validate("import os\ndef hack(): return os.system('ls')")
+    assert bad_fn["valid"] is False
+    assert any("Forbidden import 'os'" in e for e in bad_fn["errors"])
+
+    # 2. Run Office Suite (OF-01..OF-05)
+    office_tasks = load_tasks(suite="office")
+    thinkers = get_ablation_configs("do_thinkers")[:2]  # gemini-4-argon vs qwen3.8-max
+    office_report = await run_benchmark_matrix(tasks=office_tasks, configs=thinkers, mode="mock", trials=1)
+    for cs in office_report["config_summaries"]:
+        assert cs["pass_rate"] == 1.0
+
+    # 3. Run Creative Studio Suite (CR-01..CR-04)
+    creative_tasks = load_tasks(suite="creative")
+    creative_report = await run_benchmark_matrix(tasks=creative_tasks, configs=thinkers, mode="mock", trials=1)
+    for cs in creative_report["config_summaries"]:
+        assert cs["pass_rate"] == 1.0
+

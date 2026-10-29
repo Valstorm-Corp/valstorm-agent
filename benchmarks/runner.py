@@ -331,37 +331,318 @@ def get_ablation_configs(
             ),
         ]
 
+    # GEAP Explicit Baselines + DigitalOcean Open-Weight Model Catalog (No Proprietary 3rd-Party Frontier Models)
+    do_thinker_configs = [
+        BenchmarkConfig(
+            config_id="geap_gemini_4_argon",
+            label="GEAP Baseline Thinker (`gemini-4-argon`, 1M/1M)",
+            provider="gemini",
+            model="gemini-4-argon",
+            thinking_level="high",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=False,
+        ),
+        BenchmarkConfig(
+            config_id="do_qwen3_8_max",
+            label="DO Open Thinker (`qwen3.8-max`, 2.4T MoE, 1M/262K)",
+            provider="do",
+            model="qwen3.8-max",
+            thinking_level="high",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=False,
+        ),
+        BenchmarkConfig(
+            config_id="do_deepseek_v4_pro_0813",
+            label="DO Open Thinker (`deepseek-v4-pro-0813`, 1M/1M, $0.044 Cache)",
+            provider="do",
+            model="deepseek-v4-pro-0813",
+            thinking_level="high",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=False,
+        ),
+        BenchmarkConfig(
+            config_id="do_glm_5_3",
+            label="DO Open Thinker (`glm-5.3`, 753B, Always-On Reasoning)",
+            provider="do",
+            model="glm-5.3",
+            thinking_level="high",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=False,
+        ),
+        BenchmarkConfig(
+            config_id="do_kimi_k2_6",
+            label="DO Open Thinker [Dedicated+Serverless] (`kimi-k2.6`, 1T, 262K/262K)",
+            provider="do",
+            model="kimi-k2.6",
+            thinking_level="high",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+        BenchmarkConfig(
+            config_id="do_mimo_v2_5_pro",
+            label="DO Open Thinker [Dedicated+Serverless] (`mimo-v2.5-pro`, 1T MIT, 262K/262K)",
+            provider="do",
+            model="mimo-v2.5-pro",
+            thinking_level="high",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+    ]
+
+    do_reasoner_configs = [
+        BenchmarkConfig(
+            config_id="geap_gemini_3_8_flash",
+            label="GEAP Baseline Reasoner (`gemini-3.8-flash`, 1M/64K)",
+            provider="gemini",
+            model="gemini-3.8-flash",
+            thinking_level="medium",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=False,
+        ),
+        BenchmarkConfig(
+            config_id="do_qwen3_5_397b_a17b",
+            label="DO Open Reasoner [Dedicated+Serverless] (`qwen3.5-397b-a17b`, 17B Active MoE)",
+            provider="do",
+            model="qwen3.5-397b-a17b",
+            thinking_level="medium",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+        BenchmarkConfig(
+            config_id="do_deepseek_v4_1_flash",
+            label="DO Open Reasoner (`deepseek-v4.1-flash`, 552B Vision, $0.006 Cache)",
+            provider="do",
+            model="deepseek-v4.1-flash",
+            thinking_level="medium",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=False,
+        ),
+        BenchmarkConfig(
+            config_id="do_deepseek_3_2",
+            label="DO Open Reasoner [Dedicated+Serverless] (`deepseek-3.2`, 680B, 163K)",
+            provider="do",
+            model="deepseek-3.2",
+            thinking_level="medium",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+        BenchmarkConfig(
+            config_id="do_glm_5_2",
+            label="DO Open Reasoner [Dedicated+Serverless] (`glm-5.2`, MIT, 262K/131K)",
+            provider="do",
+            model="glm-5.2",
+            thinking_level="medium",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+        BenchmarkConfig(
+            config_id="do_nemotron_3_ultra",
+            label="DO Open Reasoner [Dedicated+Serverless] (`nemotron-3-ultra-550b`, 550B)",
+            provider="do",
+            model="nemotron-3-ultra-550b",
+            thinking_level="medium",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+        BenchmarkConfig(
+            config_id="do_minimax_m2_5",
+            label="DO Open Reasoner [Dedicated+Serverless] (`minimax-m2.5`, 230B, 65K)",
+            provider="do",
+            model="minimax-m2.5",
+            thinking_level="medium",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+    ]
+
+    do_worker_configs = [
+        BenchmarkConfig(
+            config_id="geap_gemini_3_5_flash_lite",
+            label="GEAP Baseline Worker (`gemini-3.5-flash-lite`, 1M/64K)",
+            provider="gemini",
+            model="gemini-3.5-flash-lite",
+            thinking_level="low",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=False,
+        ),
+        BenchmarkConfig(
+            config_id="do_deepseek_v4_flash_0731",
+            label="DO Open Worker (`deepseek-v4-flash-0731`, 284B, 1M/1M, $0.14/$0.28)",
+            provider="do",
+            model="deepseek-v4-flash-0731",
+            thinking_level="low",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=False,
+        ),
+        BenchmarkConfig(
+            config_id="do_glm_5_3_flash",
+            label="DO Open Worker (`glm-5.3-flash`, 320B Multimodal, $0.15/$0.50)",
+            provider="do",
+            model="glm-5.3-flash",
+            thinking_level="low",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=False,
+        ),
+        BenchmarkConfig(
+            config_id="do_llama_4_maverick",
+            label="DO Open Worker [Dedicated+Serverless] (`llama-4-maverick`, 17B-128E, 16K Out)",
+            provider="do",
+            model="llama-4-maverick",
+            thinking_level="low",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+        BenchmarkConfig(
+            config_id="do_gpt_oss_120b",
+            label="DO Open Worker [Dedicated+Serverless] (`openai-gpt-oss-120b`, 4K Max Out)",
+            provider="do",
+            model="openai-gpt-oss-120b",
+            thinking_level="low",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+        BenchmarkConfig(
+            config_id="do_gemma_4_31b",
+            label="DO Open Worker [1x GPU Dedicated] (`gemma-4-31B-it`, 31B, 256K/8K)",
+            provider="do",
+            model="gemma-4-31B-it",
+            thinking_level="low",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+        BenchmarkConfig(
+            config_id="do_mistral_3_14b",
+            label="DO Open Worker [1x GPU Dedicated] (`mistral-3-14B`, 14B, 262K)",
+            provider="do",
+            model="mistral-3-14B",
+            thinking_level="low",
+            with_skills=True,
+            with_react_loop=True,
+            tools_mode="scoped",
+            isolate_provider=True,
+            dedicated_eligible=True,
+        ),
+    ]
+
+    if ab == "do_thinkers":
+        return do_thinker_configs
+    if ab == "do_reasoners":
+        return do_reasoner_configs
+    if ab == "do_workers":
+        return do_worker_configs
+    if ab == "do_open_models":
+        return do_thinker_configs + do_reasoner_configs + do_worker_configs
+    if ab == "do_dedicated_models":
+        all_do = do_thinker_configs + do_reasoner_configs + do_worker_configs
+        return [c for c in all_do if c.provider == "gemini" or c.dedicated_eligible]
+
     raise ValueError(f"Unknown ablation preset: '{ablation}'")
 
 
 def load_tasks(
-    suite: Literal["core", "swarm", "ui", "all"] = "core",
+    suite: Literal["core", "swarm", "ui", "office", "creative", "all", "full"] = "core",
     task_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Loads benchmark task definitions from `benchmarks/tasks/*.json`."""
     tasks_dir = BENCHMARKS_DIR / "tasks"
     loaded: List[Dict[str, Any]] = []
+    tid_upper = task_id.strip().upper() if task_id else ""
 
-    if suite in ("core", "all"):
+    if suite in ("core", "all", "full") or tid_upper.startswith("G-"):
         core_path = tasks_dir / "core_tasks.json"
         if core_path.is_file():
             loaded.extend(json.loads(core_path.read_text(encoding="utf-8")))
 
-    if suite in ("swarm", "all"):
+    if suite in ("swarm", "all", "full") or tid_upper.startswith("SW-"):
         swarm_path = tasks_dir / "swarm_tasks.json"
         if swarm_path.is_file():
             loaded.extend(json.loads(swarm_path.read_text(encoding="utf-8")))
 
-    if suite == "ui" or (task_id and task_id.strip().upper().startswith("UI-")):
+    if suite in ("ui", "full") or tid_upper.startswith("UI-"):
         ui_path = tasks_dir / "ui_navigation_tasks.json"
         if ui_path.is_file():
             loaded.extend(json.loads(ui_path.read_text(encoding="utf-8")))
 
-    if task_id:
-        target = task_id.strip().upper()
-        loaded = [t for t in loaded if t.get("id", "").upper() == target]
+    if suite in ("office", "full") or tid_upper.startswith("OF-"):
+        office_path = tasks_dir / "office_tasks.json"
+        if office_path.is_file():
+            loaded.extend(json.loads(office_path.read_text(encoding="utf-8")))
 
-    return loaded
+    if suite in ("creative", "full") or tid_upper.startswith("CR-"):
+        creative_path = tasks_dir / "creative_tasks.json"
+        if creative_path.is_file():
+            loaded.extend(json.loads(creative_path.read_text(encoding="utf-8")))
+
+    if task_id:
+        loaded = [t for t in loaded if t.get("id", "").upper() == tid_upper]
+
+    # Deduplicate by task id while preserving order
+    seen_ids = set()
+    unique_loaded = []
+    for t in loaded:
+        tid = t.get("id")
+        if tid not in seen_ids:
+            seen_ids.add(tid)
+            unique_loaded.append(t)
+
+    return unique_loaded
 
 
 async def run_benchmark_matrix(
@@ -558,13 +839,18 @@ def main():
     parser = argparse.ArgumentParser(description="Valstorm Agent Runtime — Multi-Axis Benchmark & Ablation Runner")
     parser.add_argument(
         "--ablation",
-        choices=["baseline", "skills", "react", "tools", "reasoning", "adaptive_thinking", "message_autotune", "swarm", "harnesses", "ui_nav", "decision_model", "all"],
+        choices=[
+            "baseline", "skills", "react", "tools", "reasoning",
+            "adaptive_thinking", "message_autotune", "swarm", "harnesses",
+            "ui_nav", "decision_model", "do_open_models", "do_dedicated_models",
+            "do_thinkers", "do_reasoners", "do_workers", "all",
+        ],
         default="baseline",
         help="Ablation preset to execute (default: baseline)",
     )
     parser.add_argument(
         "--suite",
-        choices=["core", "swarm", "ui", "all"],
+        choices=["core", "swarm", "ui", "office", "creative", "all", "full"],
         default="core",
         help="Task suite to load (default: core)",
     )

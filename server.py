@@ -136,9 +136,46 @@ def setup_server_logging(
 # Initialize default logger on module load
 setup_server_logging()
 
+
+def _preload_runtime_dependencies() -> None:
+    """Eagerly loads provider SDKs and websocket submodules into sys.modules at daemon startup.
+
+    Prevents split-brain ImportError crashes (such as `cannot import name 'StatusLineTooLong'
+    from 'websockets.exceptions'`) if a background `uv tool upgrade` updates site-packages on
+    disk while the daemon process is already running in memory before its first chat turn.
+    """
+    for mod_name in (
+        "websockets",
+        "websockets.exceptions",
+        "websockets.http11",
+        "websockets.client",
+        "websockets.asyncio.client",
+        "google.genai",
+        "google.genai.types",
+        "google.genai.errors",
+        "openai",
+        "anthropic",
+    ):
+        try:
+            __import__(mod_name)
+        except Exception:
+            pass
+
+
+_preload_runtime_dependencies()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manages server startup and shutdown lifecycle including the warm sandbox pool."""
+    # Clean up any stale compiler/diagnostic processes left behind from previous crashes
+    try:
+        from core.lsp.diagnostics import cleanup_stale_diagnostic_processes
+        reaped = cleanup_stale_diagnostic_processes()
+        if reaped:
+            logger.info(f"Reaped {len(reaped)} stale diagnostic process(es) at startup: {reaped}")
+    except Exception as e:
+        logger.debug(f"Startup diagnostic reaper check: {e}")
+
     if os.environ.get("VALSTORM_DISABLE_SANDBOX_POOL", "false").lower() != "true":
         try:
             import docker
@@ -173,6 +210,7 @@ app.add_middleware(
 # Active in-flight run queues: run_id -> asyncio.Queue
 active_run_event_queues: Dict[str, asyncio.Queue] = {}
 active_run_tasks: Dict[str, asyncio.Task] = {}
+active_chat_runs: Dict[str, str] = {}
 
 
 class RunRequestPayload(BaseModel):
@@ -189,6 +227,7 @@ class RunRequestPayload(BaseModel):
     session_id: Optional[str] = None
     instructions: Optional[str] = None
     system_prompt: Optional[str] = None
+    allowed_tools: Optional[List[str]] = None
     max_iterations: Optional[int] = None
     execution_environment: Optional[str] = "host"
     valstorm_token: Optional[str] = None
@@ -620,58 +659,80 @@ async def _execute_agent_run(
         effective_chat_id = payload.session_id
 
     # Instantiate requested execution sandbox
-    sandbox: BaseSandbox
+    sandbox: Optional[BaseSandbox] = None
     from_pool = False
     pool = get_global_sandbox_pool()
     default_env = os.environ.get("VALSTORM_DEFAULT_SANDBOX", "host").strip().lower()
     exec_env = (payload.execution_environment or default_env or "host").strip().lower()
+    target_model: Optional[str] = payload.model
+    resolved_provider: Optional[str] = payload.provider
 
     logger.info(
         f"[{run_id}] Run initiated | prompt='{payload.input[:80]}' | env={exec_env} | profile={payload.profile} | model={payload.model} | chat_id={effective_chat_id}"
     )
 
     req_workdir = payload.workdir or payload.workspace_dir
-    if not req_workdir and isinstance(payload.user_context, dict):
-        req_workdir = payload.user_context.get("workspace_dir") or payload.user_context.get("workdir")
+    req_os_target = None
+    if isinstance(payload.user_context, dict):
+        if not req_workdir:
+            req_workdir = payload.user_context.get("workspace_dir") or payload.user_context.get("workdir")
+        req_os_target = payload.user_context.get("os_target")
 
-    t_sb_start = time.perf_counter()
-    if exec_env in ("cloud", "e2b", "serverless"):
-        try:
-            sandbox = CloudMicroVMSandbox()
-            await sandbox.start()
-        except (ValueError, RuntimeError) as e:
-            logger.warning(
-                f"[{run_id}] Cloud microVM sandbox unavailable ({e}). Falling back to HostSandbox."
-            )
-            sandbox = HostSandbox(base_dir=req_workdir)
-            await sandbox.start()
-    elif exec_env in ("docker", "container"):
-        if pool is not None:
-            sandbox = await pool.acquire()
-            from_pool = True
+    try:
+        t_sb_start = time.perf_counter()
+        if exec_env in ("cloud", "e2b", "serverless"):
+            try:
+                sandbox = CloudMicroVMSandbox()
+                await sandbox.start()
+            except (ValueError, RuntimeError) as e:
+                logger.warning(
+                    f"[{run_id}] Cloud microVM sandbox unavailable ({e}). Falling back to HostSandbox."
+                )
+                sandbox = HostSandbox(base_dir=req_workdir)
+                await sandbox.start()
+        elif exec_env in ("docker", "container"):
+            if pool is not None:
+                sandbox = await pool.acquire()
+                from_pool = True
+            else:
+                sandbox = DockerSandbox()
+                await sandbox.start()
         else:
-            sandbox = DockerSandbox()
+            sandbox = HostSandbox(base_dir=req_workdir, os_target=req_os_target)
             await sandbox.start()
-    else:
-        sandbox = HostSandbox(base_dir=req_workdir)
-        await sandbox.start()
 
-    sb_latency_ms = (time.perf_counter() - t_sb_start) * 1000
-    logger.info(
-        f"[{run_id}] Sandbox ready: type={exec_env} ({sandbox.__class__.__name__}) in {sb_latency_ms:.1f}ms (from_pool={from_pool})"
-    )
+        sb_latency_ms = (time.perf_counter() - t_sb_start) * 1000
+        logger.info(
+            f"[{run_id}] Sandbox ready: type={exec_env} ({sandbox.__class__.__name__}) in {sb_latency_ms:.1f}ms (from_pool={from_pool})"
+        )
 
-    token = set_current_sandbox(sandbox)
-    auth_tok = set_current_valstorm_auth(valstorm_token, valstorm_base_url)
-    q_tok = set_current_event_queue(queue)
+        token = set_current_sandbox(sandbox)
+        ctx_org_id = None
+        ctx_user_id = None
+        has_wm = False
+        if isinstance(payload.user_context, dict):
+            ctx_org_id = payload.user_context.get("organization_id") or payload.user_context.get("org_id")
+            ctx_user_id = payload.user_context.get("user_id") or payload.user_context.get("id")
+            wm_dict = payload.user_context.get("working_memory")
+            if isinstance(wm_dict, dict) and wm_dict.get("formatted_prompt_block"):
+                has_wm = True
 
-    try:
-        from tools.delegation import SubagentRegistry
-        SubagentRegistry.get_instance().clear()
-    except Exception:
-        pass
+        auth_tok = set_current_valstorm_auth(
+            valstorm_token,
+            valstorm_base_url,
+            org_id=str(ctx_org_id) if ctx_org_id else None,
+            user_id=str(ctx_user_id) if ctx_user_id else None,
+            is_cloud_mode=(exec_env in ("cloud", "e2b", "serverless") or os.environ.get("VALSTORM_AGENT_MODE", "host").lower() == "cloud"),
+            has_working_memory_injected=has_wm,
+        )
+        q_tok = set_current_event_queue(queue)
 
-    try:
+        try:
+            from tools.delegation import SubagentRegistry
+            SubagentRegistry.get_instance().clear()
+        except Exception:
+            pass
+
         session_store = SessionStore()
         memory_store = MemoryStore()
 
@@ -704,7 +765,13 @@ async def _execute_agent_run(
             session_store=session_store,
         )
 
-        if profile_cfg and profile_cfg.get("allowed_tools") and hasattr(full_tools, "filter_by_whitelist"):
+        if payload.allowed_tools and hasattr(full_tools, "filter_by_whitelist"):
+            merged_whitelist = list(dict.fromkeys([
+                *(profile_cfg.get("allowed_tools") or []),
+                *payload.allowed_tools,
+            ]))
+            tools = full_tools.filter_by_whitelist(merged_whitelist)
+        elif profile_cfg and profile_cfg.get("allowed_tools") and hasattr(full_tools, "filter_by_whitelist"):
             tools = full_tools.filter_by_whitelist(profile_cfg["allowed_tools"])
         else:
             tools = full_tools
@@ -717,28 +784,44 @@ async def _execute_agent_run(
             effective_chat_id = session_id
 
         session = session_store.load_session(session_id)
+        effective_workdir = str(sandbox.base_dir) if hasattr(sandbox, "base_dir") else req_workdir
+        custom_prompt = (payload.system_prompt or payload.instructions or "").strip()
+        profile_default_prompt = (profile_cfg.get("system_prompt") or "").strip() if isinstance(profile_cfg, dict) else ""
+        has_custom_override = bool(custom_prompt and custom_prompt != profile_default_prompt)
         if not session:
             session = SessionState(
                 session_id=session_id,
                 active_model=target_model,
                 active_provider=resolved_provider,
             )
-            effective_workdir = str(sandbox.base_dir) if hasattr(sandbox, "base_dir") else req_workdir
-            sys_prompt = payload.system_prompt or payload.instructions or WorkspaceContextManager(workdir=effective_workdir, memory_store=memory_store).build_system_prompt(profile=profile_cfg, user_context=payload.user_context)
-            if (payload.system_prompt or payload.instructions) and payload.user_context:
-                now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
-                ctx_lines = ["\n\nSystem Context:", f"- Current Date & Time: {now_str}"]
-                u_name = payload.user_context.get("user_name")
-                u_email = payload.user_context.get("user_email")
-                if u_name or u_email:
-                    ctx_lines.append(f"- Current User: {u_name or ''} ({u_email or ''})".strip())
-                if payload.user_context.get("organization_id"):
-                    ctx_lines.append(f"- Organization: {payload.user_context.get('organization_name') or ''} [{payload.user_context.get('organization_id')}]".strip())
-                if payload.user_context.get("ui_context"):
-                    ctx_lines.append(f"- Active UI Context: {payload.user_context.get('ui_context')}")
-                sys_prompt += "\n" + "\n".join(ctx_lines)
+            if has_custom_override:
+                sys_prompt = custom_prompt
+                if payload.user_context:
+                    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
+                    ctx_lines = ["\n\nSystem Context:", f"- Current Date & Time: {now_str}"]
+                    u_name = payload.user_context.get("user_name")
+                    u_email = payload.user_context.get("user_email")
+                    if u_name or u_email:
+                        ctx_lines.append(f"- Current User: {u_name or ''} ({u_email or ''})".strip())
+                    if payload.user_context.get("organization_id"):
+                        ctx_lines.append(f"- Organization: {payload.user_context.get('organization_name') or ''} [{payload.user_context.get('organization_id')}]".strip())
+                    if payload.user_context.get("ui_context"):
+                        ctx_lines.append(f"- Active UI Context: {payload.user_context.get('ui_context')}")
+                    if payload.user_context.get("os_target"):
+                        ctx_lines.append(f"- Active OS Target: {payload.user_context.get('os_target')}")
+                    working_mem = payload.user_context.get("working_memory")
+                    if isinstance(working_mem, dict) and working_mem.get("formatted_prompt_block"):
+                        ctx_lines.append(f"\n{str(working_mem['formatted_prompt_block']).strip()}")
+                    sys_prompt += "\n" + "\n".join(ctx_lines)
+            else:
+                sys_prompt = WorkspaceContextManager(workdir=effective_workdir, memory_store=memory_store).build_system_prompt(profile=profile_cfg, user_context=payload.user_context)
 
             session.add_message(Message(role="system", content=sys_prompt, model=target_model, provider=resolved_provider))
+        elif session.messages and session.messages[0].role == "system" and not has_custom_override:
+            # Keep system environment context (such as active OS target & working directory) fresh across turns
+            session.messages[0].content = WorkspaceContextManager(
+                workdir=effective_workdir, memory_store=memory_store
+            ).build_system_prompt(profile=profile_cfg, user_context=payload.user_context)
 
         # Hydrate any missing cloud messages (e.g. from /help, mobile or web) before executing turn
         await _hydrate_session_from_cloud_if_needed(
@@ -757,6 +840,55 @@ async def _execute_agent_run(
             session.metadata["reasoning_effort"] = str(effective_reasoning_effort).strip().lower()
 
         effective_input = payload.input
+        if effective_input and effective_input.strip().startswith("/learn"):
+            learn_focus = effective_input.strip()[len("/learn"):].strip()
+            from core.skill_curator import curate_and_commit_turn_trajectory
+            last_assistant_msg = next(
+                (m.content for m in reversed(session.messages) if m.role == "assistant" and m.content),
+                "",
+            )
+            curate_res = await curate_and_commit_turn_trajectory(
+                user_input=learn_focus or "Distill the session trajectory into a reusable skill or pitfall.",
+                assistant_output=last_assistant_msg or "",
+                session=session,
+                provider=provider_inst,
+                model=target_model,
+                untrusted_tainted=bool(session.metadata.get("untrusted_content_tainted", False)),
+                force=True,
+            )
+            if curate_res.get("status") == "success":
+                card_msg = (
+                    f"📘 **Hermes Skill Curator (`/learn`)**: {curate_res.get('message')}\n"
+                    f"- **Slug**: `{curate_res.get('category')}/{curate_res.get('slug')}` (v{curate_res.get('version')})\n"
+                )
+            else:
+                card_msg = (
+                    f"ℹ️ **Hermes Skill Curator (`/learn`)**: No new skill mutation committed "
+                    f"(status=`{curate_res.get('status')}`, reason=`{curate_res.get('reason') or curate_res.get('message') or 'noop'}`)."
+                )
+            full_output = card_msg
+            await queue.put({
+                "event": "message.delta",
+                "run_id": run_id,
+                "delta": card_msg,
+            })
+            session.add_message(Message(role="user", content=effective_input, model=target_model, provider=resolved_provider))
+            session.add_message(Message(role="assistant", content=card_msg, model=target_model, provider=resolved_provider))
+            if hasattr(session_store, "save_session"):
+                session_store.save_session(session)
+            await queue.put({
+                "event": "run.completed",
+                "run_id": run_id,
+                "output": full_output,
+                "status": "completed",
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "model": target_model,
+                "provider": resolved_provider,
+            })
+            RUN_METADATA[run_id]["status"] = "completed"
+            return
+
         if effective_input and effective_input.strip().startswith("/memorize"):
             raw_fact = effective_input.strip()[len("/memorize"):].strip()
             if raw_fact:
@@ -949,7 +1081,8 @@ async def _execute_agent_run(
             user_message_id=getattr(payload, "user_message_id", None),
         )
 
-        # Smart Context & Memory: Asynchronously extract and reconcile persistent facts (Zero latency overhead)
+        # Smart Context, Memory & Hermes Skill Curator: Asynchronously extract facts and curate procedural skills
+        is_tainted = bool(session.metadata.get("untrusted_content_tainted", False))
         try:
             from core.memory_extractor import extract_and_commit_turn_memory
             asyncio.create_task(
@@ -959,10 +1092,27 @@ async def _execute_agent_run(
                     memory_store=memory_store,
                     provider=provider_inst,
                     model=target_model,
+                    chat_id=effective_chat_id,
+                    untrusted_tainted=is_tainted,
                 )
             )
         except Exception as mem_err:
             logger.debug(f"[{run_id}] Smart context extraction launch skipped: {mem_err}")
+
+        try:
+            from core.skill_curator import curate_and_commit_turn_trajectory
+            asyncio.create_task(
+                curate_and_commit_turn_trajectory(
+                    user_input=payload.input,
+                    assistant_output=full_output,
+                    session=session,
+                    provider=provider_inst,
+                    model=target_model,
+                    untrusted_tainted=is_tainted,
+                )
+            )
+        except Exception as cur_err:
+            logger.debug(f"[{run_id}] Skill trajectory curation launch skipped: {cur_err}")
 
     except asyncio.CancelledError:
         logger.warning(f"[{run_id}] Run was CANCELLED by user/client")
@@ -1026,22 +1176,30 @@ async def _execute_agent_run(
         )
     finally:
         try:
-            if from_pool and pool is not None:
-                await pool.release(sandbox)
-            else:
-                await sandbox.close()
+            if sandbox is not None:
+                if from_pool and pool is not None:
+                    await pool.release(sandbox)
+                else:
+                    await sandbox.close()
         except Exception:
             pass
+        for cid_key in (payload.chat_id, payload.session_id, effective_chat_id):
+            if cid_key and active_chat_runs.get(cid_key) == run_id:
+                active_chat_runs.pop(cid_key, None)
         set_current_sandbox(None)
+        setattr(queue, "_sentinel_pushed", True)
         await queue.put(None)  # Sentinel to close SSE stream
 
 
 def _resolve_active_run_id(target_id: str) -> Optional[str]:
-    """Resolves an in-flight run ID with exact, prefix, or timestamp-prefix tolerance."""
+    """Resolves an in-flight run ID with exact, chat_id/session_id, prefix, or timestamp-prefix tolerance."""
     if not target_id:
         return None
     if target_id in active_run_event_queues:
         return target_id
+    mapped_run_id = active_chat_runs.get(target_id)
+    if mapped_run_id and (mapped_run_id in active_run_event_queues or mapped_run_id in active_run_tasks):
+        return mapped_run_id
 
     # Prefix or timestamp match (e.g. run_1787177896434 matching run_1787177896438_e21f71)
     parts = target_id.split("_")
@@ -1131,6 +1289,9 @@ async def create_run(
     run_id = (payload.run_id and payload.run_id.strip()) or f"run_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
     queue = asyncio.Queue()
     active_run_event_queues[run_id] = queue
+    for cid_key in (payload.chat_id, payload.session_id):
+        if cid_key:
+            active_chat_runs[cid_key] = run_id
 
     # Resolve Valstorm platform token & API URL
     v_token = x_valstorm_token or getattr(payload, "valstorm_token", None)
@@ -1154,6 +1315,22 @@ async def create_run(
             valstorm_base_url=v_base_url,
         )
     )
+    def _ensure_queue_closed(t: asyncio.Task):
+        for cid_key in (payload.chat_id, payload.session_id):
+            if cid_key and active_chat_runs.get(cid_key) == run_id:
+                active_chat_runs.pop(cid_key, None)
+        if not getattr(queue, "_sentinel_pushed", False):
+            setattr(queue, "_sentinel_pushed", True)
+            if t.cancelled():
+                queue.put_nowait({
+                    "event": "run.cancelled",
+                    "run_id": run_id,
+                    "status": "cancelled",
+                    "output": "",
+                })
+            queue.put_nowait(None)
+
+    task.add_done_callback(_ensure_queue_closed)
     active_run_tasks[run_id] = task
 
     return RunResponse(run_id=run_id, status="running", session_id=payload.session_id)
@@ -1333,12 +1510,14 @@ async def chat_completions_endpoint(
     elif raw_m.lower() == "vsagent":
         profile_slug = "developer"
 
-    profile_cfg = load_profile(profile_slug)
     v_token = x_valstorm_token
     if not v_token and authorization and authorization.startswith("Bearer "):
         bearer_val = authorization.split("Bearer ", 1)[1].strip()
         if bearer_val and bearer_val.lower() not in ("dummy", "none", "null", "undefined", "test", "zed"):
             v_token = bearer_val
+
+    set_current_valstorm_auth(v_token, x_valstorm_api_url)
+    profile_cfg = load_profile(profile_slug)
 
     provider_inst, target_model, resolved_provider = _get_provider_instance(
         None, None, profile_slug,
@@ -1349,8 +1528,6 @@ async def chat_completions_endpoint(
     sandbox: BaseSandbox = HostSandbox()
     await sandbox.start()
     set_current_sandbox(sandbox)
-
-    set_current_valstorm_auth(v_token, x_valstorm_api_url)
 
     session_store = SessionStore()
     memory_store = MemoryStore()
@@ -1393,6 +1570,7 @@ async def chat_completions_endpoint(
         async def sse_chat_generator():
             input_tokens = 0
             output_tokens = 0
+            streamed_content = ""
             try:
                 async for event in engine.run_turn_stream(
                     session=session,
@@ -1403,6 +1581,7 @@ async def chat_completions_endpoint(
                     if event.event_type == StreamEventType.TEXT_CHUNK and event.delta:
                         if event.metadata.get("failover"):
                             continue
+                        streamed_content += event.delta
                         chunk_data = {
                             "id": chunk_id,
                             "object": "chat.completion.chunk",
@@ -1445,6 +1624,21 @@ async def chat_completions_endpoint(
                     }
                 yield f"data: {json.dumps(stop_chunk)}\n\n"
                 yield "data: [DONE]\n\n"
+
+                try:
+                    from core.memory_extractor import extract_and_commit_turn_memory
+                    asyncio.create_task(
+                        extract_and_commit_turn_memory(
+                            user_input=user_input,
+                            assistant_output=streamed_content,
+                            memory_store=memory_store,
+                            provider=provider_inst,
+                            model=target_model,
+                            chat_id=session_id,
+                        )
+                    )
+                except Exception:
+                    pass
 
             except Exception as ex:
                 logger.error(f"Error in chat completion streaming: {ex}", exc_info=True)
@@ -1493,6 +1687,21 @@ async def chat_completions_endpoint(
             if usage:
                 input_tokens = _safe_token_count(getattr(usage, "prompt_tokens", 0))
                 output_tokens = _safe_token_count(getattr(usage, "completion_tokens", 0))
+
+    try:
+        from core.memory_extractor import extract_and_commit_turn_memory
+        asyncio.create_task(
+            extract_and_commit_turn_memory(
+                user_input=user_input,
+                assistant_output=full_content,
+                memory_store=memory_store,
+                provider=provider_inst,
+                model=target_model,
+                chat_id=session_id,
+            )
+        )
+    except Exception:
+        pass
 
     return {
         "id": chunk_id,

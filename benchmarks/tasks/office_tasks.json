@@ -1,0 +1,107 @@
+[
+    {
+        "id": "OF-01",
+        "complexity": "Simple",
+        "category": "office_sql_and_filters",
+        "profile": "chief-of-staff",
+        "goal": "1. Run a Valstorm SQL query on the 'lead' object using valstorm_sql_query to find active leads owned by ME from the last 14 days ordered by loan_amount DESC ('SELECT id, name, status, loan_amount FROM lead WHERE owner = ME AND status = \\'Active\\' AND created_date = last_n_days:14 ORDER BY loan_amount DESC'). 2. Save this exact query as a pinned list filter named 'High-Value Active Leads (14d)' on object 'lead' using valstorm_create_list_filter with is_pinned=True.",
+        "tool_chain": [
+            "valstorm_sql_query",
+            "valstorm_create_list_filter"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "file": "valstorm_sandbox_db.json",
+            "content_regex": "High-Value Active Leads \\(14d\\)[\\s\\S]*last_n_days:14",
+            "verify_command": "python3 -c \"import json; db=json.load(open('valstorm_sandbox_db.json')); lf=db['records']['list_filter']; assert len(lf)>=1 and lf[0]['is_pinned'] is True and 'ME' in lf[0]['sql_query'] and 'last_n_days:14' in lf[0]['sql_query']\"",
+            "cleanup": [
+                "valstorm_sandbox_db.json"
+            ]
+        }
+    },
+    {
+        "id": "OF-02",
+        "complexity": "Medium",
+        "category": "office_crm_cud_compliance",
+        "profile": "chief-of-staff",
+        "goal": "1. Inspect the 'campaign' schema using valstorm_schema_inspect. 2. Using valstorm_record_cud, create a new 'campaign' record with name='Q4 Enterprise Open Model Launch', status='Active', content_type='Carousel', utm_source='linkedin', and owner='user_qBulInDu18OcylWP' (CRITICAL: store owner as a plain string ID, never a dict, and store picklists as human-readable tag labels, never tag_ IDs).",
+        "tool_chain": [
+            "valstorm_schema_inspect",
+            "valstorm_record_cud"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "file": "valstorm_sandbox_db.json",
+            "content_regex": "(?=[\\s\\S]*Q4 Enterprise Open Model Launch)(?=[\\s\\S]*Carousel)",
+            "verify_command": "python3 -c \"import json; db=json.load(open('valstorm_sandbox_db.json')); camps=db['records']['campaign']; assert len(camps)>=1 and camps[0]['status']=='Active' and camps[0]['content_type']=='Carousel' and isinstance(camps[0]['owner'], str) and len(db['violations'])==0\"",
+            "cleanup": [
+                "valstorm_sandbox_db.json"
+            ]
+        }
+    },
+    {
+        "id": "OF-03",
+        "complexity": "Medium",
+        "category": "office_vfs_knowledge_vault",
+        "profile": "chief-of-staff",
+        "goal": "1. Create a new Knowledge Vault folder named '09_Standard_Operating_Procedures' under parent_vault='vaul_root_hub' using valstorm_record_cud on api_name='vault'. 2. Create a Markdown SOP document named 'Open_Model_Failover_SOP.md' inside that vault using valstorm_vfs_write_file containing a '# Open Model Failover SOP' heading and a Markdown table comparing 'gemini-4-argon' and 'qwen3.8-max'.",
+        "tool_chain": [
+            "valstorm_record_cud",
+            "valstorm_vfs_write_file"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "files_exist": [
+                "valstorm_sandbox_db.json",
+                "vfs/Open_Model_Failover_SOP.md"
+            ],
+            "file": "vfs/Open_Model_Failover_SOP.md",
+            "content_regex": "(?i)Open Model Failover SOP[\\s\\S]*(gemini-4-argon|qwen3\\.8-max)",
+            "verify_command": "python3 -c \"import json; db=json.load(open('valstorm_sandbox_db.json')); vaults=[v for v in db['records']['vault'] if v['name']=='09_Standard_Operating_Procedures']; assert len(vaults)>=1 and len(db['records']['vfs_files'])>=1\"",
+            "cleanup": [
+                "valstorm_sandbox_db.json",
+                "vfs"
+            ]
+        }
+    },
+    {
+        "id": "OF-04",
+        "complexity": "High",
+        "category": "office_crm_deduplication",
+        "profile": "chief-of-staff",
+        "goal": "1. Query the 'contact' table via valstorm_sql_query to find the duplicate contacts for 'Acme Corp' ('con_master_1' and 'con_dup_2'). 2. Since the user has pre-authorized merging 'con_dup_2' into master record 'con_master_1' for this automated benchmark run, execute valstorm_record_merge with master_record_id='con_master_1', duplicate_record_ids=['con_dup_2'], and schema_api_name='contact', then present a Markdown summary of the merged record and re-linked tasks.",
+        "tool_chain": [
+            "valstorm_sql_query",
+            "valstorm_record_merge"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "file": "valstorm_sandbox_db.json",
+            "content_regex": "\"master_record_id\":\\s*\"con_master_1\"",
+            "verify_command": "python3 -c \"import json; db=json.load(open('valstorm_sandbox_db.json')); assert len(db['merges_executed'])==1 and db['merges_executed'][0]['master_record_id']=='con_master_1' and db['records']['task'][0]['contact']=='con_master_1'\"",
+            "cleanup": [
+                "valstorm_sandbox_db.json"
+            ]
+        }
+    },
+    {
+        "id": "OF-05",
+        "complexity": "High",
+        "category": "office_drip_and_ast_function",
+        "profile": "developer",
+        "goal": "1. Author a pure Python step-router function `def route_drip_step(step: int, lead_status: str) -> dict:` (with zero forbidden imports like os/sys/subprocess) that returns `{'action': 'send_email', 'step': step}` and validate it via valstorm_validate_function(function_name='route_drip_step', code=...). 2. Create a 3-step drip campaign blueprint named '14-Day Enterprise Nurture' on target_schema='lead' using valstorm_create_drip_cadence with steps=[{'step': 1, 'delay_minutes': 0}, {'step': 2, 'delay_minutes': 2880}, {'step': 3, 'delay_minutes': 7200}], target_type='function', and exit_conditions={'status': ['Closed Won']}.",
+        "tool_chain": [
+            "valstorm_validate_function",
+            "valstorm_create_drip_cadence"
+        ],
+        "recommended_skills": [],
+        "success_criteria": {
+            "file": "valstorm_sandbox_db.json",
+            "content_regex": "\"14-Day Enterprise Nurture\"",
+            "verify_command": "python3 -c \"import json; db=json.load(open('valstorm_sandbox_db.json')); fns=db['functions_validated']; drips=db['records']['drip_definition']; assert len(fns)>=1 and fns[0]['valid'] is True and len(drips)>=1 and len(drips[0]['steps'])==3\"",
+            "cleanup": [
+                "valstorm_sandbox_db.json"
+            ]
+        }
+    }
+]

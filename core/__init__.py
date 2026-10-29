@@ -1,5 +1,9 @@
 """Core agent runtime modules."""
 
+from pkgutil import extend_path
+
+__path__ = extend_path(__path__, __name__)
+
 from .models import Message, SessionState, ToolCall, ToolResult, UsageMetadata, collapse_repeating_text
 from .keystore import KeyStore
 from .tools import (
