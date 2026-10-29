@@ -13,7 +13,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional, Set
 
 from core.sandbox import BaseSandbox
-from core.docker_sandbox import DockerSandbox
+from core.docker_sandbox import DockerSandbox, cleanup_orphaned_sandboxes
 
 logger = logging.getLogger("valstorm.sandbox_pool")
 
@@ -191,6 +191,13 @@ async def init_global_sandbox_pool(
     """Initializes and pre-warms the global sandbox pool."""
     global _global_pool
     if _global_pool is None:
+        if factory is None:
+            try:
+                reaped = await asyncio.to_thread(cleanup_orphaned_sandboxes)
+                if reaped:
+                    logger.info(f"Reaped {len(reaped)} orphaned sandbox container(s): {reaped}")
+            except Exception:
+                pass
         _global_pool = SandboxPool(
             target_size=target_size,
             max_size=max_size,

@@ -253,6 +253,20 @@ class ReActEngine:
                 payload_bytes=len(out_str.encode("utf-8")),
                 item_count=len(res) if isinstance(res, (list, dict)) else None,
             )
+        except asyncio.CancelledError:
+            curr = asyncio.current_task()
+            if curr is None or getattr(curr, "cancelling", lambda: 1)() > 0:
+                raise
+            dur_ms = round((time.perf_counter() - start_t) * 1000, 2)
+            err_msg = sanitize_text(f"Tool '{name}' internal subtask was cancelled.")
+            return ToolResult(
+                call_id=tool_call.id,
+                name=name,
+                output=err_msg,
+                is_error=True,
+                duration_ms=dur_ms,
+                payload_bytes=len(err_msg.encode("utf-8")),
+            )
         except Exception as e:
             dur_ms = round((time.perf_counter() - start_t) * 1000, 2)
             err_msg = sanitize_text(f"Error executing tool '{name}': {str(e)}")

@@ -132,8 +132,13 @@ def cleanup_stale_diagnostic_processes() -> List[int]:
         try:
             ps_bin = shutil.which("ps")
             if ps_bin:
+                ps_args = (
+                    [ps_bin, "axwwE", "-o", "pid,command"]
+                    if sys.platform == "darwin"
+                    else [ps_bin, "-eo", "pid,args"]
+                )
                 ps_out = subprocess.run(
-                    [ps_bin, "-eo", "pid,args"],
+                    ps_args,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
                     text=True,
@@ -142,7 +147,7 @@ def cleanup_stale_diagnostic_processes() -> List[int]:
                 )
                 for line in ps_out.stdout.splitlines():
                     line = line.strip()
-                    if not line or "ps -eo" in line:
+                    if not line or "ps -eo" in line or "ps axwwE" in line:
                         continue
                     parts = line.split(maxsplit=1)
                     if len(parts) != 2 or not parts[0].isdigit():
@@ -151,7 +156,9 @@ def cleanup_stale_diagnostic_processes() -> List[int]:
                     args = parts[1]
                     if pid == my_pid:
                         continue
-                    if ("tsc" in args or "node" in args) and "--noEmit" in args and "--skipLibCheck" in args:
+                    is_tsc_orphan = ("tsc" in args or "node" in args) and "--noEmit" in args and "--skipLibCheck" in args
+                    is_diag_env = f"{VALSTORM_DIAGNOSTIC_ENV_VAR}=1" in args
+                    if is_tsc_orphan or is_diag_env:
                         try:
                             kill_process_tree(pid)
                             killed_pids.append(pid)
@@ -197,6 +204,7 @@ class SingleFlightGate:
         async with self._lock:
             existing = self._active_tasks.get(key)
             if existing and not existing.done() and existing != current_task:
+                setattr(existing, "_preempted_by_gate", True)
                 existing.cancel()
                 try:
                     await asyncio.wait([existing], timeout=0.5)
@@ -208,6 +216,17 @@ class SingleFlightGate:
 
         try:
             return await task
+        except asyncio.CancelledError:
+            caller_cancelling = (
+                getattr(current_task, "cancelling", lambda: 0)() > 0
+                if current_task is not None
+                else False
+            )
+            if getattr(task, "_preempted_by_gate", False) and not caller_cancelling:
+                return None
+            if not task.done():
+                task.cancel()
+            raise
         finally:
             async with self._lock:
                 if self._active_tasks.get(key) is task:

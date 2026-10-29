@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 import json
 import logging
 import os
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -40,7 +41,7 @@ from core.react import ReActEngine
 from core.storage import SessionStore
 from core.tools import get_default_registry, ToolRegistry
 from core.sandbox import BaseSandbox, HostSandbox, set_current_sandbox
-from core.docker_sandbox import DockerSandbox
+from core.docker_sandbox import DockerSandbox, cleanup_orphaned_sandboxes
 from core.cloud_sandbox import CloudMicroVMSandbox
 from core.sandbox_pool import (
     get_global_sandbox_pool,
@@ -176,10 +177,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.debug(f"Startup diagnostic reaper check: {e}")
 
-    if os.environ.get("VALSTORM_DISABLE_SANDBOX_POOL", "false").lower() != "true":
+    # Reap any orphaned ephemeral-sandbox Docker containers left behind by previous crashes/restarts
+    try:
+        reaped_containers = await asyncio.to_thread(cleanup_orphaned_sandboxes, None, True)
+        if reaped_containers:
+            logger.info(
+                f"Reaped {len(reaped_containers)} orphaned Docker sandbox container(s) at startup: {reaped_containers}"
+            )
+    except Exception as e:
+        logger.debug(f"Startup Docker sandbox reaper check: {e}")
+
+    if os.environ.get("VALSTORM_DISABLE_SANDBOX_POOL", "false").strip().lower() != "true":
         try:
             import docker
-            client = docker.from_env()
+            client = docker.from_env(timeout=3)
             if client.ping():
                 pool_size = int(os.environ.get("VALSTORM_SANDBOX_POOL_SIZE", "2"))
                 await init_global_sandbox_pool(target_size=pool_size)
@@ -1222,9 +1233,11 @@ def _resolve_active_run_id(target_id: str) -> Optional[str]:
 async def health_check():
     """Health check endpoint."""
     from core.native_bridge import is_native_available
+    plat = "windows" if sys.platform == "win32" else ("mac" if sys.platform == "darwin" else "linux")
     return {
         "status": "ok",
         "engine": "valstorm-agent",
+        "platform": plat,
         "port": int(os.environ.get("VALSTORM_AGENT_PORT", "8650")),
         "mode": os.environ.get("VALSTORM_AGENT_MODE", "host"),
         "default_sandbox": os.environ.get("VALSTORM_DEFAULT_SANDBOX", "host"),

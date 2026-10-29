@@ -20,7 +20,7 @@ from .sandbox import (
     get_current_sandbox,
     set_current_sandbox,
 )
-from .docker_sandbox import DockerSandbox
+from .docker_sandbox import DockerSandbox, cleanup_orphaned_sandboxes
 from .cloud_sandbox import CloudMicroVMSandbox, E2BSandbox
 from .sandbox_pool import (
     SandboxPool,

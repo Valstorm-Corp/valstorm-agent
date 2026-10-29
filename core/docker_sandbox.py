@@ -8,16 +8,117 @@ Provides:
 """
 
 import asyncio
+import atexit
 import difflib
 import io
 import os
 from pathlib import Path
 import tarfile
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from core.sandbox import BaseSandbox, _truncate_output
 from core.security_guard import SecurityGuard, SecurityQuarantineError
+
+
+_ACTIVE_CONTAINERS: Set[Any] = set()
+
+
+def _is_pid_alive(pid: int) -> bool:
+    """Checks whether a host process ID is still running (POSIX / macOS / Linux / Windows)."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        try:
+            import ctypes
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            STILL_ACTIVE = 259
+            handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+            if not handle:
+                return False
+            try:
+                exit_code = ctypes.c_ulong()
+                if ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+                    return exit_code.value == STILL_ACTIVE
+                return False
+            finally:
+                ctypes.windll.kernel32.CloseHandle(handle)
+        except Exception:
+            return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
+def _cleanup_active_containers_at_exit() -> None:
+    """Best-effort teardown of any sandbox containers still open when the interpreter exits."""
+    for cont in list(_ACTIVE_CONTAINERS):
+        try:
+            cont.remove(force=True)
+        except Exception:
+            pass
+    _ACTIVE_CONTAINERS.clear()
+
+
+atexit.register(_cleanup_active_containers_at_exit)
+
+
+def cleanup_orphaned_sandboxes(
+    client: Optional[Any] = None,
+    force_all: bool = False,
+) -> List[str]:
+    """Finds and forcefully removes orphaned `ephemeral-sandbox` Docker containers.
+
+    A container is considered orphaned if:
+    - `force_all=True`, OR
+    - It lacks an `owner_pid` label (legacy leaked container), OR
+    - Its `owner_pid` process is no longer alive on the host.
+    """
+    try:
+        if client is None:
+            import docker
+            client = docker.from_env(timeout=3)
+        containers = client.containers.list(
+            all=True,
+            filters={"label": ["app=valstorm-agent-runtime", "type=ephemeral-sandbox"]},
+        )
+    except Exception:
+        return []
+
+    reaped: List[str] = []
+    current_pid = os.getpid()
+    for cont in containers:
+        try:
+            labels = getattr(cont, "labels", None) or {}
+            owner_pid_str = labels.get("owner_pid")
+            is_orphan = force_all
+            if not is_orphan:
+                if not owner_pid_str:
+                    is_orphan = True
+                else:
+                    try:
+                        owner_pid = int(owner_pid_str)
+                        if owner_pid != current_pid and not _is_pid_alive(owner_pid):
+                            is_orphan = True
+                    except ValueError:
+                        is_orphan = True
+
+            if is_orphan:
+                cid = (getattr(cont, "id", "") or "")[:12]
+                cont.remove(force=True)
+                _ACTIVE_CONTAINERS.discard(cont)
+                if cid:
+                    reaped.append(cid)
+        except Exception:
+            pass
+
+    return reaped
 
 
 class DockerSandbox(BaseSandbox):
@@ -69,18 +170,25 @@ class DockerSandbox(BaseSandbox):
                 image=target_image,
                 command=["tail", "-f", "/dev/null"],
                 detach=True,
+                auto_remove=True,
                 mem_limit=self.mem_limit,
                 nano_cpus=nano_cpus,
                 pids_limit=self.pids_limit,
                 network_mode=self.network_mode,
                 tmpfs={"/tmp": "rw,noexec,nosuid,size=64m"},
                 working_dir="/workspace",
-                labels={"app": "valstorm-agent-runtime", "type": "ephemeral-sandbox"},
+                labels={
+                    "app": "valstorm-agent-runtime",
+                    "type": "ephemeral-sandbox",
+                    "owner_pid": str(os.getpid()),
+                },
             )
             return container
 
         try:
             self.container = await asyncio.to_thread(_provision)
+            if self.container is not None:
+                _ACTIVE_CONTAINERS.add(self.container)
             self.container_id = self.container.id[:12] if self.container else None
             self._is_active = True
         except Exception as e:
@@ -94,6 +202,7 @@ class DockerSandbox(BaseSandbox):
             return
 
         def _cleanup(cont: Any) -> None:
+            _ACTIVE_CONTAINERS.discard(cont)
             try:
                 cont.remove(force=True)
             except Exception:

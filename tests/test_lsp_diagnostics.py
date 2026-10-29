@@ -228,10 +228,11 @@ async def test_single_flight_gate_preempts_older_checks():
     t1 = asyncio.create_task(gate.run("workspace_a", mock_check, "1", 0.4))
     await asyncio.sleep(0.05)
 
-    # Start check 2 for same workspace (should cancel check 1)
+    # Start check 2 for same workspace (should cancel check 1 without raising CancelledError to t1 caller)
     t2 = asyncio.create_task(gate.run("workspace_a", mock_check, "2", 0.05))
 
-    res2 = await t2
+    res1, res2 = await asyncio.gather(t1, t2)
+    assert res1 is None, "Preempted check 1 must return None cleanly instead of raising CancelledError!"
     assert res2 == "result_2"
 
     assert "start_1" in log
@@ -324,3 +325,31 @@ async def test_check_typescript_syntax_clean_file(tmp_path: Path):
 
     errors = await check_typescript_syntax(comp_file)
     assert errors is None
+
+
+@pytest.mark.asyncio
+async def test_parallel_patch_file_typescript_single_flight_does_not_cancel_run(tmp_path: Path):
+    """Regression test: parallel patch_file calls on .ts files in the same workspace
+    must not leak asyncio.CancelledError when SingleFlightGate preempts the first tsc check."""
+    bin_dir = tmp_path / "node_modules" / ".bin"
+    bin_dir.mkdir(parents=True)
+    fake_tsc = bin_dir / "tsc"
+    fake_tsc.write_text("#!/bin/sh\nsleep 0.4\nexit 0\n")
+    fake_tsc.chmod(0o755)
+
+    tsconfig = tmp_path / "tsconfig.json"
+    tsconfig.write_text('{"compilerOptions": {"noEmit": true}}', encoding="utf-8")
+
+    file_a = tmp_path / "a.ts"
+    file_b = tmp_path / "b.ts"
+    file_a.write_text("export const a = 1;\n", encoding="utf-8")
+    file_b.write_text("export const b = 1;\n", encoding="utf-8")
+
+    res_a, res_b = await asyncio.gather(
+        patch_file(str(file_a), "export const a = 1;", "export const a = 2;"),
+        patch_file(str(file_b), "export const b = 1;", "export const b = 2;"),
+    )
+    assert "Successfully patched" in res_a
+    assert "Successfully patched" in res_b
+    assert file_a.read_text(encoding="utf-8") == "export const a = 2;\n"
+    assert file_b.read_text(encoding="utf-8") == "export const b = 2;\n"

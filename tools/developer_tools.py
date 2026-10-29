@@ -115,6 +115,17 @@ async def terminal_exec(
 # 2. patch_file
 # =====================================================================
 
+_FILE_EDIT_LOCKS: dict[str, asyncio.Lock] = {}
+
+
+def _get_file_edit_lock(resolved_path: Path) -> asyncio.Lock:
+    key = str(resolved_path)
+    lock = _FILE_EDIT_LOCKS.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _FILE_EDIT_LOCKS[key] = lock
+    return lock
+
 
 @tool
 async def patch_file(
@@ -132,14 +143,19 @@ async def patch_file(
         replace_all: If True, replaces all occurrences. If False, requires old_string to match exactly once.
     """
     sandbox = get_current_sandbox()
-    res = await sandbox.patch_file(path=path, old_string=old_string, new_string=new_string, replace_all=replace_all)
+    file_path = resolve_agent_path(path)
+    async with _get_file_edit_lock(file_path):
+        res = await sandbox.patch_file(path=path, old_string=old_string, new_string=new_string, replace_all=replace_all)
     if "Successfully patched" in res:
         try:
             from core.lsp.diagnostics import get_file_diagnostics
-            file_path = resolve_agent_path(path)
             diagnostics = await get_file_diagnostics(file_path)
             if diagnostics:
                 res += f"\n\n{diagnostics}"
+        except asyncio.CancelledError:
+            curr = asyncio.current_task()
+            if curr is not None and getattr(curr, "cancelling", lambda: 1)() > 0:
+                raise
         except Exception:
             pass
     return res
@@ -159,14 +175,19 @@ async def write_file(path: str, content: str) -> str:
         content: Complete content to write.
     """
     sandbox = get_current_sandbox()
-    res = await sandbox.write_file(path=path, content=content)
+    file_path = resolve_agent_path(path)
+    async with _get_file_edit_lock(file_path):
+        res = await sandbox.write_file(path=path, content=content)
     if "Successfully wrote" in res:
         try:
             from core.lsp.diagnostics import get_file_diagnostics
-            file_path = resolve_agent_path(path)
             diagnostics = await get_file_diagnostics(file_path)
             if diagnostics:
                 res += f"\n\n{diagnostics}"
+        except asyncio.CancelledError:
+            curr = asyncio.current_task()
+            if curr is not None and getattr(curr, "cancelling", lambda: 1)() > 0:
+                raise
         except Exception:
             pass
     return res

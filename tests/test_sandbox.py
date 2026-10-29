@@ -21,7 +21,7 @@ from core.sandbox import (
     get_current_sandbox,
     set_current_sandbox,
 )
-from core.docker_sandbox import DockerSandbox
+from core.docker_sandbox import DockerSandbox, cleanup_orphaned_sandboxes
 from tools.developer_tools import patch_file, read_file, terminal_exec, write_file
 
 
@@ -109,17 +109,63 @@ async def test_docker_sandbox_lifecycle_and_resource_caps():
     # Verify security parameters passed to Docker
     mock_client.containers.run.assert_called_once()
     _, kwargs = mock_client.containers.run.call_args
+    assert kwargs["auto_remove"] is True
     assert kwargs["mem_limit"] == "512m"
     assert kwargs["nano_cpus"] == 1_000_000_000
     assert kwargs["pids_limit"] == 100
     assert kwargs["network_mode"] == "none"
     assert kwargs["working_dir"] == "/workspace"
     assert kwargs["tmpfs"] == {"/tmp": "rw,noexec,nosuid,size=64m"}
+    assert kwargs["labels"]["app"] == "valstorm-agent-runtime"
+    assert kwargs["labels"]["type"] == "ephemeral-sandbox"
+    assert "owner_pid" in kwargs["labels"]
 
     # Close container
     await sandbox.close()
     assert sandbox._is_active is False
     mock_container.remove.assert_called_once_with(force=True)
+
+
+def test_cleanup_orphaned_sandboxes():
+    import os
+
+    mock_client = MagicMock()
+
+    # 1. Legacy container with no owner_pid (orphan)
+    legacy_cont = MagicMock()
+    legacy_cont.id = "legacy_orphan_111111"
+    legacy_cont.labels = {"app": "valstorm-agent-runtime", "type": "ephemeral-sandbox"}
+
+    # 2. Container owned by dead PID (orphan)
+    dead_cont = MagicMock()
+    dead_cont.id = "dead_pid_2222222222"
+    dead_cont.labels = {
+        "app": "valstorm-agent-runtime",
+        "type": "ephemeral-sandbox",
+        "owner_pid": "99999999",
+    }
+
+    # 3. Container owned by current alive PID (active - should NOT be reaped unless force_all=True)
+    active_cont = MagicMock()
+    active_cont.id = "active_pid_33333333"
+    active_cont.labels = {
+        "app": "valstorm-agent-runtime",
+        "type": "ephemeral-sandbox",
+        "owner_pid": str(os.getpid()),
+    }
+
+    mock_client.containers.list.return_value = [legacy_cont, dead_cont, active_cont]
+
+    reaped = cleanup_orphaned_sandboxes(client=mock_client, force_all=False)
+    assert reaped == ["legacy_orpha", "dead_pid_222"]
+    legacy_cont.remove.assert_called_once_with(force=True)
+    dead_cont.remove.assert_called_once_with(force=True)
+    active_cont.remove.assert_not_called()
+
+    # With force_all=True, even active containers are reaped
+    reaped_all = cleanup_orphaned_sandboxes(client=mock_client, force_all=True)
+    assert "active_pid_3" in reaped_all
+    active_cont.remove.assert_called_once_with(force=True)
 
 
 @pytest.mark.asyncio
