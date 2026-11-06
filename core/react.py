@@ -240,10 +240,20 @@ class ReActEngine:
                     res.duration_ms = dur_ms
                 if res.output:
                     res.output = sanitize_text(res.output)
+                    res.output, _ = SecurityGuard.inspect_and_sanitize_tool_output(
+                        res.output,
+                        source_tool=name,
+                        wrap_boundary=not SecurityGuard.is_user_html_authoring_tool(name),
+                    )
                 return res
 
             out_str = json.dumps(res, indent=2) if isinstance(res, (dict, list)) else str(res)
             out_str = sanitize_text(out_str)
+            out_str, _ = SecurityGuard.inspect_and_sanitize_tool_output(
+                out_str,
+                source_tool=name,
+                wrap_boundary=not SecurityGuard.is_user_html_authoring_tool(name),
+            )
             return ToolResult(
                 call_id=tool_call.id,
                 name=name,
@@ -554,9 +564,16 @@ class ReActEngine:
                         tool_call=tool_call,
                     )
 
-                # Pre-taint session if any tool in the batch ingests untrusted external content
+                trust_user_html = bool((session.metadata or {}).get("trust_user_created_html", False))
+
+                # Pre-taint session if any tool in the batch ingests untrusted external content or HTML
                 for tc_item in assistant_msg.tool_calls:
-                    if SecurityGuard.is_untrusted_ingestion_tool(tc_item.name):
+                    if SecurityGuard.should_taint_for_html_surface(
+                        tool_name=tc_item.name,
+                        tool_args=tc_item.arguments,
+                        tool_output=None,
+                        trust_user_created_html=trust_user_html,
+                    ):
                         session.metadata["untrusted_content_tainted"] = True
 
                 # Parallel tool execution via asyncio.gather (reusing any in-flight speculative tasks)
@@ -586,7 +603,13 @@ class ReActEngine:
                     else:
                         res_obj = await self._execute_tool(tc)
 
-                    if SecurityGuard.is_untrusted_ingestion_tool(tc.name) and not res_obj.is_error:
+                    raw_out = str(res_obj.output or "") if res_obj else ""
+                    if not res_obj.is_error and SecurityGuard.should_taint_for_html_surface(
+                        tool_name=tc.name,
+                        tool_args=tc.arguments,
+                        tool_output=raw_out,
+                        trust_user_created_html=trust_user_html,
+                    ):
                         session.metadata["untrusted_content_tainted"] = True
                     if tc.name == "confirmation_required" and not res_obj.is_error:
                         session.metadata["pending_lethal_trifecta_confirmation"] = True

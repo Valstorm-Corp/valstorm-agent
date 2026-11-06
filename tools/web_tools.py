@@ -6,6 +6,7 @@ import os
 from typing import Any, Dict, List, Optional
 import httpx
 
+from core.security_guard import SecurityGuard
 from core.tools import ToolRegistry, tool
 
 logger = logging.getLogger("vsagent.web_tools")
@@ -142,10 +143,10 @@ def create_web_tools(client: Optional[WebScraperClient] = None) -> List[Any]:
         """
         try:
             res = await web_client.scrape(url=url, force_refresh=force_refresh, include_html=include_html)
-            title = res.get("title") or "Untitled"
+            title = SecurityGuard.sanitize_html(str(res.get("title") or "Untitled"))
             cached_flag = " (Cached hit)" if res.get("cached") else f" (Tier: {res.get('tier_used')})"
             canonical = res.get("canonical_url") or url
-            md_content = res.get("markdown") or "No textual content found."
+            md_content = SecurityGuard.sanitize_html(str(res.get("markdown") or "No textual content found."))
             
             # Security: Wrap in untrusted data boundary tags to prevent prompt injection
             return (
@@ -177,15 +178,24 @@ def create_web_tools(client: Optional[WebScraperClient] = None) -> List[Any]:
 
             output = [f"### Web Search Results for: '{query}'\n"]
             for i, h in enumerate(hits, 1):
-                output.append(f"{i}. **[{h.get('title')}]({h.get('url')})**\n   {h.get('snippet')}\n")
+                clean_title = SecurityGuard.sanitize_html(str(h.get("title") or ""))
+                clean_snippet = SecurityGuard.sanitize_html(str(h.get("snippet") or ""))
+                output.append(f"{i}. **[{clean_title}]({h.get('url')})**\n   {clean_snippet}\n")
 
             scraped = res.get("scraped_contents", [])
             if scraped:
                 output.append("\n---\n### Scraped Content Excerpts:\n")
                 for s in scraped:
-                    output.append(f"#### {s.get('title')} ({s.get('url')})\n{s.get('markdown')}\n")
+                    s_title = SecurityGuard.sanitize_html(str(s.get("title") or ""))
+                    s_md = SecurityGuard.sanitize_html(str(s.get("markdown") or ""))
+                    output.append(f"#### {s_title} ({s.get('url')})\n{s_md}\n")
 
-            return "\n".join(output)
+            body = "\n".join(output)
+            return (
+                f"<untrusted_web_content query=\"{query}\" source=\"web_search\">\n"
+                f"{body}\n"
+                f"</untrusted_web_content>"
+            )
         except Exception as e:
             return f"Error executing web search for '{query}': {e}"
 
@@ -212,10 +222,16 @@ def create_web_tools(client: Optional[WebScraperClient] = None) -> List[Any]:
 
             summary = [f"### Domain Crawl Summary: {res.get('domain')} ({res.get('total_pages_crawled')} pages crawled)\n"]
             for i, p in enumerate(pages, 1):
-                title = p.get("title") or "Page"
-                summary.append(f"### Page {i}: {title} ({p.get('url')})\n{p.get('markdown')}\n---")
+                title = SecurityGuard.sanitize_html(str(p.get("title") or "Page"))
+                md_text = SecurityGuard.sanitize_html(str(p.get("markdown") or ""))
+                summary.append(f"### Page {i}: {title} ({p.get('url')})\n{md_text}\n---")
 
-            return "\n\n".join(summary)
+            body = "\n\n".join(summary)
+            return (
+                f"<untrusted_web_content url=\"{url}\" source=\"web_crawl_domain\">\n"
+                f"{body}\n"
+                f"</untrusted_web_content>"
+            )
         except Exception as e:
             return f"Error crawling domain {url}: {e}"
 
@@ -236,12 +252,17 @@ def create_web_tools(client: Optional[WebScraperClient] = None) -> List[Any]:
                 return f"✅ No changes detected for {url} (Similarity: 100%). Content is identical to archived version from {res.get('previous_scraped_at')}."
 
             similarity = res.get("similarity_score", 0.0) * 100
-            diff_text = res.get("unified_diff") or "Content modified."
-            return (
+            diff_text = SecurityGuard.sanitize_html(str(res.get("unified_diff") or "Content modified."))
+            body = (
                 f"⚠️ Content changes detected for {url}!\n"
                 f"Similarity: {similarity:.1f}%\n"
                 f"Added lines: {res.get('added_lines_count', 0)}, Removed lines: {res.get('removed_lines_count', 0)}\n\n"
                 f"### Unified Diff:\n```diff\n{diff_text}\n```"
+            )
+            return (
+                f"<untrusted_web_content url=\"{url}\" source=\"web_content_diff\">\n"
+                f"{body}\n"
+                f"</untrusted_web_content>"
             )
         except Exception as e:
             return f"Error computing content diff for {url}: {e}"
@@ -265,9 +286,16 @@ def create_web_tools(client: Optional[WebScraperClient] = None) -> List[Any]:
 
             output = [f"### News Feed: {feed_url} ({len(items)} items)\n"]
             for i, it in enumerate(items, 1):
-                output.append(f"{i}. **{it.get('title')}**\n   Link: {it.get('link')}\n   Published: {it.get('pub_date') or 'N/A'}\n   Summary: {it.get('description')}\n")
+                clean_title = SecurityGuard.sanitize_html(str(it.get("title") or ""))
+                clean_desc = SecurityGuard.sanitize_html(str(it.get("description") or ""))
+                output.append(f"{i}. **{clean_title}**\n   Link: {it.get('link')}\n   Published: {it.get('pub_date') or 'N/A'}\n   Summary: {clean_desc}\n")
 
-            return "\n".join(output)
+            body = "\n".join(output)
+            return (
+                f"<untrusted_web_content url=\"{feed_url}\" source=\"web_feed_poll\">\n"
+                f"{body}\n"
+                f"</untrusted_web_content>"
+            )
         except Exception as e:
             return f"Error polling feed {feed_url}: {e}"
 

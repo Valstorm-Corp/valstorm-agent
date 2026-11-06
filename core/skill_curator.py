@@ -114,8 +114,18 @@ def is_session_tainted_by_untrusted_ingestion(
             return True
 
     effective_trace = tool_trace if tool_trace is not None else extract_turn_tool_trace(session)
+    trust_user_html = bool(
+        session
+        and isinstance(getattr(session, "metadata", None), dict)
+        and session.metadata.get("trust_user_created_html")
+    )
     for item in effective_trace:
-        if SecurityGuard.is_untrusted_ingestion_tool(item.get("name")):
+        if SecurityGuard.should_taint_for_html_surface(
+            tool_name=item.get("name"),
+            tool_args=item.get("arguments"),
+            tool_output=str(item.get("output_preview") or ""),
+            trust_user_created_html=trust_user_html,
+        ):
             return True
 
     return False
