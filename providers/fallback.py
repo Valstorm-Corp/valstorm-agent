@@ -100,15 +100,16 @@ DEFAULT_REASONER_CASCADE_SPECS = [
     {"provider": "deepseek", "model": "deepseek-chat", "label": "DeepSeek Direct"},
     {"provider": "kimi", "model": "moonshot-v1-128k", "label": "Kimi Direct"},
     {"provider": "openai", "model": "gpt-4o", "label": "OpenAI Direct (Emergency)"},
-    {"provider": "anthropic", "model": "claude-sonnet-5-5", "label": "Anthropic Direct (Emergency)"},
 ]
 
 # Default Tier 1 (Heavy Thinker / Architecture / RFC) Cascade Hierarchy
+# Never auto-cascade into expensive uncached commercial pass-throughs (e.g. Claude Opus).
 DEFAULT_THINKER_CASCADE_SPECS = [
     {"provider": "aistudio", "model": "gemini-pro-latest", "label": "Gemini 3.1 Pro (AI Studio)"},
-    {"provider": "do", "model": "anthropic-claude-opus-5", "label": "DO Claude Opus 5"},
-    {"provider": "do", "model": "openai-gpt-5.6-sol", "label": "DO GPT-5.6 Sol"},
-    {"provider": "anthropic", "model": "claude-3-opus-20240229", "label": "Anthropic Direct (Emergency)"},
+    {"provider": "do", "model": "deepseek-v4-pro", "label": "DO DeepSeek V4 Pro"},
+    {"provider": "do", "model": "kimi-k2.6", "label": "DO Kimi K2.6"},
+    {"provider": "do", "model": "qwen3.8-max", "label": "DO Qwen 3.8 Max"},
+    {"provider": "deepseek", "model": "deepseek-chat", "label": "DeepSeek Direct"},
     {"provider": "openai", "model": "o3-mini", "label": "OpenAI Direct (Emergency)"},
 ]
 

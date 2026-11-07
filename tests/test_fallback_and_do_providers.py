@@ -560,3 +560,85 @@ def test_valstorm_gateway_managed_do_fallback_when_no_local_do_key(monkeypatch):
         assert t.provider_name == "valstorm"
         assert "Valstorm DO" in t.label
 
+
+def test_default_cascades_exclude_claude_models():
+    """Ensure automatic fallback cascades never route into expensive uncached Claude models."""
+    from providers import (
+        DEFAULT_REASONER_CASCADE_SPECS,
+        DEFAULT_THINKER_CASCADE_SPECS,
+        DEFAULT_WORKER_CASCADE_SPECS,
+    )
+
+    for specs in (DEFAULT_THINKER_CASCADE_SPECS, DEFAULT_REASONER_CASCADE_SPECS, DEFAULT_WORKER_CASCADE_SPECS):
+        for spec in specs:
+            assert "claude" not in spec["model"].lower()
+            assert spec["provider"].lower() != "anthropic"
+
+
+def test_gemini_format_messages_parallel_tool_calls_after_foreign_failover_turn():
+    """Regression test: after a foreign failover model calls a tool (e.g. read_file),
+    a subsequent native Gemini turn emitting parallel tool calls (where only the 1st call
+    has thought_signature and the 2nd call invokes read_file without thought_signature)
+    must keep both function_call and function_response parts paired 1:1.
+    """
+    from providers.gemini import GeminiProvider
+
+    provider = GeminiProvider(api_key="fake_key")
+    messages = [
+        Message(role="user", content="Inspect the files"),
+        # Turn 1: Foreign failover model (e.g. DO deepseek-v4-pro) calls read_file without thought_signature
+        Message(
+            role="assistant",
+            content="Reading file via failover tier.",
+            provider="valstorm",
+            model="deepseek-v4-pro",
+            tool_calls=[
+                ToolCall(id="call_foreign_1", name="read_file", arguments={"path": "a.py"}, thought_signature=None),
+            ],
+        ),
+        Message(
+            role="tool",
+            tool_result=ToolResult(call_id="call_foreign_1", name="read_file", output="print('a')"),
+        ),
+        # Turn 2: Cooldown expires; Gemini resumes and emits 2 parallel tool calls (only 1st has thought_signature)
+        Message(
+            role="assistant",
+            content="Now checking both files.",
+            provider="valstorm",
+            model="gemini-4-argon",
+            tool_calls=[
+                ToolCall(id="call_gem_1", name="search_files", arguments={"pattern": "foo"}, thought_signature=b"sig_1"),
+                ToolCall(id="call_gem_2", name="read_file", arguments={"path": "b.py"}, thought_signature=None),
+            ],
+        ),
+        Message(
+            role="tool",
+            tool_result=ToolResult(call_id="call_gem_1", name="search_files", output="b.py:1:foo"),
+        ),
+        Message(
+            role="tool",
+            tool_result=ToolResult(call_id="call_gem_2", name="read_file", output="foo = 1"),
+        ),
+    ]
+
+    _, contents = provider._format_messages(messages)
+
+    # Find the second model turn (Turn 2) and its following user turn
+    model_turns = [(i, c) for i, c in enumerate(contents) if c.role == "model"]
+    assert len(model_turns) == 2
+
+    # Turn 1 (foreign) must have 0 function_call parts
+    turn1_fc = [p for p in model_turns[0][1].parts if getattr(p, "function_call", None)]
+    assert len(turn1_fc) == 0
+
+    # Turn 2 (native Gemini parallel calls) must have 2 function_call parts AND 2 matching function_response parts
+    turn2_idx, turn2_model = model_turns[1]
+    turn2_fc = [p.function_call.name for p in turn2_model.parts if getattr(p, "function_call", None)]
+    assert turn2_fc == ["search_files", "read_file"]
+
+    turn2_user = contents[turn2_idx + 1]
+    assert turn2_user.role == "user"
+    turn2_fr = [p.function_response.name for p in turn2_user.parts if getattr(p, "function_response", None)]
+    assert turn2_fr == ["search_files", "read_file"]
+
+

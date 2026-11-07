@@ -586,7 +586,13 @@ class GeminiProvider(BaseProvider):
                             if tc.name:
                                 unsigned_tool_names.add(tc.name)
                         else:
-                            # Native Gemini tool call or unspecified provider (e.g. unit tests or historical messages)
+                            # Native Gemini tool call or unspecified provider (e.g. unit tests or 2nd+ parallel tool call
+                            # in a Gemini turn where only the first functionCall carries the turn's thought_signature).
+                            # Clear any stale unsigned markers for this tool name/id from earlier foreign turns.
+                            if tc.id in unsigned_call_ids:
+                                unsigned_call_ids.remove(tc.id)
+                            if tc.name in unsigned_tool_names:
+                                unsigned_tool_names.remove(tc.name)
                             parts.append(
                                 types.Part(
                                     function_call=types.FunctionCall(
@@ -615,8 +621,9 @@ class GeminiProvider(BaseProvider):
                 call_id = msg.tool_result.call_id if msg.tool_result else getattr(msg, "tool_call_id", None)
 
                 is_unsigned = (
-                    (call_id and call_id in unsigned_call_ids)
-                    or (tool_name and tool_name in unsigned_tool_names)
+                    (call_id in unsigned_call_ids)
+                    if call_id
+                    else bool(tool_name and tool_name in unsigned_tool_names)
                 )
 
                 if is_unsigned:
@@ -662,22 +669,46 @@ class GeminiProvider(BaseProvider):
         if merged and merged[0].role != "user":
             merged.insert(0, types.Content(role="user", parts=[types.Part(text="[Session resumed]")]))
 
-        # Step 3: Validate function call & response pairing
+        # Step 3: Validate bidirectional function call & response pairing
+        # Vertex AI strictly requires 1:1 parity between function_call parts in a model turn
+        # and function_response parts in the immediately following user turn.
         sanitized: List[types.Content] = []
-        for c in merged:
-            if c.role == "user":
+        for idx, c in enumerate(merged):
+            if c.role == "model":
+                next_turn = merged[idx + 1] if idx + 1 < len(merged) else None
+                avail_responses: List[str] = []
+                if next_turn and next_turn.role == "user":
+                    for np in next_turn.parts:
+                        if getattr(np, "function_response", None):
+                            avail_responses.append(np.function_response.name)
+                new_model_parts: List[types.Part] = []
+                remaining_resp = list(avail_responses)
+                for p in c.parts:
+                    if getattr(p, "function_call", None):
+                        fc = p.function_call
+                        if fc.name in remaining_resp:
+                            remaining_resp.remove(fc.name)
+                            new_model_parts.append(p)
+                        else:
+                            args_str = json.dumps(fc.args) if isinstance(fc.args, dict) else str(fc.args or {})
+                            new_model_parts.append(types.Part(text=f"[Executed tool `{fc.name}` with arguments: {args_str}]"))
+                    else:
+                        new_model_parts.append(p)
+                sanitized.append(types.Content(role="model", parts=new_model_parts))
+            elif c.role == "user":
                 new_parts: List[types.Part] = []
                 prev_turn = sanitized[-1] if sanitized else None
-                prev_fc_names = set()
+                remaining_calls: List[str] = []
                 if prev_turn and prev_turn.role == "model":
                     for p in prev_turn.parts:
                         if getattr(p, "function_call", None):
-                            prev_fc_names.add(p.function_call.name)
+                            remaining_calls.append(p.function_call.name)
 
                 for p in c.parts:
                     if getattr(p, "function_response", None):
                         fn_name = p.function_response.name
-                        if fn_name in prev_fc_names:
+                        if fn_name in remaining_calls:
+                            remaining_calls.remove(fn_name)
                             new_parts.append(p)
                         else:
                             resp_data = p.function_response.response
@@ -686,8 +717,6 @@ class GeminiProvider(BaseProvider):
                     else:
                         new_parts.append(p)
                 sanitized.append(types.Content(role="user", parts=new_parts))
-            elif c.role == "model":
-                sanitized.append(c)
 
         # Step 4: Re-merge after conversions and ensure starting with user
         final_contents: List[types.Content] = []

@@ -44,12 +44,12 @@ PROVIDER_TIER_MODELS: Dict[str, Dict[ModelTier, str]] = {
     "do": {
         "worker": "deepseek-4-flash",
         "reasoner": "openai-gpt-oss-120b",
-        "thinker": "anthropic-claude-opus-5",
+        "thinker": "deepseek-v4-pro",
     },
     "digitalocean": {
         "worker": "deepseek-4-flash",
         "reasoner": "openai-gpt-oss-120b",
-        "thinker": "anthropic-claude-opus-5",
+        "thinker": "deepseek-v4-pro",
     },
     "openai": {
         "worker": "gpt-4o-mini",

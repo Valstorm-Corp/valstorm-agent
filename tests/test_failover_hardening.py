@@ -24,6 +24,7 @@ VERIFIED_DO_CATALOG_IDS = frozenset({
     "deepseek-v4-pro",
     "deepseek-4-flash",
     "kimi-k2.6",
+    "qwen3.8-max",
     "openai-gpt-oss-120b",
     "openai-gpt-5-nano",
     "openai-gpt-5.6-sol",

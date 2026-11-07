@@ -395,6 +395,9 @@ class ReActEngine:
 
             assistant_msg = None
             usage_meta = None
+            turn_effective_tier = 1
+            turn_effective_model = None
+            turn_effective_provider = None
 
             req_effort = (session.metadata or {}).get("reasoning_effort") or os.environ.get("VALSTORM_THINKING_LEVEL")
             effective_effort = req_effort
@@ -493,6 +496,10 @@ class ReActEngine:
                         if item.event_type == StreamEventType.TURN_COMPLETE:
                             # A provider's TURN_COMPLETE only ends this single LLM call. Re-label it so
                             # consumers don't treat a mid-turn call as the end of the whole turn.
+                            if item.metadata:
+                                turn_effective_tier = int(item.metadata.get("effective_tier") or 1)
+                                turn_effective_model = item.metadata.get("effective_model")
+                                turn_effective_provider = item.metadata.get("effective_provider")
                             if item.message:
                                 assistant_msg = item.message
                                 if item.usage and not usage_meta:
@@ -539,7 +546,12 @@ class ReActEngine:
             if not isinstance(assistant_msg, Message):
                 raise TypeError(f"Provider must produce a Message instance, got {type(assistant_msg)}")
 
-            if is_auto_tune and target_model:
+            if turn_effective_tier > 1 and turn_effective_model:
+                # Preserve the actual failover model/provider so foreign unsigned tool calls are never mislabeled as Gemini
+                assistant_msg.model = turn_effective_model
+                if turn_effective_provider:
+                    assistant_msg.provider = turn_effective_provider
+            elif is_auto_tune and target_model:
                 assistant_msg.model = target_model
             elif not assistant_msg.model and target_model:
                 assistant_msg.model = target_model

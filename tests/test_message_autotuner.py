@@ -51,7 +51,7 @@ class TestMessageAutoTunerUnit:
     def test_provider_family_tier_mapping(self):
         assert resolve_tier_model("do", "worker") == "deepseek-4-flash"
         assert resolve_tier_model("do", "reasoner") == "openai-gpt-oss-120b"
-        assert resolve_tier_model("do", "thinker") == "anthropic-claude-opus-5"
+        assert resolve_tier_model("do", "thinker") == "deepseek-v4-pro"
         assert resolve_tier_model("openai", "worker") == "gpt-4o-mini"
         assert resolve_tier_model("anthropic", "thinker") == "claude-3-opus-20240229"
 
