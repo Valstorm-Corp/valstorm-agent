@@ -8,6 +8,14 @@ import httpx
 import typer
 from rich.console import Console
 
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
 server_app = typer.Typer(help="Manage the local Agent Runtime API & SSE server", no_args_is_help=False)
 console = Console()
 

@@ -564,7 +564,7 @@ class TestTier1ToolsIntegration:
 
     def test_create_and_register_all_tier1_tools(self):
         tier1_tools = create_tier1_tools()
-        assert len(tier1_tools) == 15
+        assert len(tier1_tools) == 18
         names = [getattr(t, "_tool_name", t.__name__) for t in tier1_tools]
         assert "confirmation_required" in names
         assert "clarify" in names
@@ -573,14 +573,17 @@ class TestTier1ToolsIntegration:
         assert "execute_code" in names
         assert "delegate_task" in names
         assert "subagent_manage" in names
+        assert "agent_manage" in names
         assert "process_manage" in names
         assert "skill_view" in names
         assert "skill_list" in names
+        assert "skill_manage" in names
         assert "web_scrape" in names
         assert "web_search" in names
         assert "web_crawl_domain" in names
         assert "web_content_diff" in names
         assert "web_feed_poll" in names
+        assert "computer_use" in names
 
         registry = ToolRegistry()
         register_tier1_tools(registry)

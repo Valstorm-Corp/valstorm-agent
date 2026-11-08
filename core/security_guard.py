@@ -147,6 +147,7 @@ UNTRUSTED_INGESTION_TOOLS: Set[str] = {
     "web_crawl_domain",
     "web_content_diff",
     "web_feed_poll",
+    "computer_use",
 }
 
 # External communication / exfiltration-capable tools (Vector 3 of The Lethal Trifecta)

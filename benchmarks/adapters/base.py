@@ -64,7 +64,26 @@ MODEL_PRICING_PER_1M: Dict[str, Dict[str, float]] = {
     "openai-gpt-oss-20b": {"input": 0.05, "output": 0.45, "cached": 0.05},
     "claude-3-7-sonnet-20250219": {"input": 3.00, "output": 15.00},
     "claude-sonnet-4-5": {"input": 3.00, "output": 15.00},
+    # Anthropic first-party list prices (Vertex AI partner pricing may differ)
+    "claude-opus-5-5": {"input": 4.00, "output": 20.00, "cached": 0.20},
+    "claude-sonnet-5-5": {"input": 2.00, "output": 10.00, "cached": 0.20},
+    "claude-haiku-5-5": {"input": 0.10, "output": 0.50, "cached": 0.01},
 }
+
+# Workspace files the scorer reads to grade platform tasks. An agent that writes to these
+# directly (instead of going through the Valstorm tools) is gaming the grader.
+GRADER_STATE_FILES = ("valstorm_sandbox_db.json",)
+
+
+def detect_grader_tampering(tool_name: str, tool_input: Any) -> Optional[str]:
+    """Returns a violation label when a generic file/shell tool call touches a grader state file."""
+    if str(tool_name).startswith(("valstorm_", "mcp__vsagent__valstorm_")):
+        return None
+    blob = tool_input if isinstance(tool_input, str) else repr(tool_input)
+    for fname in GRADER_STATE_FILES:
+        if fname in blob:
+            return f"grader_tampering:{tool_name}->{fname}"
+    return None
 
 
 def estimate_cost_usd(
@@ -72,13 +91,21 @@ def estimate_cost_usd(
     prompt_tokens: int,
     completion_tokens: int,
     cached_tokens: int = 0,
+    cache_write_tokens: int = 0,
 ) -> float:
-    """Estimates USD cost for a benchmark run based on model token pricing and cache-read rates."""
+    """Estimates USD cost for a benchmark run based on model token pricing, cache-read and cache-write rates.
+
+    `prompt_tokens` is the full prompt size; `cached_tokens` (reads) and `cache_write_tokens` are subsets of it.
+    Cache writes are billed at 1.25x input (Anthropic 5-minute TTL).
+    """
     rates = MODEL_PRICING_PER_1M.get(model) or MODEL_PRICING_PER_1M.get((model or "").lower(), {"input": 0.50, "output": 1.50})
     safe_cached = max(0, min(prompt_tokens, int(cached_tokens or 0)))
-    uncached_prompt = max(0, prompt_tokens - safe_cached)
+    safe_writes = max(0, min(prompt_tokens - safe_cached, int(cache_write_tokens or 0)))
+    uncached_prompt = max(0, prompt_tokens - safe_cached - safe_writes)
     cached_rate = rates.get("cached", rates["input"] * 0.25)
-    input_cost = ((uncached_prompt * rates["input"]) + (safe_cached * cached_rate)) / 1_000_000.0
+    input_cost = (
+        (uncached_prompt * rates["input"]) + (safe_cached * cached_rate) + (safe_writes * rates["input"] * 1.25)
+    ) / 1_000_000.0
     output_cost = (completion_tokens / 1_000_000.0) * rates["output"]
     return round(input_cost + output_cost, 6)
 
@@ -93,6 +120,7 @@ class BenchmarkConfig:
     5-6. With Tools (`tools_mode='scoped'` or `'full'`) vs. Without Tools (`tools_mode='none'`)
     7.   Model & Reasoning / Thinking Level (`provider`, `model`, `thinking_level`)
     9.   Agent Harness (`harness`: 'vsagent', 'claude', 'codex', 'opencode', 'hermes', 'oh-my-pi')
+         `mcp_bridge=True` exposes the vsagent ToolRegistry to an external harness over MCP.
     10.  Swarm / Parallel Performance (`swarm_mode=True/False`, `swarm_workers`)
     """
 
@@ -110,6 +138,7 @@ class BenchmarkConfig:
     swarm_mode: bool = False
     swarm_workers: int = 1
     use_decision_model: bool = True
+    mcp_bridge: bool = False
     auto_tune: bool = False
     isolate_provider: bool = False
     dedicated_eligible: bool = False
@@ -142,10 +171,13 @@ class ExecutionTrace:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    cached_tokens: int = 0
     estimated_cost_usd: float = 0.0
+    model_used: str = ""
     subagents_spawned: int = 0
     sequential_sum_sec: float = 0.0
     parallel_speedup: float = 1.0
+    integrity_violations: List[str] = field(default_factory=list)
     error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:

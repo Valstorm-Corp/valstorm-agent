@@ -38,7 +38,9 @@ class ScoreResult:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    cached_tokens: int = 0
     estimated_cost_usd: float = 0.0
+    model_used: str = ""
     subagents_spawned: int = 0
     parallel_speedup: float = 1.0
     failure_reason: Optional[str] = None
@@ -155,6 +157,9 @@ class EnvironmentStateScorer:
             else:
                 checks_failed.append(f"output_regex_mismatch (expected /{output_regex}/)")
 
+        # 5. Integrity: generic file/shell tools must not write the grader's state files directly
+        checks_failed.extend(trace.integrity_violations)
+
         total_checks = len(checks_passed) + len(checks_failed)
         score_val = round(len(checks_passed) / total_checks, 3) if total_checks > 0 else 0.0
         passed = (len(checks_failed) == 0 and total_checks > 0 and trace.status in ("completed", "timed_out"))
@@ -163,7 +168,9 @@ class EnvironmentStateScorer:
         expected_len = max(1, len(expected_tools))
         overhead_ratio = round(len(actual_tools) / expected_len, 2) if actual_tools else 0.0
 
-        failure_reason = "; ".join(checks_failed) if checks_failed else trace.error
+        # Lead with the harness error (auth failure, timeout, crash) so it isn't hidden behind missing-file checks.
+        reasons = ([trace.error] if trace.error else []) + checks_failed
+        failure_reason = "; ".join(reasons) if reasons else None
 
         return ScoreResult(
             task_id=task["id"],
@@ -184,7 +191,9 @@ class EnvironmentStateScorer:
             prompt_tokens=trace.prompt_tokens,
             completion_tokens=trace.completion_tokens,
             total_tokens=trace.total_tokens,
+            cached_tokens=trace.cached_tokens,
             estimated_cost_usd=trace.estimated_cost_usd,
+            model_used=trace.model_used,
             subagents_spawned=trace.subagents_spawned,
             parallel_speedup=round(trace.parallel_speedup, 2),
             failure_reason=failure_reason,

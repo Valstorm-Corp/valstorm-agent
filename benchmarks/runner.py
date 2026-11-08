@@ -9,6 +9,7 @@ isolated ablation configurations:
   - Axis 4 (Reasoning):   `thinking_level='none' | 'low' | 'medium' | 'high'`
   - Axis 5 (Swarm):       `swarm_mode=False` (Sequential) vs. `swarm_mode=True` (Parallel Swarm)
   - Axis 6 (Harnesses):   `vsagent` vs. `claude` vs. `codex` vs. `opencode` vs. `hermes` vs. `oh-my-pi`
+  - Head-to-Head:         vsagent (Gemini | Claude) vs. Claude Code (plain | + vsagent tools over MCP)
 
 Usage:
     # Run baseline suite in deterministic mock mode:
@@ -19,6 +20,10 @@ Usage:
 
     # Run a specific task with live LLM inference across reasoning levels:
     uv run --directory apps/agent-runtime python -m benchmarks.runner --ablation reasoning --task G-S01 --mode live
+
+    # Head-to-head vsagent vs. Claude Code on selected tasks, k=3, saved as results/h2h_pilot.*:
+    uv run --directory apps/agent-runtime python -m benchmarks.runner --ablation head_to_head \
+        --task G-S01,G-H01,OF-02,OF-04 --mode live --trials 3 --out-name h2h_pilot
 """
 
 import argparse
@@ -51,9 +56,59 @@ def get_ablation_configs(
     ablation: str,
     provider: str = "gemini",
     model: str = "gemini-flash-latest",
+    claude_model: str = "claude-opus-5-5",
 ) -> List[BenchmarkConfig]:
     """Returns the scientific ablation configurations for a given axis."""
     ab = ablation.strip().lower()
+
+    if ab == "head_to_head":
+        # A vs B isolates the model inside vsagent; B vs D isolates the harness with model + tools held
+        # constant; C vs D measures what the vsagent tool surface is worth to a generic agent.
+        return [
+            BenchmarkConfig(
+                config_id="h2h_a_vsagent_gemini",
+                label=f"A. vsagent + Gemini auto-tune (`{model}` base, skills, scoped tools)",
+                harness="vsagent",
+                provider=provider,
+                model=model,
+                thinking_level="adaptive",
+                with_skills=True,
+                tools_mode="scoped",
+                auto_tune=True,
+                timeout_sec=300.0,
+            ),
+            BenchmarkConfig(
+                config_id="h2h_b_vsagent_claude",
+                label=f"B. vsagent + Claude (`{claude_model}`, skills, scoped tools)",
+                harness="vsagent",
+                provider="anthropic",
+                model=claude_model,
+                thinking_level="medium",
+                with_skills=True,
+                tools_mode="scoped",
+                isolate_provider=True,
+                timeout_sec=300.0,
+            ),
+            BenchmarkConfig(
+                config_id="h2h_c_claude_code",
+                label=f"C. Claude Code (`{claude_model}`, built-in tools only)",
+                harness="claude",
+                model=claude_model,
+                thinking_level="adaptive",
+                tools_mode="full",
+                timeout_sec=300.0,
+            ),
+            BenchmarkConfig(
+                config_id="h2h_d_claude_code_mcp",
+                label=f"D. Claude Code (`{claude_model}`) + vsagent tools via MCP bridge",
+                harness="claude",
+                model=claude_model,
+                thinking_level="adaptive",
+                tools_mode="scoped",
+                mcp_bridge=True,
+                timeout_sec=300.0,
+            ),
+        ]
 
     if ab == "baseline":
         return [
@@ -693,7 +748,10 @@ async def run_benchmark_matrix(
         avg_dur = round(sum(r.duration_sec for r in cfg_scores) / total_runs, 3) if total_runs > 0 else 0.0
         avg_turns = round(sum(r.turns_taken for r in cfg_scores) / total_runs, 2) if total_runs > 0 else 0.0
         avg_tokens = round(sum(r.total_tokens for r in cfg_scores) / total_runs, 1) if total_runs > 0 else 0.0
+        total_prompt = sum(r.prompt_tokens for r in cfg_scores)
+        cached_share = round(sum(r.cached_tokens for r in cfg_scores) / total_prompt, 4) if total_prompt > 0 else 0.0
         total_cost = round(sum(r.estimated_cost_usd for r in cfg_scores), 6)
+        cost_per_pass = round(total_cost / passed_runs, 6) if passed_runs > 0 else None
         avg_speedup = round(sum(r.parallel_speedup for r in cfg_scores) / total_runs, 2) if total_runs > 0 else 1.0
 
         per_task_reliability = {
@@ -723,7 +781,9 @@ async def run_benchmark_matrix(
             "avg_duration_sec": avg_dur,
             "avg_turns": avg_turns,
             "avg_tokens": avg_tokens,
+            "cached_prompt_share": cached_share,
             "total_cost_usd": total_cost,
+            "cost_per_pass_usd": cost_per_pass,
             "avg_parallel_speedup": avg_speedup,
             "per_task": per_task_reliability,
         })
@@ -750,17 +810,20 @@ def format_markdown_report(report: Dict[str, Any], title: str = "Valstorm Agent 
         "",
         "## 1. Configuration Ablation Summary",
         "",
-        "| Config ID | Configuration Label | Pass Rate | `pass^k` | Avg Turns | Avg Latency | Avg Tokens | Est. Cost ($) | Parallel Speedup |",
-        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
+        "| Config ID | Configuration Label | Pass Rate | `pass^k` | Avg Turns | Avg Latency | Avg Tokens | Cached % | Est. Cost ($) | $ / Pass | Parallel Speedup |",
+        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
 
     for cs in report["config_summaries"]:
         pr_pct = f"{cs['pass_rate'] * 100:.1f}% ({cs['passed_runs']}/{cs['total_runs']})"
         ph_pct = f"{cs['pass_hat_k'] * 100:.1f}%"
+        cached_pct = f"{cs.get('cached_prompt_share', 0.0) * 100:.0f}%"
+        per_pass = cs.get("cost_per_pass_usd")
+        per_pass_str = f"${per_pass:.5f}" if per_pass is not None else "—"
         lines.append(
             f"| `{cs['config_id']}` | {cs['label']} | **{pr_pct}** | `{ph_pct}` | "
-            f"{cs['avg_turns']} | {cs['avg_duration_sec']:.2f}s | {cs['avg_tokens']:.0f} | "
-            f"${cs['total_cost_usd']:.5f} | {cs['avg_parallel_speedup']:.2f}x |"
+            f"{cs['avg_turns']} | {cs['avg_duration_sec']:.2f}s | {cs['avg_tokens']:.0f} | {cached_pct} | "
+            f"${cs['total_cost_usd']:.5f} | {per_pass_str} | {cs['avg_parallel_speedup']:.2f}x |"
         )
 
     lines.extend([
@@ -772,7 +835,10 @@ def format_markdown_report(report: Dict[str, Any], title: str = "Valstorm Agent 
     ])
 
     for r in report["runs"]:
-        outcome_badge = "✅ PASS" if r["passed"] else ("⏭️ SKIP" if r["failure_reason"] and "not found on PATH" in r["failure_reason"] else "❌ FAIL")
+        is_skip = bool(r["failure_reason"]) and any(
+            marker in r["failure_reason"] for marker in ("not found on PATH", "No API key configured")
+        )
+        outcome_badge = "✅ PASS" if r["passed"] else ("⏭️ SKIP" if is_skip else "❌ FAIL")
         tools_str = ", ".join(r["actual_tools"]) if r["actual_tools"] else "*(none)*"
         notes = (r["failure_reason"] or "All checks verified")[:65]
         lines.append(
@@ -784,13 +850,13 @@ def format_markdown_report(report: Dict[str, Any], title: str = "Valstorm Agent 
     return "\n".join(lines)
 
 
-def save_benchmark_artifacts(report: Dict[str, Any], markdown_text: str) -> Dict[str, Path]:
-    """Saves JSONL and Markdown benchmark reports to `benchmarks/results/`."""
+def save_benchmark_artifacts(report: Dict[str, Any], markdown_text: str, out_name: str = "latest") -> Dict[str, Path]:
+    """Saves JSON and Markdown benchmark reports to `benchmarks/results/<out_name>_{report.md,run.json}`."""
     results_dir = BENCHMARKS_DIR / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    md_path = results_dir / "latest_report.md"
-    json_path = results_dir / "latest_run.json"
+    md_path = results_dir / f"{out_name}_report.md"
+    json_path = results_dir / f"{out_name}_run.json"
 
     md_path.write_text(markdown_text, encoding="utf-8")
     json_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -841,7 +907,7 @@ def main():
         "--ablation",
         choices=[
             "baseline", "skills", "react", "tools", "reasoning",
-            "adaptive_thinking", "message_autotune", "swarm", "harnesses",
+            "adaptive_thinking", "message_autotune", "swarm", "harnesses", "head_to_head",
             "ui_nav", "decision_model", "do_open_models", "do_dedicated_models",
             "do_thinkers", "do_reasoners", "do_workers", "all",
         ],
@@ -854,11 +920,14 @@ def main():
         default="core",
         help="Task suite to load (default: core)",
     )
-    parser.add_argument("--task", type=str, default=None, help="Optional single task ID filter (e.g. G-S01, G-H03, SW-01)")
+    parser.add_argument("--task", type=str, default=None, help="Optional task ID filter, comma-separated (e.g. G-S01 or G-S01,OF-02)")
     parser.add_argument("--mode", choices=["auto", "mock", "live"], default="auto", help="Execution mode (default: auto)")
     parser.add_argument("--provider", type=str, default="gemini", help="Target provider (default: gemini)")
     parser.add_argument("--model", type=str, default="gemini-flash-latest", help="Target model (default: gemini-flash-latest)")
+    parser.add_argument("--claude-model", type=str, default="claude-opus-5-5", help="Claude model for head_to_head arms")
     parser.add_argument("--trials", type=int, default=1, help="Number of trials (k) per task for pass^k calculation")
+    parser.add_argument("--out-name", type=str, default="latest", help="Results file prefix under benchmarks/results/")
+    parser.add_argument("--configs", type=str, default=None, help="Optional comma-separated config_id filter within the preset")
     args = parser.parse_args()
 
     if args.ablation == "all" and not args.task:
@@ -870,15 +939,26 @@ def main():
             effective_suite = "ui"
         else:
             effective_suite = args.suite
-        tasks = load_tasks(suite=effective_suite, task_id=args.task)
+        if args.task and "," in args.task:
+            tasks = [t for tid in args.task.split(",") if tid.strip() for t in load_tasks(suite=effective_suite, task_id=tid.strip())]
+        else:
+            tasks = load_tasks(suite=effective_suite, task_id=args.task)
         if not tasks:
             print(f"No tasks matched suite='{effective_suite}' task='{args.task}'.")
             sys.exit(1)
-        configs = get_ablation_configs(args.ablation, provider=args.provider, model=args.model)
+        configs = get_ablation_configs(
+            args.ablation, provider=args.provider, model=args.model, claude_model=args.claude_model
+        )
+        if args.configs:
+            wanted = {c.strip() for c in args.configs.split(",") if c.strip()}
+            configs = [c for c in configs if c.config_id in wanted]
+            if not configs:
+                print(f"No configs in '{args.ablation}' matched --configs '{args.configs}'.")
+                sys.exit(1)
         report = asyncio.run(run_benchmark_matrix(tasks=tasks, configs=configs, mode=args.mode, trials=args.trials))
 
     md_text = format_markdown_report(report, title=f"Valstorm Agent Benchmark Report (`--ablation {args.ablation}`)")
-    paths = save_benchmark_artifacts(report, md_text)
+    paths = save_benchmark_artifacts(report, md_text, out_name=args.out_name)
 
     print("\n" + md_text)
     print(f"📊 Saved Markdown report to: {paths['markdown']}")

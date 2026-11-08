@@ -101,6 +101,11 @@ from tools.ui_navigator_tools import (
     system_one_decide,
     ui_navigate,
 )
+from tools.computer_use import (
+    computer_use,
+    create_computer_use_tools,
+    register_computer_use_tools,
+)
 
 
 def create_tier1_tools() -> List[Any]:
@@ -123,6 +128,7 @@ def create_tier1_tools() -> List[Any]:
         web_crawl_domain,
         web_content_diff,
         web_feed_poll,
+        computer_use,
     ]
 
 
@@ -201,4 +207,7 @@ __all__ = [
     "ui_navigate",
     "create_ui_navigator_tools",
     "register_ui_navigator_tools",
+    "computer_use",
+    "create_computer_use_tools",
+    "register_computer_use_tools",
 ]

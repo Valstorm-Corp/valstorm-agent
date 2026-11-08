@@ -30,7 +30,7 @@ from tools.valstorm_tools import create_valstorm_tools
 from tools.vision_tool import set_vision_provider_override
 
 from ..sandbox_valstorm import BenchmarkValstormClient, provision_craft_suite_sandbox
-from .base import BenchmarkAdapter, BenchmarkConfig, ExecutionTrace, estimate_cost_usd
+from .base import BenchmarkAdapter, BenchmarkConfig, ExecutionTrace, detect_grader_tampering, estimate_cost_usd
 
 # External side-effect tools strictly excluded from benchmark sandboxes
 _EXCLUDED_EXTERNAL_TOOLS = frozenset({
@@ -698,6 +698,16 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
             if live_provider is None and mode == "auto":
                 use_mock = True
 
+        if not use_mock and live_provider is None:
+            set_current_sandbox(prev_sandbox)
+            return ExecutionTrace(
+                task_id=task["id"],
+                config_id=config.config_id,
+                harness=config.harness,
+                status="skipped",
+                error=f"No API key configured for provider '{config.provider}'",
+            )
+
         if use_mock:
             provider = TaskAwareMockProvider(task=task, config=config)
             set_subagent_provider_override(provider)
@@ -767,6 +777,7 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
 
         tool_calls_made: List[str] = []
         tool_outputs: List[str] = []
+        integrity_violations: List[str] = []
         turns_taken = 0
         tool_time_ms = 0.0
         final_output = ""
@@ -789,6 +800,9 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
                 ):
                     if event.event_type == StreamEventType.TOOL_CALL_DETECTED and event.tool_call:
                         tool_calls_made.append(event.tool_call.name)
+                        violation = detect_grader_tampering(event.tool_call.name, event.tool_call.arguments)
+                        if violation:
+                            integrity_violations.append(violation)
                     elif event.event_type == StreamEventType.TOOL_EXECUTION_RESULT and event.tool_result:
                         if event.tool_result.output:
                             tool_outputs.append(event.tool_result.output)
@@ -827,6 +841,16 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
         total_prompt = session.total_prompt_tokens + sub_prompt
         total_comp = session.total_completion_tokens + sub_comp
         total_tok = total_prompt + total_comp
+        total_cached = sum(
+            int(getattr(m.usage, "cached_tokens", 0) or 0)
+            for m in session.messages
+            if m.role == "assistant" and m.usage
+        )
+        total_cache_writes = sum(
+            int(getattr(m.usage, "cache_write_tokens", 0) or 0)
+            for m in session.messages
+            if m.role == "assistant" and m.usage
+        )
 
         seq_sum = sum(t.duration_sec for t in spawned_tasks) if spawned_tasks else duration_sec
         parallel_speedup = round(seq_sum / duration_sec, 2) if (spawned_tasks and duration_sec > 0) else 1.0
@@ -836,7 +860,13 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
             for m in session.messages:
                 if m.role == "assistant" and m.usage:
                     m_mod = m.model or session.active_model or config.model
-                    per_msg_cost += estimate_cost_usd(m_mod, m.usage.prompt_tokens, m.usage.completion_tokens)
+                    per_msg_cost += estimate_cost_usd(
+                        m_mod,
+                        m.usage.prompt_tokens,
+                        m.usage.completion_tokens,
+                        cached_tokens=m.usage.cached_tokens or 0,
+                        cache_write_tokens=m.usage.cache_write_tokens or 0,
+                    )
             for t in spawned_tasks:
                 per_msg_cost += estimate_cost_usd(
                     t.model_name or config.model,
@@ -845,7 +875,13 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
                 )
             est_cost = round(per_msg_cost, 6)
         else:
-            est_cost = estimate_cost_usd(config.model, total_prompt, total_comp)
+            est_cost = estimate_cost_usd(
+                config.model,
+                total_prompt,
+                total_comp,
+                cached_tokens=total_cached,
+                cache_write_tokens=total_cache_writes,
+            )
 
         return ExecutionTrace(
             task_id=task["id"],
@@ -862,9 +898,12 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
             prompt_tokens=total_prompt,
             completion_tokens=total_comp,
             total_tokens=total_tok,
+            cached_tokens=total_cached,
             estimated_cost_usd=est_cost,
+            model_used=config.model,
             subagents_spawned=subagents_count,
             sequential_sum_sec=round(seq_sum, 3),
             parallel_speedup=parallel_speedup,
+            integrity_violations=integrity_violations,
             error=error_msg,
         )

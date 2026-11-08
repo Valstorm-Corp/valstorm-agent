@@ -35,6 +35,7 @@ from tools.developer_tools import (
 )
 from tools.skill_tool import skill_list, skill_manage, skill_view
 from tools.vision_tool import analyze_image, vision_analyze
+from tools.computer_use import computer_use
 
 
 def _wrap_sync(fn: Callable) -> Callable:
@@ -99,6 +100,7 @@ def _build_execution_environment(
         "skill_manage": _wrap_sync(skill_manage),
         "analyze_image": _wrap_sync(analyze_image),
         "vision_analyze": _wrap_sync(vision_analyze),
+        "computer_use": _wrap_sync(computer_use),
     }
 
     # Bind Valstorm Platform Context if available

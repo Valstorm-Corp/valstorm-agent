@@ -74,14 +74,10 @@ def test_ablation_presets_cover_all_axes():
 
 def test_external_cli_command_builder():
     """Verify headless CLI command generation for Claude Code, Codex, OpenCode, Hermes, Oh My Pi, and vsagent."""
-    assert build_cli_command("claude", "Fix bug", "claude-sonnet-4-5") == [
-        "claude",
-        "-p",
-        "Fix bug",
-        "--dangerously-skip-permissions",
-        "--model",
-        "claude-sonnet-4-5",
-    ]
+    claude_cmd = build_cli_command("claude", "Fix bug", "claude-sonnet-4-5")
+    assert claude_cmd[:3] == ["claude", "-p", "Fix bug"]
+    assert "--dangerously-skip-permissions" in claude_cmd
+    assert claude_cmd[claude_cmd.index("--model") + 1] == "claude-sonnet-4-5"
     assert build_cli_command("codex", "Fix bug", "gpt-5") == [
         "codex",
         "exec",

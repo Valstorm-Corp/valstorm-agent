@@ -1,8 +1,10 @@
 """Anthropic Claude Provider implementation."""
 
 import base64
+import copy
 from typing import Any, Dict, List, Optional, Tuple
 import json
+import os
 
 from core.models import Message, ToolCall, UsageMetadata, collapse_repeating_text
 from core.retry import execute_with_retry
@@ -17,6 +19,50 @@ CLAUDE_GEAP_NAME_MAP: Dict[str, str] = {
     "claude-sonnet-4-5": "claude-sonnet-4-5@20250929",
     "claude-haiku-4-5": "claude-haiku-4-5@20251001",
 }
+
+
+_EPHEMERAL_CACHE = {"type": "ephemeral"}
+
+
+def prompt_cache_enabled() -> bool:
+    """Prompt caching is on unless VALSTORM_ANTHROPIC_PROMPT_CACHE is set to 0/false/off."""
+    return os.environ.get("VALSTORM_ANTHROPIC_PROMPT_CACHE", "1").strip().lower() not in ("0", "false", "no", "off")
+
+
+def apply_prompt_cache_breakpoints(req_kwargs: Dict[str, Any]) -> None:
+    """Adds Anthropic prompt-cache breakpoints to a messages.create payload in place.
+
+    Render order is tools -> system -> messages, and each breakpoint caches everything before it:
+      1. last tool definition: the tool schemas (identical across sessions with the same profile)
+      2. system prompt: tools + persona/skills (identical for every turn of a session)
+      3. last content block of the last message: the whole conversation so far, so each ReAct
+         iteration re-reads the previous iteration's prefix at the cache-read rate
+    """
+    tools = req_kwargs.get("tools")
+    if tools:
+        tools[-1] = {**tools[-1], "cache_control": _EPHEMERAL_CACHE}
+
+    system = req_kwargs.get("system")
+    if isinstance(system, str) and system.strip():
+        req_kwargs["system"] = [{"type": "text", "text": system, "cache_control": _EPHEMERAL_CACHE}]
+
+    messages = req_kwargs.get("messages") or []
+    if not messages:
+        return
+    last = messages[-1] = copy.copy(messages[-1])
+    content = last.get("content")
+    if isinstance(content, str):
+        if content.strip():
+            last["content"] = [{"type": "text", "text": content, "cache_control": _EPHEMERAL_CACHE}]
+    elif isinstance(content, list) and content:
+        blocks = list(content)
+        blocks[-1] = {**blocks[-1], "cache_control": _EPHEMERAL_CACHE}
+        last["content"] = blocks
+
+
+def _usage_int(usage: Any, field: str) -> int:
+    val = getattr(usage, field, 0)
+    return val if isinstance(val, int) else 0
 
 
 def normalize_geap_claude_model(model: str) -> str:
@@ -213,6 +259,8 @@ class AnthropicProvider(BaseProvider):
             req_kwargs["system"] = system_prompt
         if anthropic_tools:
             req_kwargs["tools"] = anthropic_tools
+        if prompt_cache_enabled():
+            apply_prompt_cache_breakpoints(req_kwargs)
 
         ctx_effort = (getattr(self, "_request_context", None) or {}).get("reasoning_effort")
         raw_effort = str(kwargs.get("reasoning_effort") or ctx_effort or "").strip().lower()
@@ -263,16 +311,24 @@ class AnthropicProvider(BaseProvider):
                         arguments=block.input if isinstance(block.input, dict) else {},
                     ))
 
-            # Extract token usage
-            prompt_tokens = getattr(response.usage, "input_tokens", 0)
-            completion_tokens = getattr(response.usage, "output_tokens", 0)
-            cached_tokens = getattr(response.usage, "cache_read_input_tokens", None)
+            # Extract token usage. Anthropic's `input_tokens` excludes cache reads and writes; fold them
+            # back in so prompt_tokens is the full prompt size (matching the Gemini/OpenAI providers),
+            # with cached_tokens as the cache-read subset.
+            cache_read = _usage_int(response.usage, "cache_read_input_tokens")
+            prompt_tokens = (
+                _usage_int(response.usage, "input_tokens")
+                + cache_read
+                + _usage_int(response.usage, "cache_creation_input_tokens")
+            )
+            completion_tokens = _usage_int(response.usage, "output_tokens")
+            cached_tokens = cache_read
 
             usage = UsageMetadata(
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=prompt_tokens + completion_tokens,
                 cached_tokens=cached_tokens,
+                cache_write_tokens=_usage_int(response.usage, "cache_creation_input_tokens"),
             )
 
             raw_content = "\n".join(text_parts) if text_parts else ("\n".join(thinking_parts) if not tool_calls and thinking_parts else None)

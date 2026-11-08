@@ -1,0 +1,2628 @@
+{
+  "timestamp": "2026-11-02T18:44:45.452634+00:00",
+  "mode": "live",
+  "trials_per_task": 3,
+  "task_count": 5,
+  "config_count": 4,
+  "config_summaries": [
+    {
+      "config_id": "h2h_a_vsagent_gemini",
+      "label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "adaptive",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 15,
+      "passed_runs": 14,
+      "pass_rate": 0.9333,
+      "pass_hat_k": 0.8593,
+      "avg_duration_sec": 15.451,
+      "avg_turns": 4.87,
+      "avg_tokens": 21595.5,
+      "cached_prompt_share": 0.2277,
+      "total_cost_usd": 0.268102,
+      "cost_per_pass_usd": 0.01915,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-M03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 24.683,
+          "avg_total_tokens": 16342.0,
+          "avg_cost_usd": 0.002572
+        },
+        "G-H01": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 28.262,
+          "avg_total_tokens": 44442.7,
+          "avg_cost_usd": 0.058111
+        },
+        "G-H03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 18.319,
+          "avg_total_tokens": 19703.7,
+          "avg_cost_usd": 0.026368
+        },
+        "OF-02": {
+          "trials": 3,
+          "successes": 2,
+          "pass_rate": 0.6667,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 0.2963,
+          "avg_duration_sec": 2.227,
+          "avg_total_tokens": 15360.0,
+          "avg_cost_usd": 0.001195
+        },
+        "OF-04": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 3.766,
+          "avg_total_tokens": 12129.3,
+          "avg_cost_usd": 0.001121
+        }
+      }
+    },
+    {
+      "config_id": "h2h_b_vsagent_claude",
+      "label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "model": "claude-opus-5-5",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 15,
+      "passed_runs": 14,
+      "pass_rate": 0.9333,
+      "pass_hat_k": 0.8593,
+      "avg_duration_sec": 15.811,
+      "avg_turns": 4.4,
+      "avg_tokens": 34615.4,
+      "cached_prompt_share": 0.0,
+      "total_cost_usd": 2.3523,
+      "cost_per_pass_usd": 0.168021,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-M03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 10.23,
+          "avg_total_tokens": 26235.0,
+          "avg_cost_usd": 0.112444
+        },
+        "G-H01": {
+          "trials": 3,
+          "successes": 2,
+          "pass_rate": 0.6667,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 0.2963,
+          "avg_duration_sec": 27.661,
+          "avg_total_tokens": 54807.0,
+          "avg_cost_usd": 0.247825
+        },
+        "G-H03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 16.212,
+          "avg_total_tokens": 28290.7,
+          "avg_cost_usd": 0.134843
+        },
+        "OF-02": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 8.966,
+          "avg_total_tokens": 25768.0,
+          "avg_cost_usd": 0.113867
+        },
+        "OF-04": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 15.985,
+          "avg_total_tokens": 37976.3,
+          "avg_cost_usd": 0.175121
+        }
+      }
+    },
+    {
+      "config_id": "h2h_c_claude_code",
+      "label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "model": "claude-opus-5-5",
+      "thinking_level": "adaptive",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "full",
+      "swarm_mode": false,
+      "total_runs": 15,
+      "passed_runs": 9,
+      "pass_rate": 0.6,
+      "pass_hat_k": 0.6,
+      "avg_duration_sec": 24.721,
+      "avg_turns": 6.2,
+      "avg_tokens": 32667.5,
+      "cached_prompt_share": 0.6929,
+      "total_cost_usd": 1.277925,
+      "cost_per_pass_usd": 0.141992,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-M03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 13.231,
+          "avg_total_tokens": 8579.0,
+          "avg_cost_usd": 0.039673
+        },
+        "G-H01": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 25.994,
+          "avg_total_tokens": 19884.7,
+          "avg_cost_usd": 0.085025
+        },
+        "G-H03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 19.32,
+          "avg_total_tokens": 11514.3,
+          "avg_cost_usd": 0.048274
+        },
+        "OF-02": {
+          "trials": 3,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 34.156,
+          "avg_total_tokens": 91096.3,
+          "avg_cost_usd": 0.156924
+        },
+        "OF-04": {
+          "trials": 3,
+          "successes": 0,
+          "pass_rate": 0.0,
+          "pass_at_k": 0.0,
+          "pass_hat_k": 0.0,
+          "avg_duration_sec": 30.903,
+          "avg_total_tokens": 32263.0,
+          "avg_cost_usd": 0.096079
+        }
+      }
+    },
+    {
+      "config_id": "h2h_d_claude_code_mcp",
+      "label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "model": "claude-opus-5-5",
+      "thinking_level": "adaptive",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 15,
+      "passed_runs": 15,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 15.948,
+      "avg_turns": 4.73,
+      "avg_tokens": 12235.3,
+      "cached_prompt_share": 0.5794,
+      "total_cost_usd": 0.71916,
+      "cost_per_pass_usd": 0.047944,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-M03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 13.409,
+          "avg_total_tokens": 8590.0,
+          "avg_cost_usd": 0.026775
+        },
+        "G-H01": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 24.236,
+          "avg_total_tokens": 19997.0,
+          "avg_cost_usd": 0.070499
+        },
+        "G-H03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 18.345,
+          "avg_total_tokens": 10572.0,
+          "avg_cost_usd": 0.045588
+        },
+        "OF-02": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 7.952,
+          "avg_total_tokens": 8295.7,
+          "avg_cost_usd": 0.03669
+        },
+        "OF-04": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 15.799,
+          "avg_total_tokens": 13722.0,
+          "avg_cost_usd": 0.060168
+        }
+      }
+    }
+  ],
+  "runs": [
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 37.066,
+      "prompt_tokens": 16017,
+      "completion_tokens": 291,
+      "total_tokens": 16308,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.002576,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 8.708,
+      "prompt_tokens": 15836,
+      "completion_tokens": 223,
+      "total_tokens": 16059,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.002509,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 28.274,
+      "prompt_tokens": 16364,
+      "completion_tokens": 295,
+      "total_tokens": 16659,
+      "cached_tokens": 1935,
+      "estimated_cost_usd": 0.002632,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 4.0,
+      "turns_taken": 9,
+      "duration_sec": 21.015,
+      "prompt_tokens": 36436,
+      "completion_tokens": 419,
+      "total_tokens": 36855,
+      "cached_tokens": 12306,
+      "estimated_cost_usd": 0.047638,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 6.5,
+      "turns_taken": 14,
+      "duration_sec": 45.747,
+      "prompt_tokens": 62469,
+      "completion_tokens": 1125,
+      "total_tokens": 63594,
+      "cached_tokens": 22696,
+      "estimated_cost_usd": 0.083712,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.5,
+      "turns_taken": 8,
+      "duration_sec": 18.024,
+      "prompt_tokens": 32376,
+      "completion_tokens": 503,
+      "total_tokens": 32879,
+      "cached_tokens": 14074,
+      "estimated_cost_usd": 0.042984,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 14.363,
+      "prompt_tokens": 15013,
+      "completion_tokens": 384,
+      "total_tokens": 15397,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.020687,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 20.948,
+      "prompt_tokens": 19266,
+      "completion_tokens": 475,
+      "total_tokens": 19741,
+      "cached_tokens": 1780,
+      "estimated_cost_usd": 0.026459,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 6,
+      "duration_sec": 19.647,
+      "prompt_tokens": 23442,
+      "completion_tokens": 531,
+      "total_tokens": 23973,
+      "cached_tokens": 5344,
+      "estimated_cost_usd": 0.031957,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 2.197,
+      "prompt_tokens": 15288,
+      "completion_tokens": 184,
+      "total_tokens": 15472,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.001202,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.333,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json"
+      ],
+      "checks_failed": [
+        "content_regex_mismatch:valstorm_sandbox_db.json (expected /(?=[\\s\\S]*Q4 Enterprise Open Model Launch)(?=[\\s\\S]*Carousel)/, got '{\n  \"schemas\": {\n    \"lead\": {\n      \"api_name\": \"lead\",\n      \"title\": \"Lead\",\n')",
+        "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+      ],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 2.359,
+      "prompt_tokens": 15076,
+      "completion_tokens": 235,
+      "total_tokens": 15311,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.001201,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "content_regex_mismatch:valstorm_sandbox_db.json (expected /(?=[\\s\\S]*Q4 Enterprise Open Model Launch)(?=[\\s\\S]*Carousel)/, got '{\n  \"schemas\": {\n    \"lead\": {\n      \"api_name\": \"lead\",\n      \"title\": \"Lead\",\n'); verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 2.124,
+      "prompt_tokens": 15140,
+      "completion_tokens": 157,
+      "total_tokens": 15297,
+      "cached_tokens": 9252,
+      "estimated_cost_usd": 0.001182,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 2,
+      "duration_sec": 1.793,
+      "prompt_tokens": 10457,
+      "completion_tokens": 246,
+      "total_tokens": 10703,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.000858,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 2,
+      "duration_sec": 7.919,
+      "prompt_tokens": 12659,
+      "completion_tokens": 2358,
+      "total_tokens": 15017,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.001657,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 2,
+      "duration_sec": 1.585,
+      "prompt_tokens": 10455,
+      "completion_tokens": 213,
+      "total_tokens": 10668,
+      "cached_tokens": 4618,
+      "estimated_cost_usd": 0.000848,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 10.287,
+      "prompt_tokens": 25814,
+      "completion_tokens": 498,
+      "total_tokens": 26312,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.113216,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 9.867,
+      "prompt_tokens": 25737,
+      "completion_tokens": 451,
+      "total_tokens": 26188,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.111968,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 10.536,
+      "prompt_tokens": 25747,
+      "completion_tokens": 458,
+      "total_tokens": 26205,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.112148,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 4.0,
+      "turns_taken": 6,
+      "duration_sec": 24.132,
+      "prompt_tokens": 46355,
+      "completion_tokens": 1717,
+      "total_tokens": 48072,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.21976,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 4.5,
+      "turns_taken": 8,
+      "duration_sec": 30.425,
+      "prompt_tokens": 61781,
+      "completion_tokens": 1824,
+      "total_tokens": 63605,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.283604,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": false,
+      "score": 0.667,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py"
+      ],
+      "checks_failed": [
+        "verify_command_failed(exit=1): /Users/jared/.pyenv/versions/3.10.7/bin/python3: No module named pytest"
+      ],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 4.0,
+      "turns_taken": 7,
+      "duration_sec": 28.426,
+      "prompt_tokens": 50923,
+      "completion_tokens": 1821,
+      "total_tokens": 52744,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.240112,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "verify_command_failed(exit=1): /Users/jared/.pyenv/versions/3.10.7/bin/python3: No module named pytest"
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 16.053,
+      "prompt_tokens": 26873,
+      "completion_tokens": 1317,
+      "total_tokens": 28190,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.133832,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 16.685,
+      "prompt_tokens": 27126,
+      "completion_tokens": 1438,
+      "total_tokens": 28564,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.137264,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 15.899,
+      "prompt_tokens": 26808,
+      "completion_tokens": 1310,
+      "total_tokens": 28118,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.133432,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 7.79,
+      "prompt_tokens": 25089,
+      "completion_tokens": 557,
+      "total_tokens": 25646,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.111496,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 9.514,
+      "prompt_tokens": 25108,
+      "completion_tokens": 750,
+      "total_tokens": 25858,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.115432,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 9.594,
+      "prompt_tokens": 25083,
+      "completion_tokens": 717,
+      "total_tokens": 25800,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.114672,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 4,
+      "duration_sec": 14.883,
+      "prompt_tokens": 36430,
+      "completion_tokens": 1322,
+      "total_tokens": 37752,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.17216,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 4,
+      "duration_sec": 16.713,
+      "prompt_tokens": 36502,
+      "completion_tokens": 1522,
+      "total_tokens": 38024,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.176448,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 4,
+      "duration_sec": 16.359,
+      "prompt_tokens": 36644,
+      "completion_tokens": 1509,
+      "total_tokens": 38153,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.176756,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "patch_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 12.606,
+      "prompt_tokens": 6135,
+      "completion_tokens": 773,
+      "total_tokens": 6908,
+      "cached_tokens": 1715,
+      "estimated_cost_usd": 0.037895,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "read_file",
+        "patch_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.33,
+      "turns_taken": 5,
+      "duration_sec": 12.875,
+      "prompt_tokens": 8371,
+      "completion_tokens": 794,
+      "total_tokens": 9165,
+      "cached_tokens": 2982,
+      "estimated_cost_usd": 0.043411,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "read_file",
+        "patch_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.33,
+      "turns_taken": 5,
+      "duration_sec": 14.213,
+      "prompt_tokens": 8789,
+      "completion_tokens": 875,
+      "total_tokens": 9664,
+      "cached_tokens": 4942,
+      "estimated_cost_usd": 0.037713,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 6,
+      "duration_sec": 25.405,
+      "prompt_tokens": 18656,
+      "completion_tokens": 1975,
+      "total_tokens": 20631,
+      "cached_tokens": 9321,
+      "estimated_cost_usd": 0.088025,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.0,
+      "turns_taken": 7,
+      "duration_sec": 27.291,
+      "prompt_tokens": 17600,
+      "completion_tokens": 1915,
+      "total_tokens": 19515,
+      "cached_tokens": 7173,
+      "estimated_cost_usd": 0.091856,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 6,
+      "duration_sec": 25.286,
+      "prompt_tokens": 17746,
+      "completion_tokens": 1762,
+      "total_tokens": 19508,
+      "cached_tokens": 10159,
+      "estimated_cost_usd": 0.075193,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 18.151,
+      "prompt_tokens": 7024,
+      "completion_tokens": 1500,
+      "total_tokens": 8524,
+      "cached_tokens": 4791,
+      "estimated_cost_usd": 0.042115,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 15.577,
+      "prompt_tokens": 6958,
+      "completion_tokens": 1169,
+      "total_tokens": 8127,
+      "cached_tokens": 5217,
+      "estimated_cost_usd": 0.03312,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 6,
+      "duration_sec": 24.231,
+      "prompt_tokens": 16062,
+      "completion_tokens": 1830,
+      "total_tokens": 17892,
+      "cached_tokens": 9856,
+      "estimated_cost_usd": 0.069587,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:valstorm_sandbox_db.json",
+        "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+      ],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 5.0,
+      "turns_taken": 11,
+      "duration_sec": 36.943,
+      "prompt_tokens": 106836,
+      "completion_tokens": 2425,
+      "total_tokens": 109261,
+      "cached_tokens": 85514,
+      "estimated_cost_usd": 0.172189,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:valstorm_sandbox_db.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:valstorm_sandbox_db.json",
+        "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+      ],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 4.0,
+      "turns_taken": 9,
+      "duration_sec": 31.714,
+      "prompt_tokens": 59614,
+      "completion_tokens": 2188,
+      "total_tokens": 61802,
+      "cached_tokens": 42430,
+      "estimated_cost_usd": 0.138146,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:valstorm_sandbox_db.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:valstorm_sandbox_db.json",
+        "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+      ],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 4.5,
+      "turns_taken": 10,
+      "duration_sec": 33.812,
+      "prompt_tokens": 100073,
+      "completion_tokens": 2153,
+      "total_tokens": 102226,
+      "cached_tokens": 79785,
+      "estimated_cost_usd": 0.160437,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:valstorm_sandbox_db.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:valstorm_sandbox_db.json",
+        "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+      ],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 6,
+      "duration_sec": 28.963,
+      "prompt_tokens": 21010,
+      "completion_tokens": 1689,
+      "total_tokens": 22699,
+      "cached_tokens": 13276,
+      "estimated_cost_usd": 0.075091,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:valstorm_sandbox_db.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:valstorm_sandbox_db.json",
+        "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+      ],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 6,
+      "duration_sec": 32.335,
+      "prompt_tokens": 37165,
+      "completion_tokens": 1953,
+      "total_tokens": 39118,
+      "cached_tokens": 25604,
+      "estimated_cost_usd": 0.101972,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:valstorm_sandbox_db.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_c_claude_code",
+      "config_label": "C. Claude Code (`claude-opus-5-5`, built-in tools only)",
+      "harness": "claude",
+      "passed": false,
+      "score": 0.0,
+      "checks_passed": [],
+      "checks_failed": [
+        "missing_target_file:valstorm_sandbox_db.json",
+        "verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+      ],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 6,
+      "duration_sec": 31.411,
+      "prompt_tokens": 32994,
+      "completion_tokens": 1978,
+      "total_tokens": 34972,
+      "cached_tokens": 19446,
+      "estimated_cost_usd": 0.111175,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": "missing_target_file:valstorm_sandbox_db.json; verify_command_failed(exit=1): Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import json; db=json.load(open('valstorm_s"
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "patch_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 11.852,
+      "prompt_tokens": 6055,
+      "completion_tokens": 669,
+      "total_tokens": 6724,
+      "cached_tokens": 4882,
+      "estimated_cost_usd": 0.020213,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "read_file",
+        "patch_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.33,
+      "turns_taken": 5,
+      "duration_sec": 14.367,
+      "prompt_tokens": 8730,
+      "completion_tokens": 861,
+      "total_tokens": 9591,
+      "cached_tokens": 6420,
+      "estimated_cost_usd": 0.030044,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "read_file",
+        "patch_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.33,
+      "turns_taken": 5,
+      "duration_sec": 14.007,
+      "prompt_tokens": 8693,
+      "completion_tokens": 762,
+      "total_tokens": 9455,
+      "cached_tokens": 5964,
+      "estimated_cost_usd": 0.030068,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "patch_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.0,
+      "turns_taken": 7,
+      "duration_sec": 26.711,
+      "prompt_tokens": 18459,
+      "completion_tokens": 1961,
+      "total_tokens": 20420,
+      "cached_tokens": 9968,
+      "estimated_cost_usd": 0.083655,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 18.758,
+      "prompt_tokens": 14277,
+      "completion_tokens": 1487,
+      "total_tokens": 15764,
+      "cached_tokens": 11014,
+      "estimated_cost_usd": 0.048246,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.0,
+      "turns_taken": 7,
+      "duration_sec": 27.239,
+      "prompt_tokens": 21862,
+      "completion_tokens": 1945,
+      "total_tokens": 23807,
+      "cached_tokens": 14291,
+      "estimated_cost_usd": 0.079597,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 16.515,
+      "prompt_tokens": 7396,
+      "completion_tokens": 1460,
+      "total_tokens": 8856,
+      "cached_tokens": 4473,
+      "estimated_cost_usd": 0.044702,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 20.882,
+      "prompt_tokens": 10320,
+      "completion_tokens": 1716,
+      "total_tokens": 12036,
+      "cached_tokens": 7022,
+      "estimated_cost_usd": 0.052204,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 17.638,
+      "prompt_tokens": 9522,
+      "completion_tokens": 1302,
+      "total_tokens": 10824,
+      "cached_tokens": 7038,
+      "estimated_cost_usd": 0.039858,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 8.036,
+      "prompt_tokens": 7737,
+      "completion_tokens": 573,
+      "total_tokens": 8310,
+      "cached_tokens": 2599,
+      "estimated_cost_usd": 0.037662,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 8.183,
+      "prompt_tokens": 7739,
+      "completion_tokens": 603,
+      "total_tokens": 8342,
+      "cached_tokens": 1891,
+      "estimated_cost_usd": 0.04167,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 7.638,
+      "prompt_tokens": 7720,
+      "completion_tokens": 515,
+      "total_tokens": 8235,
+      "cached_tokens": 3782,
+      "estimated_cost_usd": 0.030738,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 14.192,
+      "prompt_tokens": 11428,
+      "completion_tokens": 1124,
+      "total_tokens": 12552,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.07961,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 15.355,
+      "prompt_tokens": 11465,
+      "completion_tokens": 1233,
+      "total_tokens": 12698,
+      "cached_tokens": 6367,
+      "estimated_cost_usd": 0.051413,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_d_claude_code_mcp",
+      "config_label": "D. Claude Code (`claude-opus-5-5`) + vsagent tools via MCP bridge",
+      "harness": "claude",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 17.85,
+      "prompt_tokens": 14574,
+      "completion_tokens": 1342,
+      "total_tokens": 15916,
+      "cached_tokens": 10462,
+      "estimated_cost_usd": 0.04948,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    }
+  ]
+}

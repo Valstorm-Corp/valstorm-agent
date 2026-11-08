@@ -41,6 +41,7 @@ def _build_base_subagent_tool_registry() -> ToolRegistry:
     from tools.process_manager import register_process_manager_tools
     from tools.skill_tool import register_skill_tools
     from tools.ui_navigator_tools import register_ui_navigator_tools
+    from tools.computer_use import register_computer_use_tools
     from tools.vision_tool import register_vision_tools
     from tools.valstorm_client import resolve_valstorm_credentials
     from tools.valstorm_tools import register_valstorm_tools
@@ -50,6 +51,7 @@ def _build_base_subagent_tool_registry() -> ToolRegistry:
     register_developer_tools(registry)
     register_web_tools(registry)
     register_ui_navigator_tools(registry)
+    register_computer_use_tools(registry)
     register_clarify_tools(registry)
     register_confirmation_tools(registry)
     register_vision_tools(registry)

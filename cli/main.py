@@ -6,6 +6,7 @@ import typer
 from rich.console import Console
 
 from .cmds.chat_cmds import chat_command, run_command
+from .cmds.computer_use_cmds import computer_use_app
 from .cmds.doctor_cmd import doctor_command
 from .cmds.keys_cmds import keys_app
 from .cmds.memory_cmds import memory_app
@@ -34,6 +35,7 @@ app.add_typer(sessions_app, name="sessions")
 app.add_typer(memory_app, name="memory")
 app.add_typer(keys_app, name="keys")
 app.add_typer(server_app, name="server")
+app.add_typer(computer_use_app, name="computer-use")
 
 # Primary execution commands
 app.command(name="chat", help="Start an interactive multi-turn AI chat REPL")(chat_command)

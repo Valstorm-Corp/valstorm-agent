@@ -1,0 +1,1304 @@
+{
+  "timestamp": "2026-11-02T19:05:17.249270+00:00",
+  "mode": "live",
+  "trials_per_task": 3,
+  "task_count": 5,
+  "config_count": 2,
+  "config_summaries": [
+    {
+      "config_id": "h2h_a_vsagent_gemini",
+      "label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "model": "gemini-flash-latest",
+      "thinking_level": "adaptive",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 15,
+      "passed_runs": 15,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 12.661,
+      "avg_turns": 4.4,
+      "avg_tokens": 19204.3,
+      "cached_prompt_share": 0.3116,
+      "total_cost_usd": 0.157986,
+      "cost_per_pass_usd": 0.010532,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-M03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 17.28,
+          "avg_total_tokens": 16207.0,
+          "avg_cost_usd": 0.002422
+        },
+        "G-H01": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 19.705,
+          "avg_total_tokens": 30376.0,
+          "avg_cost_usd": 0.028883
+        },
+        "G-H03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 21.722,
+          "avg_total_tokens": 19594.0,
+          "avg_cost_usd": 0.019527
+        },
+        "OF-02": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 2.848,
+          "avg_total_tokens": 19142.0,
+          "avg_cost_usd": 0.000973
+        },
+        "OF-04": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 1.751,
+          "avg_total_tokens": 10702.3,
+          "avg_cost_usd": 0.000856
+        }
+      }
+    },
+    {
+      "config_id": "h2h_b_vsagent_claude",
+      "label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "model": "claude-opus-5-5",
+      "thinking_level": "medium",
+      "with_skills": true,
+      "with_react_loop": true,
+      "tools_mode": "scoped",
+      "swarm_mode": false,
+      "total_runs": 15,
+      "passed_runs": 15,
+      "pass_rate": 1.0,
+      "pass_hat_k": 1.0,
+      "avg_duration_sec": 14.307,
+      "avg_turns": 4.07,
+      "avg_tokens": 32135.1,
+      "cached_prompt_share": 0.3079,
+      "total_cost_usd": 1.970624,
+      "cost_per_pass_usd": 0.131375,
+      "avg_parallel_speedup": 1.0,
+      "per_task": {
+        "G-M03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 9.979,
+          "avg_total_tokens": 24030.7,
+          "avg_cost_usd": 0.102588
+        },
+        "G-H01": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 18.713,
+          "avg_total_tokens": 41289.0,
+          "avg_cost_usd": 0.159467
+        },
+        "G-H03": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 16.934,
+          "avg_total_tokens": 28601.3,
+          "avg_cost_usd": 0.106992
+        },
+        "OF-02": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 8.772,
+          "avg_total_tokens": 25771.7,
+          "avg_cost_usd": 0.123965
+        },
+        "OF-04": {
+          "trials": 3,
+          "successes": 3,
+          "pass_rate": 1.0,
+          "pass_at_k": 1.0,
+          "pass_hat_k": 1.0,
+          "avg_duration_sec": 17.135,
+          "avg_total_tokens": 40982.7,
+          "avg_cost_usd": 0.163864
+        }
+      }
+    }
+  ],
+  "runs": [
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 10.951,
+      "prompt_tokens": 15858,
+      "completion_tokens": 306,
+      "total_tokens": 16164,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.002562,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 8.917,
+      "prompt_tokens": 15807,
+      "completion_tokens": 302,
+      "total_tokens": 16109,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.002552,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 31.971,
+      "prompt_tokens": 16046,
+      "completion_tokens": 302,
+      "total_tokens": 16348,
+      "cached_tokens": 3866,
+      "estimated_cost_usd": 0.002153,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.0,
+      "turns_taken": 7,
+      "duration_sec": 19.986,
+      "prompt_tokens": 28222,
+      "completion_tokens": 480,
+      "total_tokens": 28702,
+      "cached_tokens": 15907,
+      "estimated_cost_usd": 0.022765,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.0,
+      "turns_taken": 7,
+      "duration_sec": 19.501,
+      "prompt_tokens": 28702,
+      "completion_tokens": 539,
+      "total_tokens": 29241,
+      "cached_tokens": 8844,
+      "estimated_cost_usd": 0.030281,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.5,
+      "turns_taken": 8,
+      "duration_sec": 19.627,
+      "prompt_tokens": 32644,
+      "completion_tokens": 541,
+      "total_tokens": 33185,
+      "cached_tokens": 10566,
+      "estimated_cost_usd": 0.033603,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 27.064,
+      "prompt_tokens": 19154,
+      "completion_tokens": 503,
+      "total_tokens": 19657,
+      "cached_tokens": 3554,
+      "estimated_cost_usd": 0.023126,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 19.269,
+      "prompt_tokens": 19133,
+      "completion_tokens": 420,
+      "total_tokens": 19553,
+      "cached_tokens": 5334,
+      "estimated_cost_usd": 0.021016,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 2.0,
+      "turns_taken": 5,
+      "duration_sec": 18.833,
+      "prompt_tokens": 19134,
+      "completion_tokens": 438,
+      "total_tokens": 19572,
+      "cached_tokens": 12446,
+      "estimated_cost_usd": 0.01444,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 5,
+      "duration_sec": 3.783,
+      "prompt_tokens": 26122,
+      "completion_tokens": 299,
+      "total_tokens": 26421,
+      "cached_tokens": 9169,
+      "estimated_cost_usd": 0.001534,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 2.162,
+      "prompt_tokens": 15288,
+      "completion_tokens": 175,
+      "total_tokens": 15463,
+      "cached_tokens": 9210,
+      "estimated_cost_usd": 0.000681,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 2.6,
+      "prompt_tokens": 15289,
+      "completion_tokens": 253,
+      "total_tokens": 15542,
+      "cached_tokens": 9210,
+      "estimated_cost_usd": 0.000705,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 2,
+      "duration_sec": 1.72,
+      "prompt_tokens": 10466,
+      "completion_tokens": 309,
+      "total_tokens": 10775,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.000878,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 2,
+      "duration_sec": 2.002,
+      "prompt_tokens": 10462,
+      "completion_tokens": 256,
+      "total_tokens": 10718,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.000861,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_a_vsagent_gemini",
+      "config_label": "A. vsagent + Gemini auto-tune (`gemini-flash-latest` base, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 2,
+      "duration_sec": 1.532,
+      "prompt_tokens": 10466,
+      "completion_tokens": 148,
+      "total_tokens": 10614,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.000829,
+      "model_used": "gemini-flash-latest",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 10.344,
+      "prompt_tokens": 19193,
+      "completion_tokens": 487,
+      "total_tokens": 19680,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.105697,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 9.78,
+      "prompt_tokens": 25747,
+      "completion_tokens": 457,
+      "total_tokens": 26204,
+      "cached_tokens": 7572,
+      "estimated_cost_usd": 0.101519,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-M03",
+      "complexity": "Medium",
+      "category": "patch_precision",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:config.json",
+        "content_regex_match:config.json"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "actual_tools": [
+        "write_file",
+        "patch_file",
+        "read_file"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 4,
+      "duration_sec": 9.812,
+      "prompt_tokens": 25757,
+      "completion_tokens": 451,
+      "total_tokens": 26208,
+      "cached_tokens": 7760,
+      "estimated_cost_usd": 0.100547,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.5,
+      "turns_taken": 5,
+      "duration_sec": 19.247,
+      "prompt_tokens": 37091,
+      "completion_tokens": 1402,
+      "total_tokens": 38493,
+      "cached_tokens": 21839,
+      "estimated_cost_usd": 0.108656,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.5,
+      "turns_taken": 6,
+      "duration_sec": 19.261,
+      "prompt_tokens": 43837,
+      "completion_tokens": 1461,
+      "total_tokens": 45298,
+      "cached_tokens": 13695,
+      "estimated_cost_usd": 0.182655,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H01",
+      "complexity": "High",
+      "category": "tdd_loop",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:src/utils.py",
+        "file_exists:test/test_reverse.py",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "terminal_exec",
+        "terminal_exec",
+        "write_file",
+        "write_file",
+        "terminal_exec",
+        "write_file",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 3.5,
+      "turns_taken": 5,
+      "duration_sec": 17.632,
+      "prompt_tokens": 38648,
+      "completion_tokens": 1428,
+      "total_tokens": 40076,
+      "cached_tokens": 7229,
+      "estimated_cost_usd": 0.187089,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 16.431,
+      "prompt_tokens": 27057,
+      "completion_tokens": 1484,
+      "total_tokens": 28541,
+      "cached_tokens": 14211,
+      "estimated_cost_usd": 0.096742,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 17.167,
+      "prompt_tokens": 27136,
+      "completion_tokens": 1499,
+      "total_tokens": 28635,
+      "cached_tokens": 7797,
+      "estimated_cost_usd": 0.128224,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "G-H03",
+      "complexity": "High",
+      "category": "terminal_ops",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "file_exists:setup_env.sh",
+        "file_exists:temp_proj/.gitignore",
+        "target_file_exists:setup_env.sh",
+        "executable_permission:setup_env.sh",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "write_file",
+        "terminal_exec"
+      ],
+      "actual_tools": [
+        "write_file",
+        "terminal_exec",
+        "terminal_exec"
+      ],
+      "tool_overhead_ratio": 1.5,
+      "turns_taken": 4,
+      "duration_sec": 17.204,
+      "prompt_tokens": 27218,
+      "completion_tokens": 1410,
+      "total_tokens": 28628,
+      "cached_tokens": 14223,
+      "estimated_cost_usd": 0.09601,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 7.711,
+      "prompt_tokens": 25121,
+      "completion_tokens": 575,
+      "total_tokens": 25696,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.137097,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 9.528,
+      "prompt_tokens": 25126,
+      "completion_tokens": 741,
+      "total_tokens": 25867,
+      "cached_tokens": 0,
+      "estimated_cost_usd": 0.140442,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-02",
+      "complexity": "Medium",
+      "category": "office_crm_cud_compliance",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "actual_tools": [
+        "valstorm_schema_inspect",
+        "valstorm_record_cud"
+      ],
+      "tool_overhead_ratio": 1.0,
+      "turns_taken": 3,
+      "duration_sec": 9.077,
+      "prompt_tokens": 25104,
+      "completion_tokens": 648,
+      "total_tokens": 25752,
+      "cached_tokens": 9191,
+      "estimated_cost_usd": 0.094355,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 4,
+      "duration_sec": 17.843,
+      "prompt_tokens": 36532,
+      "completion_tokens": 1525,
+      "total_tokens": 38057,
+      "cached_tokens": 9063,
+      "estimated_cost_usd": 0.169648,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 5,
+      "duration_sec": 17.028,
+      "prompt_tokens": 45264,
+      "completion_tokens": 1468,
+      "total_tokens": 46732,
+      "cached_tokens": 11275,
+      "estimated_cost_usd": 0.201548,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    },
+    {
+      "task_id": "OF-04",
+      "complexity": "High",
+      "category": "office_crm_deduplication",
+      "config_id": "h2h_b_vsagent_claude",
+      "config_label": "B. vsagent + Claude (`claude-opus-5-5`, skills, scoped tools)",
+      "harness": "vsagent",
+      "passed": true,
+      "score": 1.0,
+      "checks_passed": [
+        "target_file_exists:valstorm_sandbox_db.json",
+        "content_regex_match:valstorm_sandbox_db.json",
+        "verify_command_exit_0"
+      ],
+      "checks_failed": [],
+      "expected_tools": [
+        "valstorm_sql_query",
+        "valstorm_record_merge"
+      ],
+      "actual_tools": [
+        "valstorm_sql_query",
+        "valstorm_sql_query",
+        "valstorm_record_merge",
+        "valstorm_sql_query",
+        "valstorm_sql_query"
+      ],
+      "tool_overhead_ratio": 2.5,
+      "turns_taken": 4,
+      "duration_sec": 16.535,
+      "prompt_tokens": 36619,
+      "completion_tokens": 1540,
+      "total_tokens": 38159,
+      "cached_tokens": 19477,
+      "estimated_cost_usd": 0.120395,
+      "model_used": "claude-opus-5-5",
+      "subagents_spawned": 0,
+      "parallel_speedup": 1.0,
+      "failure_reason": null
+    }
+  ]
+}

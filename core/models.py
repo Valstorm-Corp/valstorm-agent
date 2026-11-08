@@ -47,6 +47,8 @@ class UsageMetadata(BaseModel):
     completion_tokens: int = 0
     total_tokens: int = 0
     cached_tokens: Optional[int] = None
+    # Prompt tokens written to the provider's prompt cache this call (Anthropic bills these at a premium).
+    cache_write_tokens: Optional[int] = None
     # Reasoning ("thinking") tokens reported by the provider, when available.
     thoughts_tokens: Optional[int] = None
 

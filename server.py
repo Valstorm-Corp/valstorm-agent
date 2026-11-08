@@ -13,6 +13,14 @@ import logging
 import os
 import sys
 import time
+
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
