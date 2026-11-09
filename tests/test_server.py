@@ -664,3 +664,83 @@ async def test_cancel_run_by_chat_id_and_custom_profile_fallback(monkeypatch):
         assert events_res.status_code == 200
         events = _sse_events(events_res.text)
         assert any(e.get("event") == "run.cancelled" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_open_valstorm_desktop_sync_and_cross_plugin_tool_discovery(monkeypatch):
+    from core.tools import ToolRegistry
+
+    synced_urls: list[str] = []
+    executed_tools: list[dict] = []
+
+    class _MockResp:
+        def __init__(self, status_code: int, payload: dict):
+            self.status_code = status_code
+            self._payload = payload
+            self.text = str(payload)
+
+        def json(self):
+            return self._payload
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise RuntimeError(f"HTTP {self.status_code}")
+
+    async def mock_get(self, url, headers=None):
+        if url == "http://open-api:8010/v1/ai/tools":
+            return _MockResp(
+                200,
+                {
+                    "tools": [
+                        {
+                            "name": "ai_memory_get_working_context",
+                            "description": "Fetches Chief of Staff working memory card.",
+                            "parameters": {"type": "object", "properties": {}},
+                        }
+                    ],
+                    "count": 1,
+                },
+            )
+        return _MockResp(404, {})
+
+    async def mock_post(self, url, json=None, headers=None):
+        if url.endswith("/desktop-sync"):
+            synced_urls.append(url)
+            return _MockResp(200, {"status": "success"})
+        if url == "http://open-api:8010/v1/ai/tools/execute":
+            executed_tools.append(json or {})
+            return _MockResp(200, {"tool_name": json["tool_name"], "result": {"facts_count": 3}})
+        return _MockResp(404, {})
+
+    monkeypatch.setattr("httpx.AsyncClient.get", mock_get)
+    monkeypatch.setattr("httpx.AsyncClient.post", mock_post)
+
+    reg = ToolRegistry()
+    discovered = await server._discover_and_register_remote_plugin_tools(
+        registry=reg,
+        valstorm_token="tok_open_123",
+        valstorm_base_url="http://open-api:8010/v1",
+    )
+    assert "ai_memory_get_working_context" in discovered
+    assert reg.get("ai_memory_get_working_context") is not None
+
+    tool_res = await reg.execute_async("ai_memory_get_working_context", {})
+    assert not tool_res.is_error
+    assert '"facts_count": 3' in tool_res.output
+    assert len(executed_tools) == 1
+    assert executed_tools[0]["tool_name"] == "ai_memory_get_working_context"
+
+    await server._sync_turn_to_valstorm(
+        chat_id="aich_open_1",
+        run_id="run_open_1",
+        output_text="Done",
+        status="completed",
+        input_tokens=10,
+        output_tokens=5,
+        model="gemini-3.8-flash",
+        provider="valstorm",
+        valstorm_token="tok_open_123",
+        valstorm_base_url="http://open-api:8010/v1",
+        desktop_sync_url="http://open-worker:8080/v1",
+    )
+    assert synced_urls == ["http://open-worker:8080/v1/ai/chat/aich_open_1/desktop-sync"]

@@ -302,13 +302,37 @@ class RemoteSlackContext(RemoteBaseContext):
         return _make_sync_async_callable(lambda: coro)()
 
 
+class _RemoteContextProxy:
+    """Dynamic proxy that delegates arbitrary `platform.<namespace>.<method>(...)` calls to `/v1/platform/invoke/{target}`."""
+
+    def __init__(self, platform: 'RemotePlatformContext', path_segments: list[str]):
+        self._platform = platform
+        self._segments = list(path_segments)
+
+    def __getattr__(self, name: str) -> '_RemoteContextProxy':
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return _RemoteContextProxy(self._platform, [*self._segments, name])
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        target = "/".join(self._segments)
+        coro = self._platform.client.invoke_platform_method(target, *args, **kwargs)
+        return _make_sync_async_callable(lambda: coro)()
+
+
 class RemoteIntegrationContext:
-    """Context container for third-party integrations (Slack, Microsoft, Stripe, Scraper)."""
+    """Context container for third-party integrations (Slack, Microsoft, Stripe, Scraper, and any active plugin)."""
 
     def __init__(self, platform: 'RemotePlatformContext'):
+        self._platform = platform
         self.slack = RemoteSlackContext(platform)
         self.scraper = RemoteScraperContext(platform)
         self.web = self.scraper
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return _RemoteContextProxy(self._platform, [name])
 
 
 class RemoteScraperContext(RemoteBaseContext):
@@ -376,6 +400,16 @@ class RemotePlatformContext:
         self.scraper = RemoteScraperContext(self)
         self.web = self.scraper
         self.integrations = RemoteIntegrationContext(self)
+
+    def invoke(self, target: str, *args: Any, **kwargs: Any) -> Any:
+        """Directly invokes a server-side PlatformContext method by path (e.g. 'github/create_issue')."""
+        coro = self.client.invoke_platform_method(target, *args, **kwargs)
+        return _make_sync_async_callable(lambda: coro)()
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return _RemoteContextProxy(self, [name])
 
     def __repr__(self) -> str:
         return f"<RemotePlatformContext base_url='{self.client.base_url}' authenticated={bool(self.client.token)}>"

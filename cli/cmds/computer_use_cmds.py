@@ -71,8 +71,14 @@ def computer_use_status() -> None:
 
 
 @computer_use_app.command(name="install")
-def computer_use_install() -> None:
-    """Configure local Computer Use artifacts directory and install the `~/.valstorm/bin/cua-driver` shim."""
+def computer_use_install(
+    prompt_permissions: bool = typer.Option(
+        True,
+        "--prompt-permissions/--no-prompt-permissions",
+        help="Trigger native macOS Accessibility & Screen Recording permission dialogs if not yet granted",
+    ),
+) -> None:
+    """Configure local Computer Use artifacts directory, install `~/.valstorm/bin/cua-driver`, and verify OS permissions."""
     bin_dir = Path(os.path.expanduser("~/.valstorm/bin"))
     bin_dir.mkdir(parents=True, exist_ok=True)
     shim_path = bin_dir / "cua-driver"
@@ -88,3 +94,10 @@ exec vsagent computer-use doctor "$@"
     report = session.health_report()
     console.print(f"[green]✓[/green] Installed Computer Use driver shim at [bold]{shim_path}[/bold]")
     console.print(f"[green]✓[/green] Verified Set-of-Mark artifacts directory at [bold]{report['artifacts_dir']}[/bold]")
+
+    if prompt_permissions:
+        perms = session._macos_check_tcc_permissions(prompt_user=True)
+        console.print(
+            f"[cyan]•[/cyan] macOS TCC Permissions — Accessibility: [bold]{perms.get('accessibility')}[/bold], "
+            f"Screen Recording: [bold]{perms.get('screen_recording')}[/bold]"
+        )

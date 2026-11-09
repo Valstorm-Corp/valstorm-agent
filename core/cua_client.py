@@ -480,6 +480,11 @@ class ComputerUseSession:
     def list_windows(self, app: Optional[str] = None) -> List[Dict[str, Any]]:
         """Lists open windows with `(pid, window_id, app, title, bounds)`."""
         target = (app or self.focused_app or "Chrome").strip()
+        if sys.platform == "darwin" and os.environ.get("VALSTORM_CUA_MOCK_ONLY") != "1":
+            live_wins = self._macos_list_windows(app=target if app else None)
+            if live_wins:
+                return live_wins
+
         apps = self.list_apps()
         matched_pid = 1024
         for a in apps:
@@ -499,6 +504,103 @@ class ComputerUseSession:
                 "on_screen": True,
             }
         ]
+
+    def _macos_list_windows(self, app: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Queries live macOS WindowServer via Quartz `CGWindowListCopyWindowInfo` without stealing focus."""
+        if not shutil.which("swift"):
+            return []
+        swift_code = """
+import Cocoa
+import CoreGraphics
+import Foundation
+
+let opts = CGWindowListOption(arrayLiteral: .excludeDesktopElements, .optionOnScreenOnly)
+var result: [[String: Any]] = []
+if let info = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] {
+    for w in info {
+        let owner = w["kCGWindowOwnerName"] as? String ?? ""
+        let name = w["kCGWindowName"] as? String ?? ""
+        let wid = (w["kCGWindowNumber"] as? NSNumber)?.intValue ?? 0
+        let pid = (w["kCGWindowOwnerPID"] as? NSNumber)?.intValue ?? 0
+        let layer = (w["kCGWindowLayer"] as? NSNumber)?.intValue ?? -1
+        let bounds = w["kCGWindowBounds"] as? [String: Any] ?? [:]
+        let x = (bounds["X"] as? NSNumber)?.intValue ?? 0
+        let y = (bounds["Y"] as? NSNumber)?.intValue ?? 0
+        let width = (bounds["Width"] as? NSNumber)?.intValue ?? 0
+        let height = (bounds["Height"] as? NSNumber)?.intValue ?? 0
+        if layer == 0 && width > 80 && height > 80 {
+            result.append([
+                "window_id": wid,
+                "pid": pid,
+                "app": owner,
+                "title": name,
+                "bounds": [x, y, width, height],
+                "on_screen": true
+            ])
+        }
+    }
+}
+if let data = try? JSONSerialization.data(withJSONObject: result),
+   let str = String(data: data, encoding: .utf8) {
+    print(str)
+}
+"""
+        try:
+            proc = subprocess.run(
+                ["swift", "-e", swift_code],
+                capture_output=True,
+                text=True,
+                timeout=6.0,
+            )
+            if proc.returncode == 0 and proc.stdout.strip():
+                rows = json.loads(proc.stdout.strip())
+                if isinstance(rows, list) and rows:
+                    if app:
+                        q = app.lower()
+                        filtered = [r for r in rows if q in str(r.get("app", "")).lower()]
+                        if filtered:
+                            return filtered
+                    return rows
+        except Exception as exc:
+            logger.debug(f"macOS CGWindowListCopyWindowInfo query failed: {exc}")
+        return []
+
+    def _macos_check_tcc_permissions(self, prompt_user: bool = False) -> Dict[str, bool]:
+        """Checks (and optionally prompts for) macOS Accessibility and Screen Recording permissions."""
+        if sys.platform != "darwin" or not shutil.which("swift"):
+            return {"accessibility": True, "screen_recording": True}
+        prompt_flag = "true" if prompt_user else "false"
+        swift_code = f"""
+import ApplicationServices
+import CoreGraphics
+import Foundation
+
+let promptVal = {prompt_flag}
+let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: promptVal] as CFDictionary
+let ax = AXIsProcessTrustedWithOptions(opts)
+let scr = promptVal ? CGRequestScreenCaptureAccess() : CGPreflightScreenCaptureAccess()
+let out: [String: Bool] = ["accessibility": ax, "screen_recording": scr]
+if let data = try? JSONSerialization.data(withJSONObject: out),
+   let s = String(data: data, encoding: .utf8) {{
+    print(s)
+}}
+"""
+        try:
+            proc = subprocess.run(
+                ["swift", "-e", swift_code],
+                capture_output=True,
+                text=True,
+                timeout=6.0,
+            )
+            if proc.returncode == 0 and proc.stdout.strip():
+                data = json.loads(proc.stdout.strip())
+                return {
+                    "accessibility": bool(data.get("accessibility", False)),
+                    "screen_recording": bool(data.get("screen_recording", False)),
+                }
+        except Exception as exc:
+            logger.debug(f"TCC permission check failed: {exc}")
+        return {"accessibility": False, "screen_recording": False}
 
     def focus_app(self, app: str, raise_window: bool = False) -> ActionVerdict:
         """Routes subsequent background input to `app` without raising its window unless explicitly requested."""
@@ -623,7 +725,7 @@ class ComputerUseSession:
 
     def _probe_ax_elements(self, app_name: str, pid: int, window_id: int) -> List[Dict[str, Any]]:
         """Probes the live macOS Accessibility tree if available, or returns structured window AX elements."""
-        if sys.platform == "darwin" and os.environ.get("VALSTORM_CUA_LIVE_AX") == "1":
+        if sys.platform == "darwin" and os.environ.get("VALSTORM_CUA_MOCK_ONLY") != "1":
             live_nodes = self._macos_query_ax_elements(app_name)
             if live_nodes:
                 return live_nodes
@@ -711,19 +813,19 @@ class ComputerUseSession:
         window_id: int,
         elements: Dict[int, AXElementNode],
     ) -> bytes:
-        """Captures window PNG bytes using background `screencapture -x` when enabled, or synthetic render."""
+        """Captures window PNG bytes using background `screencapture -x -l <window_id>` when available, or synthetic render."""
         if (
             sys.platform == "darwin"
-            and os.environ.get("VALSTORM_CUA_LIVE_CAPTURE") == "1"
+            and os.environ.get("VALSTORM_CUA_MOCK_ONLY") != "1"
             and shutil.which("screencapture")
         ):
             tmp_file = self.artifacts_dir / f"raw_{uuid.uuid4().hex[:8]}.png"
             try:
-                proc = subprocess.run(
-                    ["screencapture", "-x", str(tmp_file)],
-                    capture_output=True,
-                    timeout=3.0,
-                )
+                # 1. Try window-scoped background capture first (`-l <window_id>`)
+                cmd = ["screencapture", "-x", "-l", str(window_id), str(tmp_file)] if window_id else ["screencapture", "-x", str(tmp_file)]
+                proc = subprocess.run(cmd, capture_output=True, timeout=3.0)
+                if (proc.returncode != 0 or not tmp_file.is_file()) and window_id:
+                    proc = subprocess.run(["screencapture", "-x", str(tmp_file)], capture_output=True, timeout=3.0)
                 if proc.returncode == 0 and tmp_file.is_file() and tmp_file.stat().st_size > 0:
                     data = tmp_file.read_bytes()
                     tmp_file.unlink(missing_ok=True)
@@ -732,6 +834,127 @@ class ComputerUseSession:
                 tmp_file.unlink(missing_ok=True)
 
         return generate_synthetic_window_png(1280, 800, app_name=app_name, elements=elements)
+
+    def _macos_dispatch_mouse_event(
+        self,
+        action: str,
+        x: int,
+        y: int,
+        pid: Optional[int] = None,
+        button: str = "left",
+        delivery_mode: str = "background",
+        to_x: Optional[int] = None,
+        to_y: Optional[int] = None,
+        scroll_dir: str = "down",
+        scroll_amount: int = 3,
+    ) -> bool:
+        """Dispatches a live CoreGraphics (`CGEvent`) mouse event on macOS."""
+        if sys.platform != "darwin" or os.environ.get("VALSTORM_CUA_MOCK_ONLY") == "1" or not shutil.which("swift"):
+            return False
+        target_pid = int(pid or 0)
+        use_bg = "true" if (delivery_mode == "background" and target_pid > 0) else "false"
+        tx = int(to_x if to_x is not None else x)
+        ty = int(to_y if to_y is not None else y)
+        swift_code = f"""
+import CoreGraphics
+import Foundation
+
+let pt = CGPoint(x: {int(x)}, y: {int(y)})
+let endPt = CGPoint(x: {tx}, y: {ty})
+let pid = pid_t({target_pid})
+let useBg = {use_bg}
+let action = "{action}"
+let btn = "{button}"
+
+func postEvent(_ ev: CGEvent?) {{
+    guard let e = ev else {{ return }}
+    if useBg && pid > 0 {{
+        e.postToPid(pid)
+    }} else {{
+        e.post(tap: .cghidEventTap)
+    }}
+}}
+
+if action == "scroll" {{
+    let dy: Int32 = ("{scroll_dir}" == "up") ? Int32({int(scroll_amount) * 10}) : Int32({-int(scroll_amount) * 10})
+    let ev = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: dy, wheel2: 0, wheel3: 0)
+    postEvent(ev)
+}} else if action == "drag" {{
+    let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: pt, mouseButton: .left)
+    let dragged = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged, mouseCursorPosition: endPt, mouseButton: .left)
+    let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: endPt, mouseButton: .left)
+    postEvent(down)
+    usleep(30000)
+    postEvent(dragged)
+    usleep(30000)
+    postEvent(up)
+}} else {{
+    let isRight = (btn == "right" || action == "right_click")
+    let downType: CGEventType = isRight ? .rightMouseDown : .leftMouseDown
+    let upType: CGEventType = isRight ? .rightMouseUp : .leftMouseUp
+    let cgBtn: CGMouseButton = isRight ? .right : .left
+    let clicks = (action == "double_click") ? 2 : 1
+    for c in 1...clicks {{
+        let down = CGEvent(mouseEventSource: nil, mouseType: downType, mouseCursorPosition: pt, mouseButton: cgBtn)
+        let up = CGEvent(mouseEventSource: nil, mouseType: upType, mouseCursorPosition: pt, mouseButton: cgBtn)
+        down?.setIntegerValueField(.mouseEventClickState, value: Int64(c))
+        up?.setIntegerValueField(.mouseEventClickState, value: Int64(c))
+        postEvent(down)
+        usleep(15000)
+        postEvent(up)
+    }}
+}}
+print("ok")
+"""
+        try:
+            proc = subprocess.run(["swift", "-e", swift_code], capture_output=True, text=True, timeout=5.0)
+            return proc.returncode == 0 and "ok" in proc.stdout
+        except Exception as exc:
+            logger.debug(f"macOS CGEvent mouse dispatch failed: {exc}")
+            return False
+
+    def _macos_dispatch_key_event(
+        self,
+        action: str,
+        text: Optional[str] = None,
+        keys: Optional[str] = None,
+        app_name: Optional[str] = None,
+    ) -> bool:
+        """Dispatches keyboard typing or shortcuts via macOS System Events."""
+        if sys.platform != "darwin" or os.environ.get("VALSTORM_CUA_MOCK_ONLY") == "1" or not shutil.which("osascript"):
+            return False
+        try:
+            if action == "type" and text:
+                escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+                script = f'tell application "System Events" to keystroke "{escaped}"'
+                proc = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=4.0)
+                return proc.returncode == 0
+            if action == "key" and keys:
+                parts = [p.strip().lower() for p in keys.split("+") if p.strip()]
+                key_char = parts[-1] if parts else ""
+                mods = parts[:-1]
+                using_clauses = []
+                for m in mods:
+                    if m in ("cmd", "command", "meta"):
+                        using_clauses.append("command down")
+                    elif m in ("shift",):
+                        using_clauses.append("shift down")
+                    elif m in ("opt", "option", "alt"):
+                        using_clauses.append("option down")
+                    elif m in ("ctrl", "control"):
+                        using_clauses.append("control down")
+                using_str = f" using {{{', '.join(using_clauses)}}}" if using_clauses else ""
+                special_codes = {"return": 36, "enter": 36, "escape": 53, "esc": 53, "tab": 48, "space": 49, "delete": 51, "backspace": 51}
+                if key_char in special_codes:
+                    script = f'tell application "System Events" to key code {special_codes[key_char]}{using_str}'
+                else:
+                    escaped_k = key_char.replace('"', '\\"')
+                    script = f'tell application "System Events" to keystroke "{escaped_k}"{using_str}'
+                proc = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=4.0)
+                return proc.returncode == 0
+        except Exception as exc:
+            logger.debug(f"macOS System Events key dispatch failed: {exc}")
+        return False
 
     # -----------------------------------------------------------------
     # 3. Input Actions & The Verify -> Escalate Ladder
@@ -868,6 +1091,16 @@ class ComputerUseSession:
             if self.latest_capture:
                 self.latest_capture.stale = True
 
+            self._macos_dispatch_mouse_event(
+                action="drag",
+                x=start_pt[0],
+                y=start_pt[1],
+                pid=self.latest_capture.pid if self.latest_capture else None,
+                delivery_mode=clean_delivery,
+                to_x=end_pt[0],
+                to_y=end_pt[1],
+            )
+
             verdict = ActionVerdict(
                 status="ok",
                 action="drag",
@@ -924,8 +1157,25 @@ class ComputerUseSession:
             )
 
         # Invalidate current capture cache on any state-mutating pointer action
+        target_pid = (
+            resolved_node.pid
+            if (resolved_node and resolved_node.pid)
+            else (self.latest_capture.pid if self.latest_capture else None)
+        )
         if self.latest_capture:
             self.latest_capture.stale = True
+
+        if target_coord is not None:
+            self._macos_dispatch_mouse_event(
+                action=action,
+                x=target_coord[0],
+                y=target_coord[1],
+                pid=target_pid,
+                button=button,
+                delivery_mode=clean_delivery,
+                scroll_dir=direction,
+                scroll_amount=amount,
+            )
 
         # Check if element is an Electron/raw-input canvas surface in background mode -> recommend escalation ladder
         if (
@@ -1132,6 +1382,8 @@ class ComputerUseSession:
 
         if self.latest_capture:
             self.latest_capture.stale = True
+
+        self._macos_dispatch_key_event(action=action, text=text, keys=keys, app_name=target_app)
 
         verdict = ActionVerdict(
             status="ok",

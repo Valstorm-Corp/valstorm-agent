@@ -1531,3 +1531,14 @@ class ValstormApiClient:
         """Returns current Slack integration connection status and workspace metadata."""
         resp = await self._request_with_retry("GET", "/slack/auth/status")
         return resp.json()
+
+    async def invoke_platform_method(self, target: str, *args: Any, **kwargs: Any) -> Any:
+        """Invokes a server-side PlatformContext method via POST /platform/invoke/{target}."""
+        clean_target = target.strip().strip("/").replace(".", "/")
+        payload = {"args": list(args), "kwargs": kwargs}
+        resp = await self._request_with_retry("POST", f"/platform/invoke/{clean_target}", json=payload)
+        data = resp.json()
+        if isinstance(data, dict) and data.get("status") == "success" and "result" in data:
+            return data["result"]
+        return data
+

@@ -251,6 +251,7 @@ class RunRequestPayload(BaseModel):
     execution_environment: Optional[str] = "host"
     valstorm_token: Optional[str] = None
     valstorm_base_url: Optional[str] = None
+    desktop_sync_url: Optional[str] = None
     user_context: Optional[Dict[str, Any]] = None
     user_message_id: Optional[str] = None
     workdir: Optional[str] = None
@@ -451,6 +452,94 @@ def _build_server_tool_registry(
     return registry
 
 
+def _make_remote_plugin_tool(
+    tool_name: str,
+    tool_desc: str,
+    tool_params: Dict[str, Any],
+    base_url: str,
+    valstorm_token: str,
+):
+    async def _remote_plugin_tool_runner(**kwargs) -> str:
+        clean_base = base_url.rstrip("/")
+        if not clean_base.endswith("/v1") and "/v1" not in clean_base:
+            clean_base = f"{clean_base}/v1"
+        exec_url = f"{clean_base}/ai/tools/execute"
+        auth_hdr = valstorm_token if valstorm_token.startswith("Bearer ") else f"Bearer {valstorm_token}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                exec_url,
+                json={"tool_name": tool_name, "arguments": kwargs},
+                headers={"Authorization": auth_hdr, "Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            result = data.get("result", data) if isinstance(data, dict) else data
+            return json.dumps(result, indent=2, default=str) if not isinstance(result, str) else result
+
+    _remote_plugin_tool_runner.__name__ = tool_name
+    setattr(_remote_plugin_tool_runner, "_is_tool", True)
+    setattr(_remote_plugin_tool_runner, "_tool_name", tool_name)
+    setattr(_remote_plugin_tool_runner, "_tool_description", tool_desc)
+    setattr(
+        _remote_plugin_tool_runner,
+        "_tool_schema",
+        {
+            "name": tool_name,
+            "description": tool_desc,
+            "parameters": tool_params or {"type": "object", "properties": {}},
+        },
+    )
+    return _remote_plugin_tool_runner
+
+
+async def _discover_and_register_remote_plugin_tools(
+    registry: ToolRegistry,
+    valstorm_token: Optional[str],
+    valstorm_base_url: Optional[str],
+) -> List[str]:
+    """Discovers cross-plugin AI tools from Open Valstorm (`GET /v1/ai/tools`) and registers any missing tools."""
+    effective_base = valstorm_base_url or os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL")
+    if not valstorm_token or not effective_base:
+        return []
+
+    clean_base = effective_base.rstrip("/")
+    if not clean_base.endswith("/v1") and "/v1" not in clean_base:
+        clean_base = f"{clean_base}/v1"
+    tools_url = f"{clean_base}/ai/tools"
+    auth_hdr = valstorm_token if valstorm_token.startswith("Bearer ") else f"Bearer {valstorm_token}"
+
+    discovered_names: List[str] = []
+    try:
+        async with httpx.AsyncClient(timeout=2.5) as client:
+            resp = await client.get(tools_url, headers={"Authorization": auth_hdr})
+            if resp.status_code != 200:
+                return []
+            data = resp.json()
+            remote_tools = data.get("tools", []) if isinstance(data, dict) else []
+            for t_def in remote_tools:
+                if not isinstance(t_def, dict):
+                    continue
+                t_name = str(t_def.get("name") or "").strip()
+                if not t_name:
+                    continue
+                discovered_names.append(t_name)
+                if registry.get(t_name) is not None:
+                    continue
+                t_desc = str(t_def.get("description") or f"Tool: {t_name}")
+                t_params = t_def.get("parameters") if isinstance(t_def.get("parameters"), dict) else {"type": "object", "properties": {}}
+                runner = _make_remote_plugin_tool(
+                    tool_name=t_name,
+                    tool_desc=t_desc,
+                    tool_params=t_params,
+                    base_url=clean_base,
+                    valstorm_token=valstorm_token,
+                )
+                registry.register(runner)
+    except Exception as exc:
+        logger.debug(f"Cross-plugin tool discovery from {tools_url} skipped: {exc}")
+    return discovered_names
+
+
 _MAX_SAFE_INTEGER = 9_007_199_254_740_991
 
 
@@ -484,6 +573,7 @@ async def _sync_turn_to_valstorm(
     cached_input_tokens: Optional[int] = None,
     user_text: Optional[str] = None,
     user_message_id: Optional[str] = None,
+    desktop_sync_url: Optional[str] = None,
 ):
     """Directly synchronizes terminal turn execution state, messages, and token telemetry to Valstorm backend.
     
@@ -491,16 +581,31 @@ async def _sync_turn_to_valstorm(
     the background runtime daemon autonomously persists the assistant message and updates token counters.
     """
     effective_base_url = valstorm_base_url or os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL")
-    if not chat_id or not valstorm_token or not effective_base_url:
+    sync_override = (
+        desktop_sync_url
+        or os.environ.get("VALSTORM_DESKTOP_SYNC_URL")
+        or (
+            f"{os.environ['OPEN_WORKER_URL'].rstrip('/')}/v1"
+            if os.environ.get("OPEN_WORKER_URL")
+            else None
+        )
+    )
+    if not chat_id or not valstorm_token or (not effective_base_url and not sync_override):
         logger.debug(
-            f"[{run_id}] Direct Valstorm sync skipped (chat_id={chat_id}, has_token={bool(valstorm_token)}, has_url={bool(effective_base_url)})"
+            f"[{run_id}] Direct Valstorm sync skipped (chat_id={chat_id}, has_token={bool(valstorm_token)}, has_url={bool(effective_base_url or sync_override)})"
         )
         return
 
-    base = effective_base_url.rstrip("/")
-    if not base.endswith("/v1") and "/v1" not in base:
-        base = f"{base}/v1"
-    endpoint = f"{base}/ai/chat/{chat_id}/desktop-sync"
+    candidate_bases: List[str] = []
+    for raw_b in (sync_override, effective_base_url):
+        if not raw_b:
+            continue
+        b = raw_b.rstrip("/")
+        if not b.endswith("/v1") and "/v1" not in b:
+            b = f"{b}/v1"
+        if b not in candidate_bases:
+            candidate_bases.append(b)
+    endpoint = f"{candidate_bases[0]}/ai/chat/{chat_id}/desktop-sync"
 
     payload: Dict[str, Any] = {
         "text": output_text or "",
@@ -538,18 +643,20 @@ async def _sync_turn_to_valstorm(
 
     logger.info(f"[{run_id}] Direct runtime daemon syncing to Valstorm: {endpoint} (status={status}, tokens={input_tokens}+{output_tokens})")
     for attempt in range(1, 4):
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                res = await client.post(endpoint, json=payload, headers=headers)
-                if res.status_code in (200, 201):
-                    logger.info(f"[{run_id}] Autonomous Valstorm sync succeeded on attempt {attempt}")
-                    return
-                else:
-                    logger.warning(
-                        f"[{run_id}] Autonomous Valstorm sync attempt {attempt} returned HTTP {res.status_code}: {res.text[:200]}"
-                    )
-        except Exception as ex:
-            logger.warning(f"[{run_id}] Autonomous Valstorm sync attempt {attempt} failed: {ex}")
+        for cand_base in candidate_bases:
+            cand_endpoint = f"{cand_base}/ai/chat/{chat_id}/desktop-sync"
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    res = await client.post(cand_endpoint, json=payload, headers=headers)
+                    if res.status_code in (200, 201):
+                        logger.info(f"[{run_id}] Autonomous Valstorm sync succeeded on attempt {attempt} ({cand_endpoint})")
+                        return
+                    else:
+                        logger.warning(
+                            f"[{run_id}] Autonomous Valstorm sync attempt {attempt} ({cand_endpoint}) returned HTTP {res.status_code}: {res.text[:200]}"
+                        )
+            except Exception as ex:
+                logger.warning(f"[{run_id}] Autonomous Valstorm sync attempt {attempt} ({cand_endpoint}) failed: {ex}")
         if attempt < 3:
             await asyncio.sleep(1.0 * attempt)
 
@@ -783,6 +890,11 @@ async def _execute_agent_run(
             memory_store=memory_store,
             session_store=session_store,
         )
+        discovered_plugin_tools = await _discover_and_register_remote_plugin_tools(
+            registry=full_tools,
+            valstorm_token=valstorm_token,
+            valstorm_base_url=valstorm_base_url,
+        )
 
         if payload.allowed_tools and hasattr(full_tools, "filter_by_whitelist"):
             merged_whitelist = list(dict.fromkeys([
@@ -791,7 +903,11 @@ async def _execute_agent_run(
             ]))
             tools = full_tools.filter_by_whitelist(merged_whitelist)
         elif profile_cfg and profile_cfg.get("allowed_tools") and hasattr(full_tools, "filter_by_whitelist"):
-            tools = full_tools.filter_by_whitelist(profile_cfg["allowed_tools"])
+            merged_whitelist = list(dict.fromkeys([
+                *(profile_cfg.get("allowed_tools") or []),
+                *discovered_plugin_tools,
+            ]))
+            tools = full_tools.filter_by_whitelist(merged_whitelist)
         else:
             tools = full_tools
 
@@ -1080,6 +1196,10 @@ async def _execute_agent_run(
                 last_asst_msg_id = m.id
                 break
 
+        effective_sync_url = payload.desktop_sync_url
+        if not effective_sync_url and isinstance(payload.user_context, dict):
+            effective_sync_url = payload.user_context.get("desktop_sync_url") or payload.user_context.get("sync_url")
+
         await _sync_turn_to_valstorm(
             chat_id=effective_chat_id,
             run_id=run_id,
@@ -1098,6 +1218,7 @@ async def _execute_agent_run(
             cached_input_tokens=cached_input_tokens or None,
             user_text=payload.input,
             user_message_id=getattr(payload, "user_message_id", None),
+            desktop_sync_url=effective_sync_url,
         )
 
         # Smart Context, Memory & Hermes Skill Curator: Asynchronously extract facts and curate procedural skills
@@ -1148,6 +1269,10 @@ async def _execute_agent_run(
             "status": "cancelled",
             "output": full_output,
         })
+        effective_sync_url = payload.desktop_sync_url
+        if not effective_sync_url and isinstance(payload.user_context, dict):
+            effective_sync_url = payload.user_context.get("desktop_sync_url") or payload.user_context.get("sync_url")
+
         await _sync_turn_to_valstorm(
             chat_id=effective_chat_id,
             run_id=run_id,
@@ -1162,6 +1287,7 @@ async def _execute_agent_run(
             session_id=payload.session_id or effective_chat_id,
             user_text=payload.input,
             user_message_id=getattr(payload, "user_message_id", None),
+            desktop_sync_url=effective_sync_url,
         )
     except Exception as e:
         logger.error(f"[{run_id}] Run failed with exception: {e}", exc_info=True)
@@ -1177,6 +1303,10 @@ async def _execute_agent_run(
             "run_id": run_id,
             "error": str(e),
         })
+        effective_sync_url = payload.desktop_sync_url
+        if not effective_sync_url and isinstance(payload.user_context, dict):
+            effective_sync_url = payload.user_context.get("desktop_sync_url") or payload.user_context.get("sync_url")
+
         await _sync_turn_to_valstorm(
             chat_id=effective_chat_id,
             run_id=run_id,
@@ -1192,6 +1322,7 @@ async def _execute_agent_run(
             error=str(e),
             user_text=payload.input,
             user_message_id=getattr(payload, "user_message_id", None),
+            desktop_sync_url=effective_sync_url,
         )
     finally:
         try:
