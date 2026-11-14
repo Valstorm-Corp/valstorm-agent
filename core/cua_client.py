@@ -566,41 +566,29 @@ if let data = try? JSONSerialization.data(withJSONObject: result),
         return []
 
     def _macos_check_tcc_permissions(self, prompt_user: bool = False) -> Dict[str, bool]:
-        """Checks (and optionally prompts for) macOS Accessibility and Screen Recording permissions."""
-        if sys.platform != "darwin" or not shutil.which("swift"):
+        """Checks (and optionally prompts for) macOS Accessibility and Screen Recording permissions in-process."""
+        if sys.platform != "darwin":
             return {"accessibility": True, "screen_recording": True}
-        prompt_flag = "true" if prompt_user else "false"
-        swift_code = f"""
-import ApplicationServices
-import CoreGraphics
-import Foundation
-
-let promptVal = {prompt_flag}
-let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: promptVal] as CFDictionary
-let ax = AXIsProcessTrustedWithOptions(opts)
-let scr = promptVal ? CGRequestScreenCaptureAccess() : CGPreflightScreenCaptureAccess()
-let out: [String: Bool] = ["accessibility": ax, "screen_recording": scr]
-if let data = try? JSONSerialization.data(withJSONObject: out),
-   let s = String(data: data, encoding: .utf8) {{
-    print(s)
-}}
-"""
         try:
-            proc = subprocess.run(
-                ["swift", "-e", swift_code],
-                capture_output=True,
-                text=True,
-                timeout=6.0,
+            import ctypes
+            app_svc = ctypes.cdll.LoadLibrary(
+                "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices"
             )
-            if proc.returncode == 0 and proc.stdout.strip():
-                data = json.loads(proc.stdout.strip())
-                return {
-                    "accessibility": bool(data.get("accessibility", False)),
-                    "screen_recording": bool(data.get("screen_recording", False)),
-                }
+            cg = ctypes.cdll.LoadLibrary(
+                "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
+            )
+            app_svc.AXIsProcessTrusted.restype = ctypes.c_bool
+            cg.CGPreflightScreenCaptureAccess.restype = ctypes.c_bool
+            cg.CGRequestScreenCaptureAccess.restype = ctypes.c_bool
+
+            ax_ok = bool(app_svc.AXIsProcessTrusted())
+            scr_ok = bool(cg.CGPreflightScreenCaptureAccess())
+            if prompt_user and not scr_ok:
+                scr_ok = bool(cg.CGRequestScreenCaptureAccess())
+            return {"accessibility": ax_ok, "screen_recording": scr_ok}
         except Exception as exc:
             logger.debug(f"TCC permission check failed: {exc}")
-        return {"accessibility": False, "screen_recording": False}
+            return {"accessibility": False, "screen_recording": False}
 
     def focus_app(self, app: str, raise_window: bool = False) -> ActionVerdict:
         """Routes subsequent background input to `app` without raising its window unless explicitly requested."""
@@ -762,24 +750,41 @@ if let data = try? JSONSerialization.data(withJSONObject: out),
         try {{
             var se = Application('System Events');
             var proc = se.processes.byName("{escaped_app}");
-            if (!proc.exists() || proc.windows.length === 0) {{
+            if (proc.windows.length === 0) {{
                 JSON.stringify([]);
             }} else {{
                 var win = proc.windows[0];
                 var elems = win.entireContents();
                 var out = [];
                 var idx = 1;
-                for (var i = 0; i < Math.min(elems.length, 40); i++) {{
+                for (var i = 0; i < Math.min(elems.length, 60); i++) {{
                     try {{
                         var role = elems[i].role();
-                        var title = elems[i].title() || elems[i].description() || elems[i].name() || "";
+                        var title = "";
+                        try {{ title = elems[i].title() || ""; }} catch(e) {{}}
+                        if (!title) {{ try {{ title = elems[i].description() || ""; }} catch(e) {{}} }}
+                        if (!title || title === "button" || title === "text") {{
+                            try {{
+                                var axId = elems[i].attributes.byName("AXIdentifier").value();
+                                if (axId && String(axId) !== "null") title = String(axId);
+                            }} catch(e) {{}}
+                        }}
+                        var valStr = "";
+                        try {{
+                            var v = elems[i].value();
+                            if (v !== null && v !== undefined && String(v) !== "null") valStr = String(v);
+                        }} catch(e) {{}}
+                        if (valStr && (!title || title === "text" || title === "InputView-DisplayText" || title === "CompleteExpression-DisplayText")) {{
+                            title = (title && title !== "text") ? (title + ": " + valStr) : valStr;
+                        }}
                         var pos = elems[i].position();
                         var sz = elems[i].size();
-                        if (pos && sz && sz[0] > 4 && sz[1] > 4) {{
+                        if (pos && sz && sz[0] > 4 && sz[1] > 4 && (role === "AXButton" || role === "AXTextField" || role === "AXStaticText" || role === "AXLink" || role === "AXCheckBox" || role === "AXPopUpButton" || role === "AXMenuItem" || role === "AXOutlineRow")) {{
                             out.push({{
                                 index: idx++,
+                                raw_ax_index: i,
                                 role: role,
-                                title: String(title).slice(0, 80),
+                                title: String(title || role).slice(0, 80),
                                 bounds: [pos[0], pos[1], sz[0], sz[1]],
                                 app: "{escaped_app}"
                             }});
@@ -797,7 +802,7 @@ if let data = try? JSONSerialization.data(withJSONObject: out),
                 ["osascript", "-l", "JavaScript", "-e", jxa_script],
                 capture_output=True,
                 text=True,
-                timeout=4.0,
+                timeout=6.0,
             )
             if proc.returncode == 0 and proc.stdout.strip():
                 parsed = json.loads(proc.stdout.strip())
@@ -806,6 +811,50 @@ if let data = try? JSONSerialization.data(withJSONObject: out),
         except Exception as exc:
             logger.debug(f"macOS JXA AX probe fallback: {exc}")
         return []
+
+    def _macos_ax_press_by_title(self, app_name: str, target_title: str) -> bool:
+        """Performs a background AXPress on the matching element in `app_name` without moving the OS cursor."""
+        if sys.platform != "darwin" or os.environ.get("VALSTORM_CUA_MOCK_ONLY") == "1" or not shutil.which("osascript"):
+            return False
+        escaped_app = app_name.replace('"', '\\"')
+        escaped_title = target_title.replace('"', '\\"')
+        jxa_script = f"""
+        try {{
+            var se = Application('System Events');
+            var proc = se.processes.byName("{escaped_app}");
+            var win = proc.windows[0];
+            var elems = win.entireContents();
+            var matched = false;
+            for (var i = 0; i < elems.length; i++) {{
+                try {{
+                    var t = "";
+                    try {{ t = elems[i].title() || ""; }} catch(e) {{}}
+                    var axId = "";
+                    try {{ axId = String(elems[i].attributes.byName("AXIdentifier").value() || ""); }} catch(e) {{}}
+                    var desc = "";
+                    try {{ desc = elems[i].description() || ""; }} catch(e) {{}}
+                    if (t === "{escaped_title}" || axId === "{escaped_title}" || desc === "{escaped_title}") {{
+                        elems[i].click();
+                        matched = true;
+                        break;
+                    }}
+                }} catch(e) {{}}
+            }}
+            matched ? "ok" : "miss";
+        }} catch (err) {{
+            "err";
+        }}
+        """
+        try:
+            proc = subprocess.run(
+                ["osascript", "-l", "JavaScript", "-e", jxa_script],
+                capture_output=True,
+                text=True,
+                timeout=4.0,
+            )
+            return proc.returncode == 0 and "ok" in proc.stdout
+        except Exception:
+            return False
 
     def _capture_window_png(
         self,
@@ -1166,16 +1215,20 @@ print("ok")
             self.latest_capture.stale = True
 
         if target_coord is not None:
-            self._macos_dispatch_mouse_event(
-                action=action,
-                x=target_coord[0],
-                y=target_coord[1],
-                pid=target_pid,
-                button=button,
-                delivery_mode=clean_delivery,
-                scroll_dir=direction,
-                scroll_amount=amount,
-            )
+            ax_clicked = False
+            if resolved_node is not None and action == "click" and clean_delivery == "background":
+                ax_clicked = self._macos_ax_press_by_title(target_app, resolved_node.title)
+            if not ax_clicked:
+                self._macos_dispatch_mouse_event(
+                    action=action,
+                    x=target_coord[0],
+                    y=target_coord[1],
+                    pid=target_pid,
+                    button=button,
+                    delivery_mode=clean_delivery,
+                    scroll_dir=direction,
+                    scroll_amount=amount,
+                )
 
         # Check if element is an Electron/raw-input canvas surface in background mode -> recommend escalation ladder
         if (

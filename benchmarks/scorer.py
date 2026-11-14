@@ -37,6 +37,7 @@ class ScoreResult:
     duration_sec: float = 0.0
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    thoughts_tokens: int = 0
     total_tokens: int = 0
     cached_tokens: int = 0
     estimated_cost_usd: float = 0.0
@@ -190,6 +191,7 @@ class EnvironmentStateScorer:
             duration_sec=round(trace.duration_sec, 3),
             prompt_tokens=trace.prompt_tokens,
             completion_tokens=trace.completion_tokens,
+            thoughts_tokens=trace.thoughts_tokens,
             total_tokens=trace.total_tokens,
             cached_tokens=trace.cached_tokens,
             estimated_cost_usd=trace.estimated_cost_usd,
@@ -215,6 +217,7 @@ def compute_multi_trial_metrics(trial_results: List[ScoreResult]) -> Dict[str, A
 
     avg_duration = sum(r.duration_sec for r in trial_results) / k
     avg_tokens = sum(r.total_tokens for r in trial_results) / k
+    avg_thoughts = sum(r.thoughts_tokens for r in trial_results) / k
     avg_cost = sum(r.estimated_cost_usd for r in trial_results) / k
 
     return {
@@ -225,5 +228,6 @@ def compute_multi_trial_metrics(trial_results: List[ScoreResult]) -> Dict[str, A
         "pass_hat_k": pass_hat_k,
         "avg_duration_sec": round(avg_duration, 3),
         "avg_total_tokens": round(avg_tokens, 1),
+        "avg_thoughts_tokens": round(avg_thoughts, 1),
         "avg_cost_usd": round(avg_cost, 6),
     }

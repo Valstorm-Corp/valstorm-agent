@@ -320,6 +320,7 @@ class ReActEngine:
         )
         locked_turn_tier = "reasoner"
         locked_turn_model = target_model or "gemini-flash-latest"
+        locked_deferred_effort: Optional[str] = None
         # Avoid duplicating user prompt if already hydrated in session
         if not session.messages or session.messages[-1].content != user_input or session.messages[-1].role != "user":
             user_msg = Message(role="user", content=user_input, images=images)
@@ -417,6 +418,7 @@ class ReActEngine:
                     )
                     locked_turn_tier = tune_dec.tier
                     locked_turn_model = tune_dec.model
+                    locked_deferred_effort = tune_dec.deferred_synthesis_effort
                 else:
                     tune_dec = autotuner.tune_iteration(
                         user_input=user_input,
@@ -425,7 +427,9 @@ class ReActEngine:
                         locked_tier=locked_turn_tier,  # type: ignore[arg-type]
                         locked_model=locked_turn_model,
                         base_provider=base_prov,
+                        deferred_synthesis_effort=locked_deferred_effort,  # type: ignore[arg-type]
                     )
+                    locked_deferred_effort = tune_dec.deferred_synthesis_effort
                 target_model = locked_turn_model
                 session.active_model = locked_turn_model
                 effective_effort = tune_dec.reasoning_effort

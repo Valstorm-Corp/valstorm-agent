@@ -170,6 +170,7 @@ class ExecutionTrace:
     tool_time_sec: float = 0.0
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    thoughts_tokens: int = 0
     total_tokens: int = 0
     cached_tokens: int = 0
     estimated_cost_usd: float = 0.0

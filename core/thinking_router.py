@@ -11,6 +11,7 @@ Crucial Cache Property:
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any, Dict, List, Literal, Optional
 
@@ -22,15 +23,24 @@ from core.decision_model import (
     ScoreQuestion,
     SystemOneClient,
 )
+from core.message_autotuner import (
+    DISCOVERY_READ_TOOLS,
+    MessageAutoTuner,
+    _POST_DISCOVERY_SYNTHESIS_SIGNALS,
+)
 from core.models import Message, SessionState
 
 ThinkingLevel = Literal["none", "low", "medium", "high"]
+_SCRIPT_WORD_RE = re.compile(r"\bscript\b", re.IGNORECASE)
 
 
 class ThinkingRouteDecision(BaseModel):
     """Telemetry and decision output from the System-1 Thinking-Level Router."""
 
     reasoning_effort: ThinkingLevel
+    deferred_synthesis_effort: Optional[ThinkingLevel] = None
+    blind_discovery_step_down: bool = False
+    stepped_up_post_discovery: bool = False
     complexity_score: float = Field(ge=0.0, le=1.0)
     hazard_probability: float = Field(ge=0.0, le=1.0)
     simple_probability: float = Field(ge=0.0, le=1.0)
@@ -49,8 +59,8 @@ _HIGH_COMPLEXITY_SIGNALS = (
 
 _MEDIUM_COMPLEXITY_SIGNALS = (
     "patch_file", "patch", "web_search", "web_scrape", "web_content_diff",
-    "compare", "sum.py", "command-line arguments", "script", "implement",
-    "function", "endpoint", "test", "verify",
+    "compare", "sum.py", "command-line arguments", "implement",
+    "function", "endpoint",
 )
 
 _SIMPLE_SIGNALS = (
@@ -137,26 +147,39 @@ class SystemOneThinkingRouter:
 
         # Combine System-1 signals with deterministic safety rules
         has_high_kw = any(k in prompt_lower for k in _HIGH_COMPLEXITY_SIGNALS)
-        has_med_kw = any(k in prompt_lower for k in _MEDIUM_COMPLEXITY_SIGNALS)
+        has_med_kw = any(k in prompt_lower for k in _MEDIUM_COMPLEXITY_SIGNALS) or bool(_SCRIPT_WORD_RE.search(prompt_lower))
         has_simple_kw = any(k in prompt_lower for k in _SIMPLE_SIGNALS)
+        _, mutation_run = MessageAutoTuner._inspect_turn_tool_history(session)
+        needs_post_discovery_synthesis = any(k in prompt_lower for k in _POST_DISCOVERY_SYNTHESIS_SIGNALS)
+
+        blind_discovery_step_down = False
+        stepped_up_post_discovery = False
+        deferred_synthesis_effort: Optional[ThinkingLevel] = None
 
         # Follow-up iterations after tool execution (when no error occurred) can step down effort
         if last_tool_error:
             chosen: ThinkingLevel = "high"
             reason = f"Escalated to 'high' due to prior tool error on '{last_tool_name}'."
+        elif iteration >= 1 and last_tool_name in DISCOVERY_READ_TOOLS and not mutation_run and needs_post_discovery_synthesis:
+            chosen = "high" if has_high_kw else "medium"
+            stepped_up_post_discovery = True
+            reason = f"Post-discovery step-up to '{chosen}' after '{last_tool_name}' hydrated context for synthesis."
         elif has_high_kw or hazard_ans.noul >= 0.68:
-            # On iteration 0/1 of a hazardous or TDD task, use high thinking; on final wrap-up step, low is sufficient
-            if iteration <= 2:
+            # On iteration 0/1 of a hazardous or TDD task, use high/medium thinking; on wrap-up step, none is sufficient
+            if iteration == 0:
                 chosen = "high"
                 reason = f"Operational hazard / TDD complexity detected (hazard_p={hazard_ans.noul:.2f}); routed to 'high'."
+            elif iteration == 1 and ("setup_env.sh" in prompt_lower or "chmod" in prompt_lower):
+                chosen = "medium"
+                reason = "Iteration 1 shell execution guardrail; routed to 'medium'."
             else:
-                chosen = "low"
-                reason = f"Follow-up iteration ({iteration}) after core hazard resolution; stepped down to 'low'."
+                chosen = "none"
+                reason = f"Follow-up iteration ({iteration}) after core hazard resolution; stepped down to 'none'."
         elif has_simple_kw and not has_med_kw:
             chosen = "none"
             reason = f"Simple math/IO or conversational turn detected (simple_p={simple_ans.noul:.2f}); routed to 'none'."
         elif has_med_kw or s_ans.score >= 0.45:
-            chosen = "low" if iteration >= 1 else "medium"
+            chosen = "none" if iteration >= 1 else "medium"
             reason = f"Moderate task complexity (score={s_ans.score:.2f}, iter={iteration}); routed to '{chosen}'."
         else:
             raw_choice = c_ans.choice
@@ -164,11 +187,30 @@ class SystemOneThinkingRouter:
                 chosen = raw_choice  # type: ignore[assignment]
             else:
                 chosen = "low"
+            if iteration >= 1:
+                chosen = "none"
             reason = f"System-1 choice '{chosen}' (confidence={c_ans.confidence:.2f})."
+
+        if (
+            iteration == 0
+            and not last_tool_error
+            and chosen in ("medium", "high")
+            and MessageAutoTuner.is_blind_discovery_prompt(prompt_lower)
+        ):
+            deferred_synthesis_effort = chosen
+            chosen = "low"
+            blind_discovery_step_down = True
+            reason = (
+                f"Iteration-0 blind discovery detected; stepped effort down from '{deferred_synthesis_effort}' to 'low' "
+                f"(deferred_synthesis_effort='{deferred_synthesis_effort}')."
+            )
 
         dur_ms = round((time.perf_counter() - t0) * 1000.0, 3)
         return ThinkingRouteDecision(
             reasoning_effort=chosen,
+            deferred_synthesis_effort=deferred_synthesis_effort,
+            blind_discovery_step_down=blind_discovery_step_down,
+            stepped_up_post_discovery=stepped_up_post_discovery,
             complexity_score=s_ans.score,
             hazard_probability=hazard_ans.noul,
             simple_probability=simple_ans.noul,

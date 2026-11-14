@@ -100,6 +100,71 @@ class TestMessageAutoTunerUnit:
         assert d_step_up.reasoning_effort == "high"
         assert d_step_up.escalated_on_error is True
 
+    def test_p1_blind_discovery_step_down_and_post_discovery_step_up(self):
+        """Verify P1: Iteration-0 blind discovery steps down to 'low', steps up to 'high'/'medium' after read_file, then steps down to 'none' after patch_file."""
+        tuner = MessageAutoTuner()
+        prompt = "Use search_files and read_file to inspect src/pool.py, diagnose the race condition bug, and apply a patch_file fix."
+        session = SessionState(session_id="sess_p1_curve", active_provider="gemini")
+        session.add_message(Message(role="user", content=prompt))
+
+        # Iteration 0: Blind discovery -> Thinker model locked, but effort stepped down to 'low' with deferred 'high'
+        d0 = tuner.tune_turn(prompt, session=session, base_provider="gemini")
+        assert d0.tier == "thinker"
+        assert d0.model == "gemini-pro-latest"
+        assert d0.reasoning_effort == "low"
+        assert d0.blind_discovery_step_down is True
+        assert d0.deferred_synthesis_effort == "high"
+
+        # Iteration 1: After read_file succeeds -> step UP to 'high' for synthesis/patching while keeping model locked
+        session.add_message(
+            Message(
+                role="tool",
+                content="def get_conn(): pass",
+                tool_result=ToolResult(call_id="c_read", name="read_file", output="def get_conn(): pass", is_error=False),
+            )
+        )
+        d1 = tuner.tune_iteration(
+            user_input=prompt,
+            session=session,
+            iteration=1,
+            locked_tier=d0.tier,
+            locked_model=d0.model,
+            deferred_synthesis_effort=d0.deferred_synthesis_effort,
+        )
+        assert d1.cache_locked_model is True
+        assert d1.model == "gemini-pro-latest"
+        assert d1.reasoning_effort == "high"
+        assert d1.stepped_up_post_discovery is True
+
+        # Iteration 2: After patch_file succeeds -> step DOWN to 'none' for wrap-up
+        session.add_message(
+            Message(
+                role="tool",
+                content="Successfully patched src/pool.py",
+                tool_result=ToolResult(call_id="c_patch", name="patch_file", output="Patched", is_error=False),
+            )
+        )
+        d2 = tuner.tune_iteration(
+            user_input=prompt,
+            session=session,
+            iteration=2,
+            locked_tier=d0.tier,
+            locked_model=d0.model,
+            deferred_synthesis_effort=d1.deferred_synthesis_effort,
+        )
+        assert d2.cache_locked_model is True
+        assert d2.model == "gemini-pro-latest"
+        assert d2.reasoning_effort == "none"
+        assert d2.stepped_down_post_tool is True
+
+        # Also verify G-S02 JavaScript substring does not falsely trigger 'script' reasoner upgrade
+        d_js = tuner.tune_turn(
+            "In the current directory, create a new file named 'index.js'. Write a single line of JavaScript to it: 'console.log(\"Hello Agent Runtime\");'. Verify the file contents.",
+            base_provider="gemini",
+        )
+        assert d_js.tier == "worker"
+        assert d_js.reasoning_effort == "none"
+
 
 class _RecordingProvider:
     """Mock provider that records `(model, reasoning_effort)` on every call."""

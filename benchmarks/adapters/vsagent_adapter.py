@@ -129,7 +129,13 @@ class TaskAwareMockProvider:
         schema_count = len(tools) if tools else 0
         p_tokens = 120 + (schema_count * 35) + (80 if self.config.with_skills else 0)
         c_tokens = int(45 * thinking_mult)
-        usage = UsageMetadata(prompt_tokens=p_tokens, completion_tokens=c_tokens, total_tokens=p_tokens + c_tokens)
+        th_tokens = {"none": 0, "low": 15, "medium": 95, "high": 240}.get(eff, 50)
+        usage = UsageMetadata(
+            prompt_tokens=p_tokens,
+            completion_tokens=c_tokens,
+            total_tokens=p_tokens + c_tokens,
+            thoughts_tokens=th_tokens,
+        )
 
         # If no tools are registered, the model can only output raw text (or respond to internal analyze_image calls)
         if not tools:
@@ -841,6 +847,11 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
         total_prompt = session.total_prompt_tokens + sub_prompt
         total_comp = session.total_completion_tokens + sub_comp
         total_tok = total_prompt + total_comp
+        total_thoughts = sum(
+            int(getattr(m.usage, "thoughts_tokens", 0) or 0)
+            for m in session.messages
+            if m.role == "assistant" and m.usage
+        )
         total_cached = sum(
             int(getattr(m.usage, "cached_tokens", 0) or 0)
             for m in session.messages
@@ -863,7 +874,7 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
                     per_msg_cost += estimate_cost_usd(
                         m_mod,
                         m.usage.prompt_tokens,
-                        m.usage.completion_tokens,
+                        m.usage.completion_tokens + int(m.usage.thoughts_tokens or 0),
                         cached_tokens=m.usage.cached_tokens or 0,
                         cache_write_tokens=m.usage.cache_write_tokens or 0,
                     )
@@ -878,10 +889,16 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
             est_cost = estimate_cost_usd(
                 config.model,
                 total_prompt,
-                total_comp,
+                total_comp + total_thoughts,
                 cached_tokens=total_cached,
                 cache_write_tokens=total_cache_writes,
             )
+
+        effective_model_used = (
+            (session.metadata or {}).get("last_autotune_model") or session.active_model or config.model
+            if config.auto_tune
+            else config.model
+        )
 
         return ExecutionTrace(
             task_id=task["id"],
@@ -897,10 +914,11 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
             tool_time_sec=tool_time_sec,
             prompt_tokens=total_prompt,
             completion_tokens=total_comp,
+            thoughts_tokens=total_thoughts,
             total_tokens=total_tok,
             cached_tokens=total_cached,
             estimated_cost_usd=est_cost,
-            model_used=config.model,
+            model_used=effective_model_used,
             subagents_spawned=subagents_count,
             sequential_sum_sec=round(seq_sum, 3),
             parallel_speedup=parallel_speedup,

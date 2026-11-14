@@ -168,16 +168,26 @@ class GeminiProvider(BaseProvider):
 
         if self._thinking_disabled:
             return None
-        if model_name and ("lite" in str(model_name).lower() or "2.5" in str(model_name).lower()):
+        m_lower = str(model_name or "").lower()
+        if "lite" in m_lower:
             return None
         ctx_effort = (getattr(self, "_request_context", None) or {}).get("reasoning_effort")
         raw_effort = reasoning_effort if reasoning_effort is not None else (ctx_effort or os.getenv("VALSTORM_THINKING_LEVEL") or "high")
         level = str(raw_effort).strip().upper()
+        if level in ("", "OFF", "DISABLED", "0", "FALSE", "DEFAULT", "AUTO"):
+            return None
+        if "2.5" in m_lower:
+            budget_map = {"NONE": 128, "MINIMAL": 128, "LOW": 128, "MEDIUM": 256, "MED": 256, "HIGH": 512}
+            budget = budget_map.get(level)
+            if budget is not None:
+                try:
+                    return types.ThinkingConfig(thinking_budget=budget)
+                except Exception:
+                    return None
+            return None
         if level == "MED":
             level = "MEDIUM"
-        if level in ("", "OFF", "NONE", "DISABLED", "0", "FALSE", "DEFAULT", "AUTO"):
-            return None
-        if level == "MINIMAL":
+        if level in ("NONE", "MINIMAL"):
             level = "LOW"
         for candidate in (level, "HIGH"):
             try:

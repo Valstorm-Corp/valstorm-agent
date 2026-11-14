@@ -748,6 +748,7 @@ async def run_benchmark_matrix(
         avg_dur = round(sum(r.duration_sec for r in cfg_scores) / total_runs, 3) if total_runs > 0 else 0.0
         avg_turns = round(sum(r.turns_taken for r in cfg_scores) / total_runs, 2) if total_runs > 0 else 0.0
         avg_tokens = round(sum(r.total_tokens for r in cfg_scores) / total_runs, 1) if total_runs > 0 else 0.0
+        avg_thoughts = round(sum(r.thoughts_tokens for r in cfg_scores) / total_runs, 1) if total_runs > 0 else 0.0
         total_prompt = sum(r.prompt_tokens for r in cfg_scores)
         cached_share = round(sum(r.cached_tokens for r in cfg_scores) / total_prompt, 4) if total_prompt > 0 else 0.0
         total_cost = round(sum(r.estimated_cost_usd for r in cfg_scores), 6)
@@ -781,6 +782,7 @@ async def run_benchmark_matrix(
             "avg_duration_sec": avg_dur,
             "avg_turns": avg_turns,
             "avg_tokens": avg_tokens,
+            "avg_thoughts_tokens": avg_thoughts,
             "cached_prompt_share": cached_share,
             "total_cost_usd": total_cost,
             "cost_per_pass_usd": cost_per_pass,
