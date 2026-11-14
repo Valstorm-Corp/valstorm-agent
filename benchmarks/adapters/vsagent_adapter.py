@@ -162,6 +162,8 @@ class TaskAwareMockProvider:
         if is_subagent:
             return await self._handle_subagent_turn(messages, first_user_msg, usage, eff_model)
 
+        if self.orch_step == 0 and self.task.get("id") in ("OF-02",) and any(getattr(m, "provider", None) == "micro-worker" for m in messages):
+            self.orch_step += 1
         self.orch_step += 1
         task_id = self.task["id"]
         return await self._handle_orchestrator_turn(task_id, usage)
@@ -836,7 +838,11 @@ class VsAgentBenchmarkAdapter(BenchmarkAdapter):
         duration_sec = round(time.perf_counter() - t0, 3)
         tool_time_sec = round(tool_time_ms / 1000.0, 3)
         llm_time_sec = round(max(0.0, duration_sec - tool_time_sec), 3)
-        turns_taken = sum(1 for m in session.messages if m.role == "assistant")
+        turns_taken = sum(
+            1
+            for m in session.messages
+            if m.role == "assistant" and getattr(m, "provider", None) != "micro-worker"
+        )
 
         # Aggregate subagent tokens & concurrency metrics if any subagents were spawned
         spawned_tasks = subagent_reg.list_tasks()

@@ -165,6 +165,60 @@ class TestMessageAutoTunerUnit:
         assert d_js.tier == "worker"
         assert d_js.reasoning_effort == "none"
 
+    def test_p2_micro_worker_pre_hydration_and_mechanical_offload(self, tmp_path):
+        """Verify P2 (FI-559): MicroWorkerEngine plans zero-token pre-turn file reads and offloads post-synthesis Thinker iterations to Worker."""
+        from core.micro_worker import MicroWorkerEngine
+        from core.sandbox import HostSandbox, get_current_sandbox, set_current_sandbox
+
+        prev_sb = get_current_sandbox()
+        set_current_sandbox(HostSandbox(base_dir=str(tmp_path)))
+        try:
+            (tmp_path / "src").mkdir()
+            (tmp_path / "src" / "pool.py").write_text("class Pool: pass\n", encoding="utf-8")
+            (tmp_path / "src" / "test_pool.py").write_text("def test_p(): pass\n", encoding="utf-8")
+
+            prompt = "Use read_file to inspect src/pool.py and src/test_pool.py, fix the bug with patch_file, and run pytest."
+            session = SessionState(session_id="sess_p2_mw", active_provider="gemini")
+            session.add_message(Message(role="user", content=prompt))
+
+            pre_calls = MicroWorkerEngine.plan_pre_turn_discovery_calls(
+                user_input=prompt,
+                session=session,
+                registered_tool_names={"read_file", "patch_file", "terminal_exec"},
+            )
+            assert [tc.arguments["path"] for tc in pre_calls] == ["src/pool.py", "src/test_pool.py"]
+
+            # Simulate post-patch_file iteration on a Thinker turn -> offloads mechanical test/wrap-up to Worker
+            tuner = MessageAutoTuner()
+            session.add_message(
+                Message(
+                    role="tool",
+                    content="Patched src/pool.py",
+                    tool_result=ToolResult(call_id="c_p", name="patch_file", output="Patched", is_error=False),
+                )
+            )
+            d_iter = tuner.tune_iteration(
+                user_input=prompt,
+                session=session,
+                iteration=1,
+                locked_tier="thinker",
+                locked_model="gemini-pro-latest",
+            )
+            off_model, off_effort, was_offloaded = MicroWorkerEngine.resolve_mechanical_offload(
+                user_input=prompt,
+                session=session,
+                iteration=1,
+                locked_tier="thinker",
+                locked_model="gemini-pro-latest",
+                base_provider="gemini",
+                tune_dec=d_iter,
+            )
+            assert was_offloaded is True
+            assert off_model == "gemini-flash-lite-latest"
+            assert off_effort == "none"
+        finally:
+            set_current_sandbox(prev_sb)
+
 
 class _RecordingProvider:
     """Mock provider that records `(model, reasoning_effort)` on every call."""

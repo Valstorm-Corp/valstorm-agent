@@ -1168,6 +1168,47 @@ async def _execute_agent_run(
             (session.metadata or {}).get("last_autotune_model") or session.active_model or target_model
         )
         resolved_prov_str = _optional_non_empty_string(resolved_provider)
+
+        # P2 (FI-559): When MicroWorkerEngine offloaded post-synthesis iterations to a cheaper tier
+        # (e.g. gemini-3.5-flash-lite on a gemini-4-argon turn), separate the offloaded model's tokens
+        # into `subagents_list` so `ai_chat_message` records attribute each model's tokens accurately
+        # while `ai_chat.total_input_tokens` / `total_output_tokens` still sum to the exact turn total.
+        if int((session.metadata or {}).get("micro_worker_offloaded_iterations") or 0) > 0 and resolved_model_str:
+            mw_by_model: Dict[str, Dict[str, int]] = {}
+            for m in reversed(session.messages):
+                if m.role == "user":
+                    break
+                if m.role == "assistant" and m.usage and m.model and m.model != resolved_model_str and getattr(m, "provider", None) != "micro-worker":
+                    m_in = _safe_token_count(getattr(m.usage, "prompt_tokens", 0))
+                    m_out = _safe_token_count(getattr(m.usage, "completion_tokens", 0))
+                    m_cac = _safe_token_count(getattr(m.usage, "cached_tokens", 0))
+                    if m_in > 0 or m_out > 0:
+                        bucket = mw_by_model.setdefault(m.model, {"in": 0, "out": 0, "cached": 0})
+                        bucket["in"] += m_in
+                        bucket["out"] += m_out
+                        bucket["cached"] += m_cac
+            for mw_mod, tok_b in mw_by_model.items():
+                input_tokens = max(0, input_tokens - tok_b["in"])
+                output_tokens = max(0, output_tokens - tok_b["out"])
+                cached_input_tokens = max(0, cached_input_tokens - tok_b["cached"])
+                subagents_list.append({
+                    "run_id": f"{run_id}_mw_{mw_mod}",
+                    "parent_run_id": run_id,
+                    "agent_role": "micro-worker",
+                    "role": "subagent",
+                    "status": "completed",
+                    "text": f"Offloaded mechanical verification/wrap-up iterations to {mw_mod}.",
+                    "summary": f"Offloaded mechanical verification/wrap-up iterations to {mw_mod}.",
+                    "goal": "Mechanical verification & turn wrap-up offload",
+                    "input_tokens": tok_b["in"],
+                    "output_tokens": tok_b["out"],
+                    "cached_input_tokens": tok_b["cached"],
+                    "model": mw_mod,
+                    "provider": resolved_prov_str or "valstorm",
+                    "tool_calls": [],
+                    "duration_sec": 0,
+                })
+
         tool_calls_list = list(tool_calls_map.values()) if tool_calls_map else None
 
         completed_event: Dict[str, Any] = {

@@ -45,8 +45,8 @@ _GEMINI_RE = re.compile(r"^(google/)?gemini-[a-z0-9.\-]+$", re.IGNORECASE)
 
 VERTEX_MODEL_MAP: Dict[str, str] = {
     "gemini-flash-latest": "gemini-3.8-flash",
-    "gemini-flash-lite-latest": "gemini-2.5-flash-lite",
-    "gemini-pro-latest": "gemini-2.5-pro",
+    "gemini-flash-lite-latest": "gemini-3.5-flash-lite",
+    "gemini-pro-latest": "gemini-4-argon",
 }
 
 def is_gemini_model(model_name: Optional[str]) -> bool:
@@ -175,15 +175,6 @@ class GeminiProvider(BaseProvider):
         raw_effort = reasoning_effort if reasoning_effort is not None else (ctx_effort or os.getenv("VALSTORM_THINKING_LEVEL") or "high")
         level = str(raw_effort).strip().upper()
         if level in ("", "OFF", "DISABLED", "0", "FALSE", "DEFAULT", "AUTO"):
-            return None
-        if "2.5" in m_lower:
-            budget_map = {"NONE": 128, "MINIMAL": 128, "LOW": 128, "MEDIUM": 256, "MED": 256, "HIGH": 512}
-            budget = budget_map.get(level)
-            if budget is not None:
-                try:
-                    return types.ThinkingConfig(thinking_budget=budget)
-                except Exception:
-                    return None
             return None
         if level == "MED":
             level = "MEDIUM"
@@ -470,7 +461,7 @@ class GeminiProvider(BaseProvider):
             self._compiled_tools_cache[tools_hash] = compiled
         return compiled
 
-    def _format_messages(self, messages: List[Message]) -> Tuple[Optional[str], List[Any]]:
+    def _format_messages(self, messages: List[Message], model_name: Optional[str] = None) -> Tuple[Optional[str], List[Any]]:
         """Convert unified Message list into system_instruction and Gemini Content objects."""
         import hashlib
         import json
@@ -856,7 +847,7 @@ class GeminiProvider(BaseProvider):
                 yield item
             return
 
-        system_instruction, contents = self._format_messages(messages)
+        system_instruction, contents = self._format_messages(messages, model_name=model_name)
         gemini_tools = self._format_tools(tools)
 
         max_retries = kwargs.get("max_retries", self.max_retries)
@@ -1092,7 +1083,7 @@ class GeminiProvider(BaseProvider):
         if self.backend == "valstorm" and self._passthrough_unavailable:
             return await self._get_compat_provider().generate(messages=messages, tools=tools, model=model_name, **kwargs)
 
-        system_instruction, contents = self._format_messages(messages)
+        system_instruction, contents = self._format_messages(messages, model_name=model_name)
         gemini_tools = self._format_tools(tools)
 
         max_retries = kwargs.get("max_retries", self.max_retries)

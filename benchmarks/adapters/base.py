@@ -12,10 +12,10 @@ MODEL_PRICING_PER_1M: Dict[str, Dict[str, float]] = {
     "gemini-4-argon": {"input": 2.00, "output": 10.00, "cached": 0.10},
     "gemini-3.8-flash": {"input": 1.50, "output": 7.50, "cached": 0.15},
     "gemini-3.5-flash-lite": {"input": 0.30, "output": 2.50, "cached": 0.03},
-    "gemini-flash-latest": {"input": 0.15, "output": 0.60, "cached": 0.0375},
-    "gemini-flash-lite-latest": {"input": 0.075, "output": 0.30, "cached": 0.01875},
-    "gemini-pro-latest": {"input": 1.25, "output": 5.00, "cached": 0.3125},
-    "gemini-3.1-pro-preview": {"input": 1.25, "output": 5.00, "cached": 0.3125},
+    "gemini-flash-latest": {"input": 1.50, "output": 7.50, "cached": 0.15},
+    "gemini-flash-lite-latest": {"input": 0.30, "output": 2.50, "cached": 0.03},
+    "gemini-pro-latest": {"input": 2.00, "output": 10.00, "cached": 0.10},
+    "gemini-3.1-pro-preview": {"input": 2.00, "output": 12.00, "cached": 0.20},
 
     # --- DigitalOcean Open-Weight Models (2026-10-15 Catalog) ---
     # Alibaba Qwen

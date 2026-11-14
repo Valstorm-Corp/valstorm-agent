@@ -373,14 +373,26 @@ class MessageAutoTuner:
             else:
                 reason = f"System-1 pre-turn route: tier='{chosen_tier}', effort='{chosen_effort}' (conf={tier_ans.confidence:.2f})."
 
-        # P1: Iteration-0 "Blind Discovery" Thinking Step-Down
-        # When iteration 0 must first emit a discovery tool call (e.g., web_search, web_scrape,
-        # search_files, read_file, valstorm_schema_inspect, valstorm_sql_query) before synthesis,
-        # keep the turn's model tier locked for 100% KV cache safety, but step iteration-0 thinking
-        # down to 'low' and defer 'medium'/'high' effort until iteration 1 after discovery data is in context.
+        # P1 + P2: Iteration-0 "Blind Discovery" Thinking Step-Down & Pre-Hydrated Discovery Awareness
+        discovery_run, _ = self._inspect_turn_tool_history(session)
         blind_discovery_step_down = False
         deferred_synthesis_effort: Optional[ThinkingLevel] = None
-        if (
+        if discovery_run and not last_tool_error and consecutive_errors == 0:
+            # P2: Micro-Worker already pre-hydrated discovery tool results before Iteration 0!
+            if any(k in prompt_lower for k in _POST_DISCOVERY_SYNTHESIS_SIGNALS):
+                chosen_effort = "medium"
+                reason = (
+                    f"Pre-hydrated discovery results already in context ({discovery_run}); "
+                    f"routed directly to synthesis effort='medium' on tier='{chosen_tier}'."
+                )
+            else:
+                chosen_effort = "none"
+                blind_discovery_step_down = True
+                reason = (
+                    f"Pre-hydrated discovery results already in context ({discovery_run}); "
+                    f"stepped effort to 'none' for follow-up action on tier='{chosen_tier}'."
+                )
+        elif (
             not last_tool_error
             and consecutive_errors == 0
             and chosen_effort in ("medium", "high")

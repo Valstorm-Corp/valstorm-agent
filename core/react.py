@@ -346,6 +346,56 @@ class ReActEngine:
                     },
                 )
 
+        # 1b. P2 (FI-559): Zero-token Micro-Worker Discovery Pre-Hydration before Iteration 0
+        micro_worker_enabled = (
+            is_auto_tune
+            and os.environ.get("VALSTORM_MICRO_WORKER", "1").strip().lower() not in ("0", "false", "no", "off")
+            and bool((session.metadata or {}).get("micro_worker", True))
+        )
+        if micro_worker_enabled and self.tools:
+            from .micro_worker import MicroWorkerEngine
+            reg_names = set(self.tools.list_tools()) if hasattr(self.tools, "list_tools") else set()
+            pre_calls = MicroWorkerEngine.plan_pre_turn_discovery_calls(
+                user_input=user_input,
+                session=session,
+                registered_tool_names=reg_names,
+            )
+            if pre_calls:
+                for ptc in pre_calls:
+                    yield StreamEvent(
+                        event_type=StreamEventType.TOOL_CALL_DETECTED,
+                        tool_call=ptc,
+                        metadata={"pre_hydrated": True, "provider": "micro-worker"},
+                    )
+                pre_results = await asyncio.gather(*[self._execute_tool(ptc) for ptc in pre_calls])
+                mw_asst = Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=pre_calls,
+                    model="micro-worker",
+                    provider="micro-worker",
+                    usage=UsageMetadata(prompt_tokens=0, completion_tokens=0, total_tokens=0, thoughts_tokens=0),
+                )
+                session.add_message(mw_asst)
+                for ptc, ptr in zip(pre_calls, pre_results):
+                    yield StreamEvent(
+                        event_type=StreamEventType.TOOL_EXECUTION_RESULT,
+                        tool_call=ptc,
+                        tool_result=ptr,
+                        metadata={"pre_hydrated": True, "provider": "micro-worker"},
+                    )
+                    out_str = str(ptr.output) if isinstance(ptr.output, (str, int, float, bool)) else json.dumps(ptr.output)
+                    session.add_message(
+                        Message(
+                            role="tool",
+                            content=f"[Pre-hydrated discovery result — already executed, proceed to next step]:\n{out_str}",
+                            tool_result=ptr,
+                            model="micro-worker",
+                            provider="micro-worker",
+                        )
+                    )
+                session.metadata["micro_worker_pre_hydrated_calls"] = [ptc.name for ptc in pre_calls]
+
         assistant_msg: Optional[Message] = None
         usage_meta: Optional[UsageMetadata] = None
         empty_retries = 0
@@ -433,6 +483,23 @@ class ReActEngine:
                 target_model = locked_turn_model
                 session.active_model = locked_turn_model
                 effective_effort = tune_dec.reasoning_effort
+                if micro_worker_enabled and iteration >= 1:
+                    from .micro_worker import MicroWorkerEngine
+                    off_model, off_effort, was_offloaded = MicroWorkerEngine.resolve_mechanical_offload(
+                        user_input=user_input,
+                        session=session,
+                        iteration=iteration,
+                        locked_tier=locked_turn_tier,  # type: ignore[arg-type]
+                        locked_model=locked_turn_model,
+                        base_provider=base_prov,
+                        tune_dec=tune_dec,
+                    )
+                    if was_offloaded:
+                        target_model = off_model
+                        effective_effort = off_effort
+                        session.metadata["micro_worker_offloaded_iterations"] = (
+                            int(session.metadata.get("micro_worker_offloaded_iterations", 0)) + 1
+                        )
                 session.metadata["last_autotune_decision"] = tune_dec.model_dump()
                 session.metadata["last_autotune_model"] = locked_turn_model
                 session.metadata["last_routed_thinking_level"] = effective_effort

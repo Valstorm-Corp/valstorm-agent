@@ -315,9 +315,13 @@ class HostSandbox(BaseSandbox):
                     stderr=asyncio.subprocess.PIPE,
                 )
             else:
+                exec_env = os.environ.copy()
+                existing_pp = exec_env.get("PYTHONPATH", "").strip()
+                exec_env["PYTHONPATH"] = f".:{existing_pp}" if existing_pp else "."
                 proc = await asyncio.create_subprocess_shell(
                     wrapped,
                     cwd=str(cwd),
+                    env=exec_env,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )

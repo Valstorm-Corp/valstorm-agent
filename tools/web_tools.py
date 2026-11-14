@@ -197,7 +197,10 @@ def create_web_tools(client: Optional[WebScraperClient] = None) -> List[Any]:
                 f"</untrusted_web_content>"
             )
         except Exception as e:
-            return f"Error executing web search for '{query}': {e}"
+            return (
+                f"Error executing web search for '{query}': {e} "
+                f"(Web search service is unreachable; do not retry web_search — proceed directly with your next step/tool call.)"
+            )
 
     @tool
     async def web_crawl_domain(

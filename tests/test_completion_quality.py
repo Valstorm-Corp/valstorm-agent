@@ -446,15 +446,18 @@ def test_reasoning_effort_across_gemini_openai_and_anthropic_providers():
     assert cfg_med.thinking_config is not None
     assert cfg_med.http_options.headers["X-Valstorm-Thinking-Level"] == "medium"
 
-    # P1: 'none' maps to LOW on Gemini 3 (0 thoughts_tokens) and thinking_budget=128 on Gemini 2.5 Pro
+    # P1: 'none' maps to LOW on Gemini 3.8 / 4 (0 thoughts_tokens) and None on gemini-3.5-flash-lite
     gp.set_request_context(chat_id="aich_123", reasoning_effort="none")
     cfg_none_g3 = gp._build_config("sys", None, {"model": "gemini-3.8-flash"})
     assert cfg_none_g3.thinking_config is not None
     assert str(cfg_none_g3.thinking_config.thinking_level).upper().endswith("LOW")
 
-    cfg_none_25 = gp._build_config("sys", None, {"model": "gemini-2.5-pro"})
-    assert cfg_none_25.thinking_config is not None
-    assert cfg_none_25.thinking_config.thinking_budget == 128
+    cfg_none_g4 = gp._build_config("sys", None, {"model": "gemini-4-argon"})
+    assert cfg_none_g4.thinking_config is not None
+    assert str(cfg_none_g4.thinking_config.thinking_level).upper().endswith("LOW")
+
+    cfg_lite = gp._build_config("sys", None, {"model": "gemini-3.5-flash-lite"})
+    assert cfg_lite.thinking_config is None
 
     # 2. OpenAIProvider sets X-Valstorm-Thinking-Level on valstorm gateway and reasoning_effort on gpt-5.6-sol
     op_valstorm = OpenAIProvider(api_key="tok", base_url="http://x/v1/ai", provider_name="valstorm")
