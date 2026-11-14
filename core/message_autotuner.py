@@ -53,9 +53,9 @@ PROVIDER_TIER_MODELS: Dict[str, Dict[ModelTier, str]] = {
         "thinker": "deepseek-v4-pro",
     },
     "openai": {
-        "worker": "gpt-4o-mini",
-        "reasoner": "gpt-4o",
-        "thinker": "o3-mini",
+        "worker": "gpt-6-luna",
+        "reasoner": "gpt-6-1-sol",
+        "thinker": "gpt-6-astra",
     },
     "anthropic": {
         "worker": "claude-3-5-haiku-latest",

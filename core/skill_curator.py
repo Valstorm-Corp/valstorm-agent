@@ -259,16 +259,29 @@ async def curate_and_commit_turn_trajectory(
                 "reason": gate["trigger_reason"],
             }
 
-        # 3. Build existing skills catalog for Prefer-Patch-Over-Create grounding
+        # 3. Build existing skills catalog for Prefer-Patch-Over-Create grounding (P5: System-1 Top-12 Relevance Filter)
         skills = await asyncio.to_thread(_index_all_skills)
-        skills_catalog_lines = []
-        skills_by_slug: Dict[str, Dict[str, Any]] = {}
-        for s in skills[:80]:
-            s_slug = s["slug"]
-            skills_by_slug[s_slug] = s
-            skills_catalog_lines.append(
-                f"- {s_slug} (category={s.get('category')}, ownership={s.get('ownership', 'bundled')}): {s.get('description', '')[:120]}"
-            )
+        skills_by_slug: Dict[str, Dict[str, Any]] = {s["slug"]: s for s in skills[:80]}
+
+        query_terms = {
+            w.lower()
+            for w in re.findall(r"[a-zA-Z0-9_-]{3,}", f"{user_input or ''} {assistant_output or ''}")
+            if w.lower() not in {"the", "and", "for", "with", "use", "using", "from", "into", "that", "this"}
+        }
+        scored_skills = []
+        for idx, s in enumerate(skills[:80]):
+            hay = f"{s.get('slug', '')} {s.get('category', '')} {s.get('description', '')}".lower()
+            overlap = sum(2 for qt in query_terms if qt in hay)
+            if s.get("ownership") != "bundled":
+                overlap += 1
+            scored_skills.append((overlap, idx, s))
+        scored_skills.sort(key=lambda x: (-x[0], x[1]))
+        top_skills = [item[2] for item in scored_skills[:12]]
+
+        skills_catalog_lines = [
+            f"- {s['slug']} (category={s.get('category')}, ownership={s.get('ownership', 'bundled')}): {s.get('description', '')[:120]}"
+            for s in top_skills
+        ]
         skills_catalog_text = "\n".join(skills_catalog_lines) if skills_catalog_lines else "(No existing skills indexed)"
 
         trace_lines = []
@@ -288,7 +301,13 @@ async def curate_and_commit_turn_trajectory(
             f"Decide whether to `patch` an existing skill's Pitfalls section, `create` a new skill, or `noop`."
         )
 
-        target_model = model or getattr(provider, "default_model", None) or "gemini-flash-latest"
+        from core.memory_extractor import resolve_curator_worker_model
+        target_model = resolve_curator_worker_model(provider, model)
+        if hasattr(provider, "set_request_context"):
+            try:
+                provider.set_request_context(reasoning_effort="none")
+            except Exception:
+                pass
         response_msg = await provider.chat_complete(
             messages=[
                 Message(role="system", content=CURATOR_SYSTEM_PROMPT),

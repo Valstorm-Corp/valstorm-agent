@@ -144,6 +144,15 @@ async def patch_file(
     """
     sandbox = get_current_sandbox()
     file_path = resolve_agent_path(path)
+    if not file_path.is_file():
+        try:
+            from core.tool_healer import heal_file_path_s1
+            healed_rel, was_healed = heal_file_path_s1(path, Path(sandbox.base_dir))
+            if was_healed:
+                path = healed_rel
+                file_path = resolve_agent_path(path)
+        except Exception:
+            pass
     async with _get_file_edit_lock(file_path):
         res = await sandbox.patch_file(path=path, old_string=old_string, new_string=new_string, replace_all=replace_all)
     if "Successfully patched" in res:
@@ -208,6 +217,15 @@ async def read_file(path: str, offset: int = 1, limit: int = 2000) -> str:
         limit: Maximum number of lines to return (default: 2000).
     """
     sandbox = get_current_sandbox()
+    file_path = resolve_agent_path(path)
+    if not file_path.is_file():
+        try:
+            from core.tool_healer import heal_file_path_s1
+            healed_rel, was_healed = heal_file_path_s1(path, Path(sandbox.base_dir))
+            if was_healed:
+                path = healed_rel
+        except Exception:
+            pass
     return await sandbox.read_file(path=path, offset=offset, limit=limit)
 
 

@@ -26,6 +26,16 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         """
         # Ensure LIMIT is present if not specified
         clean_q = query.strip()
+        try:
+            from core.tool_healer import heal_sql_query_s1
+            avail_schemas = None
+            if hasattr(api_client, "schema_get"):
+                s_all = await api_client.schema_get(api_name=None)
+                if isinstance(s_all, dict):
+                    avail_schemas = s_all
+            clean_q, _ = heal_sql_query_s1(clean_q, avail_schemas)
+        except Exception:
+            pass
         if "limit" not in clean_q.lower() and limit:
             clean_q += f" LIMIT {limit}"
 
@@ -178,6 +188,34 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         if not isinstance(data_records, list):
             return "Error: records must be a list of dictionaries."
 
+        # P6 (FI-566): System-1 self-healing for object api_name, field typos, and lookup/picklist formatting
+        try:
+            from core.tool_healer import heal_object_api_name_s1, heal_record_payload_s1
+            avail_schemas = None
+            schema_spec = None
+            if hasattr(api_client, "schema_get"):
+                s_all = await api_client.schema_get(api_name=None)
+                if isinstance(s_all, dict):
+                    avail_schemas = s_all
+            api_name, _ = heal_object_api_name_s1(api_name, avail_schemas)
+            if avail_schemas and api_name in avail_schemas:
+                schema_spec = avail_schemas[api_name]
+            elif hasattr(api_client, "schema_get"):
+                s_one = await api_client.schema_get(api_name=api_name)
+                if isinstance(s_one, dict) and s_one.get("fields"):
+                    schema_spec = s_one
+            if action in ("create", "update"):
+                healed_list = []
+                for rec_item in data_records:
+                    if isinstance(rec_item, dict):
+                        h_rec, _ = heal_record_payload_s1(rec_item, schema_spec)
+                        healed_list.append(h_rec)
+                    else:
+                        healed_list.append(rec_item)
+                data_records = healed_list
+        except Exception:
+            pass
+
         if action == "create":
             if hasattr(api_client, "records") and api_client.records is not None and hasattr(api_client.records, "create"):
                 res = await api_client.records.create(api_name=api_name, records=data_records)
@@ -243,6 +281,12 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
             api_name: Optional object API name to inspect (e.g. 'contact', 'task'). If omitted or empty, lists all schemas in the org.
         """
         clean_name = api_name.strip() if api_name else None
+        if clean_name:
+            try:
+                from core.tool_healer import heal_object_api_name_s1
+                clean_name, _ = heal_object_api_name_s1(clean_name)
+            except Exception:
+                pass
         if hasattr(api_client, "schemas") and api_client.schemas is not None and hasattr(api_client.schemas, "get"):
             if clean_name:
                 res = await api_client.schemas.get(clean_name)

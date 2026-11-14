@@ -52,7 +52,9 @@ class TestMessageAutoTunerUnit:
         assert resolve_tier_model("do", "worker") == "deepseek-4-flash"
         assert resolve_tier_model("do", "reasoner") == "openai-gpt-oss-120b"
         assert resolve_tier_model("do", "thinker") == "deepseek-v4-pro"
-        assert resolve_tier_model("openai", "worker") == "gpt-4o-mini"
+        assert resolve_tier_model("openai", "worker") == "gpt-6-luna"
+        assert resolve_tier_model("openai", "reasoner") == "gpt-6-1-sol"
+        assert resolve_tier_model("openai", "thinker") == "gpt-6-astra"
         assert resolve_tier_model("anthropic", "thinker") == "claude-3-opus-20240229"
 
     def test_intra_turn_kv_cache_model_locking_and_effort_stepping(self):
@@ -216,6 +218,77 @@ class TestMessageAutoTunerUnit:
             assert was_offloaded is True
             assert off_model == "gemini-flash-lite-latest"
             assert off_effort == "none"
+
+            # P3 (FI-566): Verify System-1 pre-hydration of valstorm_schema_inspect and dynamic schema pruning
+            schema_calls = MicroWorkerEngine.plan_pre_turn_discovery_calls(
+                user_input="1. Inspect the 'campaign' schema using valstorm_schema_inspect. 2. Create a campaign record.",
+                session=SessionState(session_id="sess_p3_schema", active_provider="gemini"),
+                registered_tool_names={"valstorm_schema_inspect", "valstorm_record_cud"},
+            )
+            assert len(schema_calls) == 1
+            assert schema_calls[0].name == "valstorm_schema_inspect"
+            assert schema_calls[0].arguments == {"api_name": "campaign"}
+
+            mock_schemas = [{"name": f"extra_tool_{i}"} for i in range(25)] + [
+                {"name": "read_file"},
+                {"name": "write_file"},
+                {"name": "patch_file"},
+                {"name": "terminal_exec"},
+                {"name": "valstorm_schema_inspect"},
+                {"name": "valstorm_record_cud"},
+            ]
+            pruned_worker = MicroWorkerEngine.filter_schemas_for_turn(
+                user_input="Inspect the campaign schema and create a campaign record",
+                schemas=mock_schemas,
+                session=None,
+                locked_tier="worker",
+                is_offloaded=False,
+            )
+            assert len(pruned_worker) < len(mock_schemas)
+            pruned_names = {s["name"] for s in pruned_worker}
+            assert "valstorm_schema_inspect" in pruned_names
+            assert "valstorm_record_cud" in pruned_names
+
+            # P6 (FI-566): Verify System-1 Tool Argument Self-Healing (object, record fields, SQL, file paths)
+            from benchmarks.sandbox_valstorm import _default_sandbox_db
+            from core.tool_healer import (
+                heal_file_path_s1,
+                heal_object_api_name_s1,
+                heal_record_payload_s1,
+                heal_sql_query_s1,
+            )
+
+            schemas = _default_sandbox_db()["schemas"]
+            assert heal_object_api_name_s1("campaigns", schemas) == ("campaign", True)
+            assert heal_object_api_name_s1("leads", schemas) == ("lead", True)
+
+            raw_rec = {
+                "campaign_name": "Q4 Launch",
+                "status": "active",
+                "type": "Carousel",
+                "source": "linkedin",
+                "owner": {"id": "user_qBulInDu18OcylWP", "name": "Jared"},
+            }
+            healed_rec, notes = heal_record_payload_s1(raw_rec, schemas["campaign"])
+            assert healed_rec["name"] == "Q4 Launch"
+            assert healed_rec["status"] == "Active"
+            assert healed_rec["content_type"] == "Carousel"
+            assert healed_rec["utm_source"] == "linkedin"
+            assert healed_rec["owner"] == "user_qBulInDu18OcylWP"
+            assert len(notes) >= 4
+
+            healed_sql, sql_notes = heal_sql_query_s1(
+                "SELECT id, lead_name, amount FROM leads WHERE status = 'Active'",
+                schemas,
+            )
+            assert "FROM lead" in healed_sql
+            assert "loan_amount" in healed_sql
+            assert "name" in healed_sql
+            assert len(sql_notes) >= 2
+
+            healed_path, path_changed = heal_file_path_s1("pool.py", tmp_path)
+            assert path_changed is True
+            assert healed_path == "src/pool.py"
         finally:
             set_current_sandbox(prev_sb)
 

@@ -248,7 +248,7 @@ class OpenAIProvider(BaseProvider):
         elif raw_effort:
             norm_effort = "medium" if str(raw_effort).strip().lower() == "med" else str(raw_effort).strip().lower()
             low_model = str(req_kwargs.get("model") or "").lower()
-            if norm_effort in ("low", "medium", "high") and any(p in low_model for p in ("gpt-5.6-sol", "o1", "o3")):
+            if norm_effort in ("low", "medium", "high") and any(p in low_model for p in ("gpt-6", "gpt-5.6-sol", "o1", "o3")):
                 req_kwargs["reasoning_effort"] = norm_effort
 
     def _parse_response(

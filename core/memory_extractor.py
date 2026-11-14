@@ -126,16 +126,82 @@ def is_memory_candidate(user_input: Optional[str], assistant_output: Optional[st
     return bool(evaluate_memory_candidate_s1(user_input, assistant_output).get("is_candidate", False))
 
 
+_EXPLICIT_DETERMINISTIC_RULE_RE = re.compile(
+    r"^(?:/remember\s+|/note\s+|remember\s+that\s+|keep\s+in\s+mind\s+that\s+|note\s+that\s+)?"
+    r"((?:always|never|do\s+not|don't|i\s+prefer|my\s+role\s+is|my\s+name\s+is|we\s+use|our\s+endpoint\s+is|all\s+shell\s+scripts)\b[^?\n]{8,180})$",
+    re.IGNORECASE,
+)
+
+
+def resolve_curator_worker_model(provider: Any, requested_model: Optional[str] = None) -> str:
+    """P5 (FI-566): Pins background memory extraction and skill curation to the Worker tier (`gemini-3.5-flash-lite`)."""
+    from core.message_autotuner import resolve_tier_model
+
+    prov_name = str(getattr(provider, "provider_name", "") or "gemini").lower()
+    req_lower = str(requested_model or "").lower()
+    if "claude" in req_lower or "anthropic" in prov_name:
+        return resolve_tier_model("anthropic", "worker", fallback_model=requested_model)
+    if "gpt-" in req_lower or "openai" in prov_name:
+        return resolve_tier_model("openai", "worker", fallback_model=requested_model)
+    return resolve_tier_model("gemini", "worker", fallback_model="gemini-flash-lite-latest")
+
+
+def extract_explicit_memory_s1(user_input: str) -> Optional[List[Dict[str, Any]]]:
+    """P5 (FI-566): Zero-LLM (<2ms) System-1 extractor for explicit single-sentence rules and preferences."""
+    clean = (user_input or "").strip()
+    if not clean or "\n" in clean or len(clean) > 200 or "?" in clean:
+        return None
+    if any(w in clean.lower() for w in ("switched from", "replaced ", "instead of", "http://", "https://", "scrape ")):
+        return None
+
+    m = _EXPLICIT_DETERMINISTIC_RULE_RE.match(clean)
+    if not m:
+        return None
+
+    fact_body = m.group(1).strip().rstrip(".")
+    from core.decision_model import ChoiceQuestion, SystemOneClient
+
+    s1 = SystemOneClient(backend="local")
+    resp = s1.evaluate(
+        state={"user_input": fact_body, "goal": fact_body},
+        questions={
+            "category": ChoiceQuestion(
+                instructions="Classify whether this fact is a personal user preference/role or a repository/architecture rule.",
+                criteria={
+                    "user": "i prefer my role is my name is my timezone personal style",
+                    "memory": "always never repository monorepo script database endpoint branch test chmod",
+                },
+            )
+        },
+    )
+    cat_ans = resp.get_choice("category")
+    lower_body = fact_body.lower()
+    if any(p in lower_body for p in ("i prefer", "my role", "my name", "my timezone", "i am ")):
+        cat = "user"
+    elif any(p in lower_body for p in ("monorepo", "branch", "script", "chmod", "database", "endpoint")):
+        cat = "memory"
+    else:
+        cat = "user" if cat_ans.choice == "user" else "memory"
+
+    return [{"category": cat, "fact": fact_body, "supersedes": None}]
+
+
 async def extract_memories_from_turn(
     user_input: str,
     assistant_output: str,
     provider: BaseProvider,
     model: Optional[str] = None,
     untrusted_tainted: bool = False,
+    allow_s1_fastpath: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Extracts structured declarative facts from a conversation turn via lightweight LLM call."""
+    """Extracts structured declarative facts from a conversation turn via System-1 fast-path or Worker-tier LLM call."""
     if not is_memory_candidate(user_input, assistant_output):
         return []
+
+    if allow_s1_fastpath and not untrusted_tainted:
+        s1_facts = extract_explicit_memory_s1(user_input)
+        if s1_facts is not None:
+            return s1_facts
 
     safe_assistant_excerpt = (
         "[Redacted: turn ingested untrusted external web content — extract only explicit user statements from User Message]"
@@ -155,7 +221,12 @@ async def extract_memories_from_turn(
             Message(role="user", content=prompt_text),
         ]
 
-        target_model = model or "gemini-flash-latest"
+        target_model = resolve_curator_worker_model(provider, model)
+        if hasattr(provider, "set_request_context"):
+            try:
+                provider.set_request_context(reasoning_effort="none")
+            except Exception:
+                pass
         resp_msg = await provider.chat_complete(
             messages=messages,
             model=target_model,
@@ -203,6 +274,7 @@ async def extract_and_commit_turn_memory(
     model: Optional[str] = None,
     chat_id: Optional[str] = None,
     untrusted_tainted: bool = False,
+    allow_s1_fastpath: bool = False,
 ) -> List[Dict[str, Any]]:
     """Asynchronous background worker that extracts and saves facts into MemoryStore and syncs to cloud when authenticated."""
     try:
@@ -212,6 +284,7 @@ async def extract_and_commit_turn_memory(
             provider=provider,
             model=model,
             untrusted_tainted=untrusted_tainted,
+            allow_s1_fastpath=allow_s1_fastpath,
         )
 
         results = []

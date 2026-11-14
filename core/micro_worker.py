@@ -102,6 +102,13 @@ class MicroWorkerEngine:
             for idx, rel_path in enumerate(candidates[:4]):
                 try:
                     resolved = sandbox.resolve_path(rel_path)
+                    if not resolved.is_file():
+                        from pathlib import Path
+                        from core.tool_healer import heal_file_path_s1
+                        healed_rel, was_healed = heal_file_path_s1(rel_path, Path(sandbox.base_dir))
+                        if was_healed:
+                            rel_path = healed_rel
+                            resolved = sandbox.resolve_path(rel_path)
                     if resolved.is_file() and not cls._already_executed_in_turn(session, "read_file", rel_path):
                         planned.append(
                             ToolCall(
@@ -113,7 +120,38 @@ class MicroWorkerEngine:
                 except Exception:
                     continue
 
-        # 2. Explicit initial web_scrape URL (`web_scrape on 'https://...'`)
+        # 2. Explicit Valstorm schema inspection (`valstorm_schema_inspect`) gated by System-1 confidence
+        if "valstorm_schema_inspect" in registered_tool_names and (
+            "valstorm_schema_inspect" in prompt_lower or "schema" in prompt_lower
+        ):
+            m_schema = _SCHEMA_INSPECT_RE.search(clean_prompt)
+            api_name = (m_schema.group(1) or m_schema.group(2)).strip() if m_schema else ""
+            if api_name and not cls._already_executed_in_turn(session, "valstorm_schema_inspect", api_name):
+                from core.decision_model import ChoiceQuestion, SystemOneClient
+                s1 = SystemOneClient()
+                resp = s1.evaluate(
+                    state={"user_input": clean_prompt, "goal": clean_prompt},
+                    questions={
+                        "prefetch_schema": ChoiceQuestion(
+                            instructions="Should valstorm_schema_inspect be pre-executed before Iteration 0?",
+                            criteria={
+                                "prefetch_schema": f"valstorm_schema_inspect inspect schema {api_name} fields object",
+                                "defer_to_llm": "unrelated general chat",
+                            },
+                        )
+                    },
+                )
+                ans = resp.get_choice("prefetch_schema")
+                if ans.choice == "prefetch_schema" and ans.confidence >= 0.50:
+                    planned.append(
+                        ToolCall(
+                            id="mw_pre_schema_0",
+                            name="valstorm_schema_inspect",
+                            arguments={"api_name": api_name},
+                        )
+                    )
+
+        # 3. Explicit initial web_scrape URL (`web_scrape on 'https://...'`)
         if "web_scrape" in registered_tool_names and "web_scrape" in prompt_lower:
             m_url = _WEB_SCRAPE_URL_RE.search(clean_prompt)
             if m_url:
@@ -128,6 +166,86 @@ class MicroWorkerEngine:
                     )
 
         return planned
+
+    @classmethod
+    def filter_schemas_for_turn(
+        cls,
+        user_input: str,
+        schemas: List[Dict[str, Any]],
+        session: Optional[SessionState],
+        locked_tier: Optional[ModelTier],
+        is_offloaded: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """P3 (FI-566): Dynamically prunes large tool registries (>12 tools) for Worker/Reasoner & offloaded turns.
+
+        Deterministic per `(user_input, locked_tier, is_offloaded)` so `tools_hash` and KV prefix caches
+        never drift across iterations of the same model.
+        """
+        if not schemas or len(schemas) <= 12:
+            return schemas
+
+        prompt_lower = (user_input or "").strip().lower()
+        used_in_turn: Set[str] = set()
+        if session and session.messages:
+            for m in reversed(session.messages):
+                if m.role == "user":
+                    break
+                if m.role == "assistant" and m.tool_calls:
+                    for tc in m.tool_calls:
+                        if tc.name:
+                            used_in_turn.add(tc.name)
+
+        # 1. Offloaded post-synthesis mechanical iterations on Worker only need verification tools
+        if is_offloaded:
+            keep_names = set(MECHANICAL_VERIFICATION_TOOLS) | used_in_turn
+            filtered = [s for s in schemas if (s.get("name") or s.get("function", {}).get("name")) in keep_names]
+            return filtered if filtered else schemas
+
+        # 2. On Worker or Reasoner turns with large tool registries (>12 tools), keep core dev tools + prompt-matched domain tools
+        if locked_tier in ("worker", "reasoner"):
+            core_keep: Set[str] = {
+                "read_file",
+                "write_file",
+                "patch_file",
+                "search_files",
+                "terminal_exec",
+                "calculator",
+                "code_outline",
+                "find_symbols",
+            } | used_in_turn
+
+            if any(w in prompt_lower for w in ("web", "http", "url", "scrape", "search", "diff", "rss", "feed")):
+                core_keep.update({"web_search", "web_scrape", "web_content_diff", "web_crawl_domain", "web_feed_poll"})
+            if any(w in prompt_lower for w in ("valstorm", "schema", "record", "sql", "lead", "contact", "campaign", "deal", "account", "ticket", "merge", "filter", "report", "dashboard", "drip", "sms")):
+                core_keep.update({
+                    "valstorm_schema_inspect",
+                    "valstorm_sql_query",
+                    "valstorm_record_cud",
+                    "valstorm_record_merge",
+                    "valstorm_create_list_filter",
+                    "valstorm_generate_report",
+                    "valstorm_generate_dashboard",
+                    "valstorm_vfs_search",
+                    "valstorm_vfs_write_file",
+                })
+            if any(w in prompt_lower for w in ("vault", "vfs", "sop", "document", "markdown")):
+                core_keep.update({"valstorm_vfs_search", "valstorm_vfs_browse", "valstorm_vfs_get_file", "valstorm_vfs_write_file", "valstorm_record_cud"})
+            if any(w in prompt_lower for w in ("delegate", "subagent", "swarm", "parallel", "profile")):
+                core_keep.update({"delegate_task", "subagent_manage"})
+            if any(w in prompt_lower for w in ("ui_", "navigate", "click", "dom", "artcraft", "canvas", "mesh")):
+                core_keep.update({"ui_navigate", "system_one_decide"})
+
+            # Also always keep any tool explicitly named in the user prompt
+            for s in schemas:
+                s_name = s.get("name") or s.get("function", {}).get("name") or ""
+                if s_name and s_name.lower() in prompt_lower:
+                    core_keep.add(s_name)
+
+            filtered = [s for s in schemas if (s.get("name") or s.get("function", {}).get("name")) in core_keep]
+            if len(filtered) >= 4:
+                return filtered
+
+        return schemas
 
     @classmethod
     def resolve_mechanical_offload(

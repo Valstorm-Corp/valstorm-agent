@@ -385,10 +385,19 @@ class ReActEngine:
                         metadata={"pre_hydrated": True, "provider": "micro-worker"},
                     )
                     out_str = str(ptr.output) if isinstance(ptr.output, (str, int, float, bool)) else json.dumps(ptr.output)
+                    if ptc.name in ("valstorm_schema_inspect", "web_scrape", "search_files") and len(out_str) > 2800:
+                        from .compaction import prune_tool_observation_s1
+                        out_str, _ = prune_tool_observation_s1(out_str, tool_name=ptc.name, user_query=user_input, max_chars=2800)
+                    hydrated_str = (
+                        f"{out_str}\n\n"
+                        f"[System Note: Step 1 `{ptc.name}` above has already been executed. "
+                        f"Do NOT call `{ptc.name}` again — immediately invoke the next required tool call to complete the user's request.]"
+                    )
+                    ptr.output = hydrated_str
                     session.add_message(
                         Message(
                             role="tool",
-                            content=f"[Pre-hydrated discovery result — already executed, proceed to next step]:\n{out_str}",
+                            content=hydrated_str,
                             tool_result=ptr,
                             model="micro-worker",
                             provider="micro-worker",
@@ -483,6 +492,7 @@ class ReActEngine:
                 target_model = locked_turn_model
                 session.active_model = locked_turn_model
                 effective_effort = tune_dec.reasoning_effort
+                was_offloaded = False
                 if micro_worker_enabled and iteration >= 1:
                     from .micro_worker import MicroWorkerEngine
                     off_model, off_effort, was_offloaded = MicroWorkerEngine.resolve_mechanical_offload(
@@ -500,6 +510,15 @@ class ReActEngine:
                         session.metadata["micro_worker_offloaded_iterations"] = (
                             int(session.metadata.get("micro_worker_offloaded_iterations", 0)) + 1
                         )
+                if micro_worker_enabled and schemas:
+                    from .micro_worker import MicroWorkerEngine
+                    schemas = MicroWorkerEngine.filter_schemas_for_turn(
+                        user_input=user_input,
+                        schemas=schemas,
+                        session=session,
+                        locked_tier=locked_turn_tier,  # type: ignore[arg-type]
+                        is_offloaded=was_offloaded,
+                    )
                 session.metadata["last_autotune_decision"] = tune_dec.model_dump()
                 session.metadata["last_autotune_model"] = locked_turn_model
                 session.metadata["last_routed_thinking_level"] = effective_effort
@@ -723,6 +742,31 @@ class ReActEngine:
                         except Exception:
                             content_str = str(tool_result.output)
 
+                    # P4 (FI-566): System-1 Intra-Tool Relevance Pruning for noisy search/scrape/schema outputs
+                    if (
+                        len(content_str) > 2800
+                        and not tool_result.is_error
+                        and tool_call.name in (
+                            "valstorm_schema_inspect",
+                            "web_scrape",
+                            "search_files",
+                            "valstorm_sql_query",
+                            "valstorm_vfs_search",
+                        )
+                    ):
+                        from .compaction import prune_tool_observation_s1
+                        content_str, s1_saved = prune_tool_observation_s1(
+                            content_str,
+                            tool_name=tool_call.name,
+                            user_query=user_input,
+                            max_chars=2800,
+                        )
+                        tool_result.output = content_str
+                        if s1_saved > 0:
+                            session.metadata["intra_tool_tokens_saved"] = (
+                                int(session.metadata.get("intra_tool_tokens_saved", 0)) + s1_saved
+                            )
+
                     tool_msg = Message(
                         role="tool",
                         content=content_str,
@@ -792,6 +836,11 @@ class ReActEngine:
                 if assistant_msg and assistant_msg.content:
                     assistant_msg.content = collapse_repeating_text(assistant_msg.content)
                     assistant_msg.body = assistant_msg.content
+
+                # P4 (FI-566): Fold bulky consumed tool observations from the completed turn
+                # into compact ~90-token structural receipts before Turn N+1 begins.
+                if bool((session.metadata or {}).get("fold_consumed_observations", True)):
+                    self.compactor.fold_consumed_turn_observations(session, max_consumed_chars=360)
 
                 yield StreamEvent(
                     event_type=StreamEventType.TURN_COMPLETE,

@@ -99,7 +99,7 @@ DEFAULT_REASONER_CASCADE_SPECS = [
     {"provider": "do", "model": "deepseek-v4-pro", "label": "DO DeepSeek V4 Pro"},
     {"provider": "deepseek", "model": "deepseek-chat", "label": "DeepSeek Direct"},
     {"provider": "kimi", "model": "moonshot-v1-128k", "label": "Kimi Direct"},
-    {"provider": "openai", "model": "gpt-4o", "label": "OpenAI Direct (Emergency)"},
+    {"provider": "openai", "model": "gpt-6-1-sol", "label": "OpenAI Direct (Emergency)"},
 ]
 
 # Default Tier 1 (Heavy Thinker / Architecture / RFC) Cascade Hierarchy
@@ -110,7 +110,7 @@ DEFAULT_THINKER_CASCADE_SPECS = [
     {"provider": "do", "model": "kimi-k2.6", "label": "DO Kimi K2.6"},
     {"provider": "do", "model": "qwen3.8-max", "label": "DO Qwen 3.8 Max"},
     {"provider": "deepseek", "model": "deepseek-chat", "label": "DeepSeek Direct"},
-    {"provider": "openai", "model": "o3-mini", "label": "OpenAI Direct (Emergency)"},
+    {"provider": "openai", "model": "gpt-6-astra", "label": "OpenAI Direct (Emergency)"},
 ]
 
 # Default Tier 3 (Worker Bee / Subagent / CUD / Grep) Cascade Hierarchy

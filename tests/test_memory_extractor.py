@@ -150,3 +150,53 @@ async def test_extract_and_commit_turn_memory(tmp_path):
     assert len(user_facts) == 1
     assert "Prefers uv for Python dependencies" in user_facts
     assert "poetry" not in user_facts[0]
+
+
+@pytest.mark.asyncio
+async def test_p5_curator_worker_model_pinning_and_s1_zero_llm_fastpath(tmp_path):
+    """Verify P5 (FI-566): Background curators pin to Worker tier (`gemini-flash-lite-latest`) and extract explicit rules in 0 LLM calls."""
+    from core.memory_extractor import extract_explicit_memory_s1, resolve_curator_worker_model
+
+    mock_provider = MagicMock()
+    mock_provider.provider_name = "gemini"
+    mock_provider.chat_complete = AsyncMock(
+        return_value=Message(
+            role="assistant",
+            content='[{"category": "memory", "fact": "Use AWS SNS for SMS", "supersedes": "Twilio"}]',
+        )
+    )
+
+    # 1. Even if session is on Thinker (`gemini-4-argon`) or Reasoner (`gemini-3.8-flash`), curator resolves to Worker
+    assert resolve_curator_worker_model(mock_provider, "gemini-4-argon") == "gemini-flash-lite-latest"
+    assert resolve_curator_worker_model(mock_provider, "gemini-3.8-flash") == "gemini-flash-lite-latest"
+    assert resolve_curator_worker_model(mock_provider, "claude-opus-5-5") == "claude-3-5-haiku-latest"
+    assert resolve_curator_worker_model(mock_provider, "gpt-6-astra") == "gpt-6-luna"
+
+    # 2. Explicit single-sentence rules with allow_s1_fastpath=True execute in 0 LLM calls (<2ms)
+    s1_user = extract_explicit_memory_s1("I prefer 2-space indentation for all React components")
+    assert s1_user is not None and s1_user[0]["category"] == "user"
+
+    s1_repo = extract_explicit_memory_s1("Always run chmod +x after editing scripts in this monorepo")
+    assert s1_repo is not None and s1_repo[0]["category"] == "memory"
+
+    facts_zero_llm = await extract_memories_from_turn(
+        user_input="Always run chmod +x after editing scripts in this monorepo",
+        assistant_output="Will do.",
+        provider=mock_provider,
+        model="gemini-4-argon",
+        allow_s1_fastpath=True,
+    )
+    assert len(facts_zero_llm) == 1
+    assert facts_zero_llm[0]["category"] == "memory"
+    mock_provider.chat_complete.assert_not_awaited()
+
+    # 3. Complex supersession turns call LLM pinned to `gemini-flash-lite-latest` instead of `gemini-4-argon`
+    facts_llm = await extract_memories_from_turn(
+        user_input="Actually, we switched from Twilio to AWS SNS for SMS",
+        assistant_output="Updated.",
+        provider=mock_provider,
+        model="gemini-4-argon",
+        allow_s1_fastpath=True,
+    )
+    assert len(facts_llm) == 1
+    assert mock_provider.chat_complete.await_args.kwargs["model"] == "gemini-flash-lite-latest"

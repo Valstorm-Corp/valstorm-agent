@@ -410,3 +410,56 @@ def test_fold_tool_observation_structural_digests_and_wire_tool_result_sync():
         assert tm.content == tm.tool_result.output
 
 
+def test_p4_intra_tool_s1_pruning_and_post_turn_consumed_folding():
+    """Verify P4 (FI-566): System-1 intra-tool relevance pruning and post-turn consumed observation folding."""
+    from core.compaction import prune_tool_observation_s1
+
+    # 1. Intra-tool System-1 relevance pruning keeps query-matched lines and prunes low-relevance filler
+    noisy_lines = (
+        ["[Search Results Header]", "Found 50 matches across repo:", "---"]
+        + [f"docs/unrelated_{i}.md: boilerplate documentation paragraph {i} " + ("filler " * 12) for i in range(60)]
+        + ["src/pool.py:42: def acquire(self) -> bool: # critical ConnectionPool capacity check"]
+        + ["End of search results.", "Status: OK"]
+    )
+    raw_search = "\n".join(noisy_lines)
+    assert len(raw_search) > 4000
+    pruned, saved_toks = prune_tool_observation_s1(
+        raw_search,
+        tool_name="search_files",
+        user_query="Fix ConnectionPool acquire capacity check in src/pool.py",
+        max_chars=1200,
+    )
+    assert len(pruned) < len(raw_search) // 2
+    assert saved_toks > 500
+    assert "src/pool.py:42: def acquire" in pruned
+    assert "pruned by System-1" in pruned
+
+    # 2. Post-turn consumed observation folding at TURN_COMPLETE folds bulky tool outputs into ~90-token receipts
+    session = SessionState(session_id="sess_p4_fold", active_model="gemini-3.8-flash", active_provider="gemini")
+    session.add_message(Message(role="user", content="Read src/pool.py and fix bug"))
+    session.add_message(
+        Message(
+            role="assistant",
+            content="",
+            tool_calls=[ToolCall(id="c_read", name="read_file", arguments={"path": "src/pool.py"})],
+        )
+    )
+    large_file = "[src/pool.py (Lines 1-100 of 100)]\n  1| class ConnectionPool:\n" + ("  2|     pass\n" * 120)
+    session.add_message(
+        Message(
+            role="tool",
+            content=large_file,
+            tool_result=ToolResult(call_id="c_read", name="read_file", output=large_file, is_error=False),
+        )
+    )
+    session.add_message(Message(role="assistant", content="Fixed ConnectionPool bug in src/pool.py."))
+
+    compactor = ContextCompactor()
+    saved = compactor.fold_consumed_turn_observations(session, max_consumed_chars=360)
+    assert saved > 200
+    tool_msg = [m for m in session.messages if m.role == "tool"][0]
+    assert "[Compacted Output |" in (tool_msg.content or "")
+    assert "symbols=[ConnectionPool]" in (tool_msg.content or "")
+    assert tool_msg.content == tool_msg.tool_result.output
+
+

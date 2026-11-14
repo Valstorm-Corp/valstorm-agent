@@ -1263,18 +1263,21 @@ async def _execute_agent_run(
         )
 
         # Smart Context, Memory & Hermes Skill Curator: Asynchronously extract facts and curate procedural skills
+        # P5 (FI-566): Pin background curation to the Worker tier (`gemini-3.5-flash-lite`) + System-1 fast-path
         is_tainted = bool(session.metadata.get("untrusted_content_tainted", False))
         try:
-            from core.memory_extractor import extract_and_commit_turn_memory
+            from core.memory_extractor import extract_and_commit_turn_memory, resolve_curator_worker_model
+            curator_worker_model = resolve_curator_worker_model(provider_inst, target_model)
             asyncio.create_task(
                 extract_and_commit_turn_memory(
                     user_input=payload.input,
                     assistant_output=full_output,
                     memory_store=memory_store,
                     provider=provider_inst,
-                    model=target_model,
+                    model=curator_worker_model,
                     chat_id=effective_chat_id,
                     untrusted_tainted=is_tainted,
+                    allow_s1_fastpath=True,
                 )
             )
         except Exception as mem_err:
@@ -1282,13 +1285,15 @@ async def _execute_agent_run(
 
         try:
             from core.skill_curator import curate_and_commit_turn_trajectory
+            from core.memory_extractor import resolve_curator_worker_model
+            curator_worker_model = resolve_curator_worker_model(provider_inst, target_model)
             asyncio.create_task(
                 curate_and_commit_turn_trajectory(
                     user_input=payload.input,
                     assistant_output=full_output,
                     session=session,
                     provider=provider_inst,
-                    model=target_model,
+                    model=curator_worker_model,
                     untrusted_tainted=is_tainted,
                 )
             )

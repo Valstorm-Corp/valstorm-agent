@@ -158,6 +158,73 @@ def fold_tool_observation(
     )
 
 
+def prune_tool_observation_s1(
+    raw_content: str,
+    tool_name: Optional[str] = None,
+    user_query: Optional[str] = None,
+    max_chars: int = 2800,
+) -> Tuple[str, int]:
+    """System-1 intra-tool relevance pruner for oversized search, scrape, or schema outputs (P4 / FI-566).
+
+    Scores blocks/lines against `user_query` using System-1 lexical/stem overlap, preserving structural
+    headers, top-scoring blocks, and tail summaries within `max_chars`.
+    Returns `(pruned_text, tokens_saved)`.
+    """
+    if not raw_content or len(raw_content) <= max_chars:
+        return raw_content, 0
+
+    before_tokens = estimate_tokens_for_text(raw_content, chars_per_token=2.4)
+    query_tokens = {
+        w.lower()
+        for w in re.findall(r"[a-zA-Z0-9_]{3,}", user_query or "")
+        if w.lower() not in {"the", "and", "for", "with", "use", "using", "from", "into", "that", "this"}
+    }
+
+    lines = raw_content.splitlines()
+    if len(lines) <= 6 or not query_tokens:
+        folded = fold_tool_observation(raw_content, tool_name=tool_name, max_chars=max_chars)
+        after_tokens = estimate_tokens_for_text(folded, chars_per_token=2.4)
+        return folded, max(0, before_tokens - after_tokens)
+
+    # Keep first 3 header lines and last 2 footer lines; score middle lines by System-1 query relevance
+    head_lines = lines[:3]
+    tail_lines = lines[-2:]
+    mid_lines = lines[3:-2]
+
+    scored_mid: List[Tuple[int, int, str]] = []
+    for idx, line in enumerate(mid_lines):
+        l_lower = line.lower()
+        score = sum(2 for qt in query_tokens if qt in l_lower)
+        if any(marker in l_lower for marker in ("id", "name", "url", "title", "error", "def ", "class ", "status")):
+            score += 1
+        scored_mid.append((score, idx, line))
+
+    # Sort by highest relevance score first, breaking ties by original line order
+    scored_mid.sort(key=lambda x: (-x[0], x[1]))
+    budget = max(400, max_chars - sum(len(l) + 1 for l in head_lines + tail_lines) - 120)
+    selected_indices: List[int] = []
+    used_chars = 0
+    for score, idx, line in scored_mid:
+        line_len = len(line) + 1
+        if used_chars + line_len > budget:
+            continue
+        selected_indices.append(idx)
+        used_chars += line_len
+
+    selected_indices.sort()
+    kept_mid = [mid_lines[i] for i in selected_indices]
+    omitted_lines = max(0, len(mid_lines) - len(kept_mid))
+    pruned = (
+        "\n".join(head_lines)
+        + "\n"
+        + "\n".join(kept_mid)
+        + f"\n... [{omitted_lines} low-relevance lines pruned by System-1 ({len(raw_content)} -> {used_chars} chars)] ...\n"
+        + "\n".join(tail_lines)
+    )
+    after_tokens = estimate_tokens_for_text(pruned, chars_per_token=2.4)
+    return pruned, max(0, before_tokens - after_tokens)
+
+
 def estimate_session_history_tokens(session: SessionState) -> int:
     """Calculates total estimated tokens across all messages currently in session history."""
     return sum(estimate_message_tokens(m) for m in session.messages)
@@ -477,3 +544,52 @@ class ContextCompactor:
             compacted=True,
             summary=summary,
         )
+
+    def fold_consumed_turn_observations(
+        self,
+        session: SessionState,
+        max_consumed_chars: int = 360,
+    ) -> int:
+        """P4 (FI-566): Folds bulky intermediate tool outputs at TURN_COMPLETE into compact structural receipts.
+
+        Once a turn has completed and the assistant has synthesized its final response, large raw tool
+        outputs (e.g., `read_file` dumps after patching, `valstorm_schema_inspect` JSON after record CUD,
+        `web_scrape` markdown, or verbose `pytest` logs) are folded into `~90-token` structural receipts
+        preserving file paths, symbol names, record IDs, and test summaries for subsequent turns.
+        Returns estimated tokens saved.
+        """
+        if not session or not session.messages:
+            return 0
+
+        tokens_before = estimate_session_history_tokens(session)
+        folded_any = False
+
+        for msg in session.messages:
+            if msg.role != "tool":
+                continue
+            tr_raw = str(msg.tool_result.output) if (msg.tool_result and msg.tool_result.output is not None) else ""
+            c_raw = msg.content or msg.body or ""
+            raw_content = tr_raw if len(tr_raw) >= len(c_raw) else c_raw
+            if len(raw_content) <= max_consumed_chars or raw_content.lstrip().startswith("[Compacted Output"):
+                continue
+
+            t_name = msg.tool_result.name if msg.tool_result else None
+            folded_text = fold_tool_observation(
+                raw_content=raw_content,
+                tool_name=t_name,
+                max_chars=max_consumed_chars,
+            )
+            msg.content = folded_text
+            msg.body = folded_text
+            if msg.tool_result is not None:
+                msg.tool_result.output = folded_text
+            folded_any = True
+
+        if not folded_any:
+            return 0
+
+        tokens_after = estimate_session_history_tokens(session)
+        saved = max(0, tokens_before - tokens_after)
+        if saved > 0:
+            session.metadata["post_turn_tokens_saved"] = int(session.metadata.get("post_turn_tokens_saved", 0)) + saved
+        return saved

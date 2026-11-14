@@ -162,7 +162,7 @@ class TaskAwareMockProvider:
         if is_subagent:
             return await self._handle_subagent_turn(messages, first_user_msg, usage, eff_model)
 
-        if self.orch_step == 0 and self.task.get("id") in ("OF-02",) and any(getattr(m, "provider", None) == "micro-worker" for m in messages):
+        if self.orch_step == 0 and self.task.get("id") in ("OF-02", "G-H02") and any(getattr(m, "provider", None) == "micro-worker" for m in messages):
             self.orch_step += 1
         self.orch_step += 1
         task_id = self.task["id"]
