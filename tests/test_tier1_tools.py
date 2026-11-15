@@ -564,12 +564,14 @@ class TestTier1ToolsIntegration:
 
     def test_create_and_register_all_tier1_tools(self):
         tier1_tools = create_tier1_tools()
-        assert len(tier1_tools) == 18
+        assert len(tier1_tools) == 20
         names = [getattr(t, "_tool_name", t.__name__) for t in tier1_tools]
         assert "confirmation_required" in names
         assert "clarify" in names
         assert "analyze_image" in names
         assert "vision_analyze" in names
+        assert "generate_image" in names
+        assert "generate_video" in names
         assert "execute_code" in names
         assert "delegate_task" in names
         assert "subagent_manage" in names

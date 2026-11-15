@@ -1542,3 +1542,85 @@ class ValstormApiClient:
             return data["result"]
         return data
 
+    # ==========================================
+    # 9. AI Media Generation (/ai/media)
+    # ==========================================
+
+    async def ai_generate_image(
+        self,
+        prompt: str,
+        model: str = "gemini-3-pro-image",
+        aspect_ratio: str = "16:9",
+        resolution: str = "1k",
+        reference_images: Optional[List[Any]] = None,
+        save_to_vfs: bool = False,
+        vault_id: Optional[str] = None,
+        filename: Optional[str] = None,
+        is_public: bool = False,
+    ) -> Dict[str, Any]:
+        """Generates an image via POST /ai/media/generate-image."""
+        payload: Dict[str, Any] = {
+            "prompt": prompt,
+            "model": model,
+            "aspect_ratio": aspect_ratio,
+            "resolution": resolution,
+            "save_to_vfs": save_to_vfs,
+            "is_public": is_public,
+        }
+        if reference_images is not None:
+            payload["reference_images"] = reference_images
+        if vault_id is not None:
+            payload["vault_id"] = vault_id
+        if filename is not None:
+            payload["filename"] = filename
+
+        resp = await self._request_with_retry("POST", "/ai/media/generate-image", json=payload)
+        return resp.json()
+
+    async def ai_generate_video(
+        self,
+        prompt: str,
+        model: str = "veo-3.1-generate-001",
+        aspect_ratio: str = "16:9",
+        resolution: str = "1080p",
+        duration_seconds: int = 8,
+        first_frame: Optional[Any] = None,
+        last_frame: Optional[Any] = None,
+        negative_prompt: Optional[str] = None,
+        save_to_vfs: bool = False,
+        vault_id: Optional[str] = None,
+        filename: Optional[str] = None,
+        is_public: bool = False,
+        wait: bool = False,
+    ) -> Dict[str, Any]:
+        """Initiates a Veo 3.1 video generation LRO via POST /ai/media/generate-video."""
+        payload: Dict[str, Any] = {
+            "prompt": prompt,
+            "model": model,
+            "aspect_ratio": aspect_ratio,
+            "resolution": resolution,
+            "duration_seconds": int(duration_seconds),
+            "save_to_vfs": save_to_vfs,
+            "is_public": is_public,
+            "wait": wait,
+        }
+        if first_frame is not None:
+            payload["first_frame"] = first_frame
+        if last_frame is not None:
+            payload["last_frame"] = last_frame
+        if negative_prompt is not None:
+            payload["negative_prompt"] = negative_prompt
+        if vault_id is not None:
+            payload["vault_id"] = vault_id
+        if filename is not None:
+            payload["filename"] = filename
+
+        resp = await self._request_with_retry("POST", "/ai/media/generate-video", json=payload)
+        return resp.json()
+
+    async def ai_get_media_operation(self, operation_id: str) -> Dict[str, Any]:
+        """Polls a Veo 3.1 LRO operation via GET /ai/media/operations/{operation_id}."""
+        resp = await self._request_with_retry("GET", f"/ai/media/operations/{operation_id}")
+        return resp.json()
+
+

@@ -35,6 +35,7 @@ from tools.developer_tools import (
 )
 from tools.skill_tool import skill_list, skill_manage, skill_view
 from tools.vision_tool import analyze_image, vision_analyze
+from tools.media_generation_tools import generate_image, generate_video
 from tools.computer_use import computer_use
 
 
@@ -100,6 +101,8 @@ def _build_execution_environment(
         "skill_manage": _wrap_sync(skill_manage),
         "analyze_image": _wrap_sync(analyze_image),
         "vision_analyze": _wrap_sync(vision_analyze),
+        "generate_image": _wrap_sync(generate_image),
+        "generate_video": _wrap_sync(generate_video),
         "computer_use": _wrap_sync(computer_use),
     }
 

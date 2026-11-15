@@ -85,6 +85,13 @@ from tools.vision_tool import (
     register_vision_tools,
     vision_analyze,
 )
+from tools.media_generation_tools import (
+    create_media_generation_tools,
+    generate_image,
+    generate_video,
+    register_media_generation_tools,
+    set_media_client_override,
+)
 from tools.web_tools import (
     WebScraperClient,
     create_web_tools,
@@ -115,6 +122,8 @@ def create_tier1_tools() -> List[Any]:
         clarify,
         analyze_image,
         vision_analyze,
+        generate_image,
+        generate_video,
         execute_code,
         delegate_task,
         subagent_manage,
@@ -193,6 +202,11 @@ __all__ = [
     "vision_analyze",
     "create_vision_tools",
     "register_vision_tools",
+    "generate_image",
+    "generate_video",
+    "create_media_generation_tools",
+    "register_media_generation_tools",
+    "set_media_client_override",
     "create_tier1_tools",
     "register_tier1_tools",
     "WebScraperClient",

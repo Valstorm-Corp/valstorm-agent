@@ -245,6 +245,8 @@ Root
             "valstorm_vfs_write_file",
             "analyze_image",
             "vision_analyze",
+            "generate_image",
+            "generate_video",
             "calculator",
             "confirmation_required",
             "clarify",
@@ -301,7 +303,8 @@ Root
             "clarify", "confirmation_required", "valstorm_sql_query", "valstorm_mongo_query",
             "valstorm_record_cud", "valstorm_vfs_search", "valstorm_vfs_browse",
             "valstorm_vfs_get_file", "valstorm_vfs_write_file", "web_scrape", "web_search",
-            "memory_manage", "session_search", "calculator", "mock_db_lookup"
+            "memory_manage", "session_search", "calculator", "mock_db_lookup",
+            "analyze_image", "vision_analyze", "generate_image", "generate_video"
         ],
         "max_turns": 50,
     },
@@ -662,6 +665,7 @@ Root
         "allowed_tools": [
             "terminal_exec", "patch_file", "write_file", "read_file", "search_files",
             "execute_code", "process_manage", "analyze_image", "vision_analyze",
+            "generate_image", "generate_video",
             "valstorm_vfs_search", "valstorm_vfs_browse", "valstorm_vfs_get_file", "valstorm_vfs_write_file",
             "skill_view", "skill_list", "clarify", "calculator", "delegate_task", "subagent_manage"
         ],
@@ -671,6 +675,56 @@ Root
             "ad-creative-and-hook-generation", "high-converting-copywriting", "writing-humanizer"
         ],
         "max_turns": 40,
+    },
+    "video-editor": {
+        "name": "Video & Media Editor",
+        "api_name": "video-editor",
+        "description": "Specialized in video workflow automation, FFmpeg pipelines, Veo 3.1 video generation, Gemini 3 Pro Image keyframe creation, and FilmCraft timeline assembly.",
+        "provider": "valstorm",
+        "model": "gemini-3.8-flash",
+        "model_tier": "tier_2",
+        "system_prompt": (
+            "You are the Video & Media Editor operating within Valstorm.\n"
+            "You specialize in AI image plate generation (`generate_image`), Veo 3.1 video generation (`generate_video`), "
+            "FFmpeg processing, and FilmCraft timeline composition."
+        ),
+        "allowed_tools": [
+            "terminal_exec", "patch_file", "write_file", "read_file", "search_files",
+            "execute_code", "process_manage", "analyze_image", "vision_analyze",
+            "generate_image", "generate_video",
+            "valstorm_vfs_search", "valstorm_vfs_browse", "valstorm_vfs_get_file", "valstorm_vfs_write_file",
+            "skill_view", "skill_list", "clarify", "calculator"
+        ],
+        "attached_skill_slugs": [
+            "filmcraft-video-workflows", "effectcraft-motion-vfx", "soundcraft-audio-production"
+        ],
+        "max_turns": 35,
+    },
+    "marketing-specialist": {
+        "name": "Marketing Specialist",
+        "api_name": "marketing-specialist",
+        "description": "Full-stack growth & creative marketing specialist combining conversion copywriting, campaign analytics, AI ad creative generation (`generate_image`), and social video production (`generate_video`).",
+        "provider": "valstorm",
+        "model": "gemini-4-argon",
+        "model_tier": "tier_1",
+        "system_prompt": (
+            "You are the Marketing Specialist operating within Valstorm.\n"
+            "You combine high-converting GTM copywriting with AI visual/video ad creative generation (`generate_image`, `generate_video`)."
+        ),
+        "allowed_tools": [
+            "terminal_exec", "patch_file", "write_file", "read_file", "search_files",
+            "execute_code", "analyze_image", "vision_analyze", "generate_image", "generate_video",
+            "valstorm_sql_query", "valstorm_record_cud", "valstorm_schema_inspect",
+            "valstorm_create_list_filter", "valstorm_generate_report", "valstorm_generate_dashboard",
+            "valstorm_analytics_compute", "valstorm_send_sms",
+            "valstorm_vfs_search", "valstorm_vfs_browse", "valstorm_vfs_get_file", "valstorm_vfs_write_file",
+            "skill_view", "skill_list", "clarify", "calculator", "memory_manage"
+        ],
+        "attached_skill_slugs": [
+            "ad-creative-and-hook-generation", "high-converting-copywriting", "writing-humanizer",
+            "marketing-positioning-framework", "marketing-landing-page-copy"
+        ],
+        "max_turns": 35,
     },
 }
 
@@ -835,6 +889,28 @@ def _find_cloud_profile(clean_name: str, cloud_profiles: List[Dict[str, Any]]) -
     return None
 
 
+_MEDIA_ENABLED_PROFILES = {
+    "creative-director",
+    "video-editor",
+    "marketing-specialist",
+    "software-engineer",
+    "marketer",
+    "chief-of-staff",
+}
+
+
+def _ensure_profile_media_tools(prof: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensures media-capable profiles always include generate_image and generate_video."""
+    slug = str(prof.get("api_name") or "").strip().lower()
+    if slug in _MEDIA_ENABLED_PROFILES and isinstance(prof.get("allowed_tools"), list):
+        allowed = list(prof["allowed_tools"])
+        for tool_name in ("generate_image", "generate_video"):
+            if tool_name not in allowed:
+                allowed.append(tool_name)
+        prof["allowed_tools"] = allowed
+    return prof
+
+
 def load_profile(profile_name_or_slug: str) -> Dict[str, Any]:
     """Loads a named profile configuration from tenant cloud ai_agent records, ~/.valstorm/profiles/<slug>.json, or built-in fallbacks."""
     clean_name = (profile_name_or_slug or "").strip().lower()
@@ -848,18 +924,18 @@ def load_profile(profile_name_or_slug: str) -> Dict[str, Any]:
         # 1. In Cloud mode: Tenant DB ai_agent takes priority over static disk
         c_match = _find_cloud_profile(clean_name, cloud_profiles)
         if c_match:
-            return c_match
+            return _ensure_profile_media_tools(c_match)
         d_match = _find_disk_profile(clean_name, prof_dir)
         if d_match:
-            return d_match
+            return _ensure_profile_media_tools(d_match)
     else:
         # 1. In Host mode: Local disk takes priority, followed by tenant cloud ai_agent
         d_match = _find_disk_profile(clean_name, prof_dir)
         if d_match:
-            return d_match
+            return _ensure_profile_media_tools(d_match)
         c_match = _find_cloud_profile(clean_name, cloud_profiles)
         if c_match:
-            return c_match
+            return _ensure_profile_media_tools(c_match)
 
     KNOWN_AGENT_ID_MAP = {
         "aia_software_engineer": "software-engineer",

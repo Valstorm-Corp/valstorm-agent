@@ -369,6 +369,115 @@ class RemoteScraperContext(RemoteBaseContext):
         return _make_sync_async_callable(lambda: coro)()
 
 
+class RemoteAIContext(RemoteBaseContext):
+    """Client-Side Context for AI Image & Video Generation (`platform.ai`)."""
+
+    def generate_image(
+        self,
+        prompt: str,
+        model: str = "gemini-3-pro-image",
+        aspect_ratio: str = "16:9",
+        resolution: str = "1k",
+        reference_images: list[Any] | None = None,
+        save_to_vfs: bool = False,
+        vault_id: str | None = None,
+        filename: str | None = None,
+        is_public: bool = False,
+        output_path: str | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Generates an image via POST /v1/ai/media/generate-image."""
+        import base64
+        from pathlib import Path
+
+        async def _do_gen():
+            res = await self.client.ai_generate_image(
+                prompt=prompt,
+                model=model,
+                aspect_ratio=aspect_ratio,
+                resolution=resolution,
+                reference_images=reference_images,
+                save_to_vfs=save_to_vfs,
+                vault_id=vault_id,
+                filename=filename,
+                is_public=is_public,
+            )
+            if output_path and isinstance(res, dict) and res.get("image_base64"):
+                out_file = Path(output_path)
+                out_file.parent.mkdir(parents=True, exist_ok=True)
+                out_file.write_bytes(base64.b64decode(res["image_base64"]))
+                res["output_path"] = str(out_file.resolve())
+            return res
+
+        return _make_sync_async_callable(_do_gen)()
+
+    def generate_video(
+        self,
+        prompt: str,
+        model: str = "veo-3.1-generate-001",
+        aspect_ratio: str = "16:9",
+        resolution: str = "1080p",
+        duration_seconds: int = 8,
+        first_frame: Any = None,
+        last_frame: Any = None,
+        negative_prompt: str | None = None,
+        save_to_vfs: bool = False,
+        vault_id: str | None = None,
+        filename: str | None = None,
+        is_public: bool = False,
+        wait: bool = True,
+        poll_interval_seconds: float = 2.0,
+        timeout_seconds: float = 300.0,
+        output_path: str | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Generates a video via POST /v1/ai/media/generate-video and polls until completion if `wait=True`."""
+        import asyncio
+        import base64
+        from pathlib import Path
+        import time
+
+        async def _do_gen():
+            res = await self.client.ai_generate_video(
+                prompt=prompt,
+                model=model,
+                aspect_ratio=aspect_ratio,
+                resolution=resolution,
+                duration_seconds=duration_seconds,
+                first_frame=first_frame,
+                last_frame=last_frame,
+                negative_prompt=negative_prompt,
+                save_to_vfs=save_to_vfs,
+                vault_id=vault_id,
+                filename=filename,
+                is_public=is_public,
+                wait=False,
+            )
+            if wait and isinstance(res, dict) and not res.get("done") and res.get("operation_id"):
+                op_id = str(res["operation_id"])
+                deadline = time.monotonic() + float(timeout_seconds)
+                while time.monotonic() < deadline:
+                    res = await self.client.ai_get_media_operation(op_id)
+                    if isinstance(res, dict) and res.get("done"):
+                        break
+                    await asyncio.sleep(poll_interval_seconds)
+
+            if output_path and isinstance(res, dict) and res.get("video_base64"):
+                out_file = Path(output_path)
+                out_file.parent.mkdir(parents=True, exist_ok=True)
+                out_file.write_bytes(base64.b64decode(res["video_base64"]))
+                res["output_path"] = str(out_file.resolve())
+            return res
+
+        return _make_sync_async_callable(_do_gen)()
+
+    def get_media_operation(self, operation_id: str) -> dict[str, Any]:
+        """Polls a Veo 3.1 video operation via GET /v1/ai/media/operations/{operation_id}."""
+        coro = self.client.ai_get_media_operation(operation_id=operation_id)
+        return _make_sync_async_callable(lambda: coro)()
+
+
+
 class RemotePlatformContext:
     """Client-Side Platform Context matching server PlatformContext stubs.
 
@@ -399,6 +508,7 @@ class RemotePlatformContext:
         self.slack = RemoteSlackContext(self)
         self.scraper = RemoteScraperContext(self)
         self.web = self.scraper
+        self.ai = RemoteAIContext(self)
         self.integrations = RemoteIntegrationContext(self)
 
     def invoke(self, target: str, *args: Any, **kwargs: Any) -> Any:

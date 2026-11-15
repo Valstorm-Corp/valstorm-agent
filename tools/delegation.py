@@ -43,6 +43,7 @@ def _build_base_subagent_tool_registry() -> ToolRegistry:
     from tools.ui_navigator_tools import register_ui_navigator_tools
     from tools.computer_use import register_computer_use_tools
     from tools.vision_tool import register_vision_tools
+    from tools.media_generation_tools import register_media_generation_tools
     from tools.valstorm_client import resolve_valstorm_credentials
     from tools.valstorm_tools import register_valstorm_tools
     from tools.web_tools import register_web_tools
@@ -55,6 +56,7 @@ def _build_base_subagent_tool_registry() -> ToolRegistry:
     register_clarify_tools(registry)
     register_confirmation_tools(registry)
     register_vision_tools(registry)
+    register_media_generation_tools(registry)
     register_execute_code_tools(registry)
     register_process_manager_tools(registry)
     register_skill_tools(registry)
