@@ -61,6 +61,10 @@ from tools.slack_tools import (
     create_slack_tools,
     register_slack_tools,
 )
+from tools.github_tools import (
+    create_github_tools,
+    register_github_tools,
+)
 from tools.valstorm_client import (
     TenantRuntimeContext,
     ValstormApiClient,
@@ -160,6 +164,8 @@ __all__ = [
     "register_valstorm_tools",
     "create_slack_tools",
     "register_slack_tools",
+    "create_github_tools",
+    "register_github_tools",
     "terminal_exec",
     "patch_file",
     "write_file",

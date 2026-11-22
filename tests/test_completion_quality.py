@@ -452,9 +452,13 @@ def test_reasoning_effort_across_gemini_openai_and_anthropic_providers():
     assert cfg_none_g3.thinking_config is not None
     assert str(cfg_none_g3.thinking_config.thinking_level).upper().endswith("LOW")
 
-    cfg_none_g4 = gp._build_config("sys", None, {"model": "gemini-4-argon"})
+    cfg_none_g4 = gp._build_config("sys", None, {"model": "gemini-4-neon"})
     assert cfg_none_g4.thinking_config is not None
     assert str(cfg_none_g4.thinking_config.thinking_level).upper().endswith("LOW")
+
+    cfg_none_h = gp._build_config("sys", None, {"model": "gemini-4-hydrogen"})
+    assert cfg_none_h.thinking_config is not None
+    assert str(cfg_none_h.thinking_config.thinking_level).upper().endswith("LOW")
 
     cfg_lite = gp._build_config("sys", None, {"model": "gemini-3.5-flash-lite"})
     assert cfg_lite.thinking_config is None

@@ -70,5 +70,11 @@ async def test_gemini_provider_generate_with_default_model(monkeypatch):
     )
 
     assert msg.content == "Hello from enterprise flash"
-    assert msg.model == "gemini-flash-latest"
+    assert msg.model == "gemini-4-hydrogen"
     assert usage.total_tokens == 18
+
+    msg_pro, _ = await provider.generate(
+        messages=[Message(role="user", content="Hello")],
+        model="gemini-pro-latest",
+    )
+    assert msg_pro.model == "gemini-4-neon"

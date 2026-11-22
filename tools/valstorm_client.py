@@ -1532,6 +1532,28 @@ class ValstormApiClient:
         resp = await self._request_with_retry("GET", "/slack/auth/status")
         return resp.json()
 
+    async def list_platform_methods(
+        self,
+        query: Optional[str] = None,
+        namespace: Optional[str] = None,
+        limit: Optional[int] = 25,
+    ) -> Dict[str, Any]:
+        """Lists or searches server-side PlatformContext & plugin RPC methods via GET /platform/methods."""
+        params: Dict[str, Any] = {}
+        if query is not None and str(query).strip():
+            params["q"] = str(query).strip()
+        if namespace is not None and str(namespace).strip():
+            params["namespace"] = str(namespace).strip()
+        if limit is not None:
+            params["limit"] = max(1, min(int(limit), 200))
+        resp = await self._request_with_retry("GET", "/platform/methods", params=params or None)
+        data = resp.json()
+        if isinstance(data, dict):
+            return data
+        if isinstance(data, list):
+            return {"methods": data, "count": len(data)}
+        return {"methods": [], "count": 0}
+
     async def invoke_platform_method(self, target: str, *args: Any, **kwargs: Any) -> Any:
         """Invokes a server-side PlatformContext method via POST /platform/invoke/{target}."""
         clean_target = target.strip().strip("/").replace(".", "/")
@@ -1541,6 +1563,23 @@ class ValstormApiClient:
         if isinstance(data, dict) and data.get("status") == "success" and "result" in data:
             return data["result"]
         return data
+
+    async def list_marketplace_apps(self) -> List[Dict[str, Any]]:
+        """Lists all public applications available in the Valstorm Marketplace."""
+        resp = await self._request_with_retry("GET", "/public/apps")
+        data = resp.json()
+        return data if isinstance(data, list) else []
+
+    async def list_installed_apps(self) -> List[Dict[str, Any]]:
+        """Lists applications currently installed in the tenant workspace."""
+        resp = await self._request_with_retry("GET", "/apps")
+        data = resp.json()
+        return data if isinstance(data, list) else []
+
+    async def install_marketplace_app(self, app_id_or_name: str) -> Dict[str, Any]:
+        """Installs an application from the Valstorm Marketplace into the tenant workspace."""
+        resp = await self._request_with_retry("POST", f"/apps/install/{app_id_or_name}")
+        return resp.json()
 
     # ==========================================
     # 9. AI Media Generation (/ai/media)

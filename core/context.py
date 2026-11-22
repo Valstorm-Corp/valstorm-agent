@@ -87,7 +87,7 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {
         "api_name": "chief-of-staff",
         "description": "Executive AI business partner for workspace onboarding, business operations, Cloud Knowledge Vault management, and CRM orchestration.",
         "provider": "valstorm",
-        "model": "gemini-4-argon",
+        "model": "gemini-4-neon",
         "model_tier": "tier_1",
         "system_prompt": """You are the Valstorm Chief of Staff — an executive AI business partner and workspace operator.
 You assist the user in managing their business, organizing company operations, setting up Cloud Knowledge Vaults, handling CRM and database records, and synthesizing insights.
@@ -152,19 +152,24 @@ When the user asks to create or launch a marketing campaign or email drip cadenc
 - Use `valstorm_send_sms(contact_id='...', message='...')` to send 1-on-1 SMS or MMS text messages directly to contacts or phone numbers.
 - Always prefer passing `contact_id` when messaging known CRM contacts to automatically resolve their phone, link the Twilio conversation, update participant states, and record tracking entries in `twilio_message`.
 
-### 5. Web Intelligence & Public Data:
+### 5. Universal Open Valstorm Platform & Plugin RPC (`platform_methods_search`, `platform_invoke`):
+
+- Beyond your dedicated CRM and plugin tools, you can discover and invoke any exposed Open Valstorm `PlatformContext` or connected plugin method via `platform_methods_search(query=..., namespace=...)` followed by `platform_invoke(target='...', kwargs={...})`.
+- Always call `platform_methods_search` first to confirm the exact canonical target name and parameter signature before calling `platform_invoke`.
+
+### 6. Web Intelligence & Public Data:
 
 - Use `web_scrape` to read company sites/pricing in clean Markdown, `web_search` to find live public web information, `web_crawl_domain` for deep domain inspection, `web_content_diff` to monitor page changes, and `web_feed_poll` for news feeds.
 
-### 6. Binary Media & Large Files:
+### 7. Binary Media & Large Files:
 
 - Large binary assets (videos, MP4, archives) are handled via S3 pipelines.
 
-### 7. Memory & Context:
+### 8. Memory & Context:
 
 - Use `memory_manage` to store company facts, business goals, and user preferences.
 
-### 8. Tone & Style:
+### 9. Tone & Style:
 
 - Direct, proactive, polished, and executive. Focus on actionable business outcomes and immediate execution.
 
@@ -239,6 +244,10 @@ Root
             "valstorm_create_scheduled_task",
             "valstorm_enroll_in_drip",
             "valstorm_send_sms",
+            "valstorm_marketplace_list_apps",
+            "valstorm_marketplace_install_app",
+            "platform_methods_search",
+            "platform_invoke",
             "valstorm_vfs_search",
             "valstorm_vfs_browse",
             "valstorm_vfs_get_file",
@@ -285,7 +294,7 @@ Root
         "api_name": "software-engineer",
         "description": "Generalist software engineer specialized in monorepo development, testing, and debugging on a local computer/codebase.",
         "provider": "valstorm",
-        "model": "gemini-4-argon",
+        "model": "gemini-4-neon",
         "model_tier": "tier_1",
         "system_prompt": (
             "You are a Staff Software Engineer running directly on the user's computer via Valstorm Agent Runtime.\n"
@@ -301,7 +310,8 @@ Root
             "search_files", "find_symbols", "code_outline", "package_blast_radius",
             "read_local_file", "process_manage", "subagent_manage", "delegate_task",
             "clarify", "confirmation_required", "valstorm_sql_query", "valstorm_mongo_query",
-            "valstorm_record_cud", "valstorm_vfs_search", "valstorm_vfs_browse",
+            "valstorm_record_cud", "platform_methods_search", "platform_invoke",
+            "valstorm_vfs_search", "valstorm_vfs_browse",
             "valstorm_vfs_get_file", "valstorm_vfs_write_file", "web_scrape", "web_search",
             "memory_manage", "session_search", "calculator", "mock_db_lookup",
             "analyze_image", "vision_analyze", "generate_image", "generate_video"
@@ -313,7 +323,7 @@ Root
         "api_name": "developer",
         "description": "Specialized in full-lifecycle Valstorm development: schemas, permissions, app marketplace deployments, dynamic functions, triggers, workflows, and monorepo engineering.",
         "provider": "valstorm",
-        "model": "gemini-4-argon",
+        "model": "gemini-4-neon",
         "model_tier": "tier_1",
         "system_prompt": (
             "You are the Valstorm Developer running directly on the user's machine in YOLO Mode (Port 8650).\n"
@@ -359,6 +369,10 @@ Root
             "valstorm_create_drip_cadence",
             "valstorm_enroll_in_drip",
             "valstorm_send_sms",
+            "valstorm_marketplace_list_apps",
+            "valstorm_marketplace_install_app",
+            "platform_methods_search",
+            "platform_invoke",
             "valstorm_vfs_search",
             "valstorm_vfs_browse",
             "valstorm_vfs_get_file",
@@ -400,7 +414,7 @@ Root
         "api_name": "orchestrator",
         "description": "High-level planning, workflow orchestration, and subagent delegation.",
         "provider": "valstorm",
-        "model": "gemini-4-argon",
+        "model": "gemini-4-neon",
         "model_tier": "tier_1",
         "system_prompt": (
             "You are the Valstorm Lead Orchestrator & Chief of Staff. You coordinate complex workflows across the business, "
@@ -431,6 +445,8 @@ Root
             "valstorm_schema_inspect",
             "valstorm_mongo_query",
             "valstorm_records_hydrate_batch",
+            "platform_methods_search",
+            "platform_invoke",
             "valstorm_vfs_search",
             "valstorm_vfs_browse",
             "valstorm_vfs_get_file",
@@ -517,7 +533,7 @@ Root
         "api_name": "marketer",
         "description": "Specialist in GTM launch strategy, landing page copy, email sequences, SEO briefs, conversion rate optimization (CRO), and crisp positioning.",
         "provider": "valstorm",
-        "model": "gemini-4-argon",
+        "model": "gemini-4-neon",
         "model_tier": "tier_1",
         "system_prompt": (
             "You are the Growth Marketer running directly in the user's workspace.\n"
@@ -554,6 +570,8 @@ Root
             "valstorm_generate_dashboard",
             "valstorm_analytics_compute",
             "valstorm_send_sms",
+            "platform_methods_search",
+            "platform_invoke",
         ],
         "attached_skill_slugs": [
             "marketing-positioning-framework",
@@ -633,7 +651,7 @@ Root
         "api_name": "backend-tester",
         "description": "Specialized in running API test suites, pytest execution, coverage analysis, and regression prevention.",
         "provider": "valstorm",
-        "model": "gemini-4-argon",
+        "model": "gemini-4-neon",
         "model_tier": "tier_1",
         "system_prompt": "You are the Backend Tester. You execute test suites, verify schema constraints, and ensure code coverage.",
         "allowed_tools": [
@@ -655,7 +673,7 @@ Root
         "api_name": "creative-director",
         "description": "Executive art director for multi-platform visual design, layered PSD ad creatives, vector branding, motion graphics (Lottie), UI/UX wireframes, and executive pitch decks.",
         "provider": "valstorm",
-        "model": "gemini-4-argon",
+        "model": "gemini-4-neon",
         "model_tier": "tier_1",
         "system_prompt": (
             "You are the Creative Studio & Design Director operating within Valstorm.\n"
@@ -681,7 +699,7 @@ Root
         "api_name": "video-editor",
         "description": "Specialized in video workflow automation, FFmpeg pipelines, Veo 3.1 video generation, Gemini 3 Pro Image keyframe creation, and FilmCraft timeline assembly.",
         "provider": "valstorm",
-        "model": "gemini-3.8-flash",
+        "model": "gemini-4-hydrogen",
         "model_tier": "tier_2",
         "system_prompt": (
             "You are the Video & Media Editor operating within Valstorm.\n"
@@ -705,7 +723,7 @@ Root
         "api_name": "marketing-specialist",
         "description": "Full-stack growth & creative marketing specialist combining conversion copywriting, campaign analytics, AI ad creative generation (`generate_image`), and social video production (`generate_video`).",
         "provider": "valstorm",
-        "model": "gemini-4-argon",
+        "model": "gemini-4-neon",
         "model_tier": "tier_1",
         "system_prompt": (
             "You are the Marketing Specialist operating within Valstorm.\n"
@@ -717,6 +735,7 @@ Root
             "valstorm_sql_query", "valstorm_record_cud", "valstorm_schema_inspect",
             "valstorm_create_list_filter", "valstorm_generate_report", "valstorm_generate_dashboard",
             "valstorm_analytics_compute", "valstorm_send_sms",
+            "platform_methods_search", "platform_invoke",
             "valstorm_vfs_search", "valstorm_vfs_browse", "valstorm_vfs_get_file", "valstorm_vfs_write_file",
             "skill_view", "skill_list", "clarify", "calculator", "memory_manage"
         ],
@@ -968,7 +987,7 @@ def load_profile(profile_name_or_slug: str) -> Dict[str, Any]:
         "api_name": clean_name,
         "description": f"Agent operating under profile '{clean_name}'",
         "provider": "valstorm",
-        "model": "gemini-4-argon",
+        "model": "gemini-4-neon",
         "system_prompt": f"You are a specialized agent operating under the '{clean_name}' profile.",
         "allowed_tools": [
             "delegate_task",
@@ -987,6 +1006,10 @@ def load_profile(profile_name_or_slug: str) -> Dict[str, Any]:
             "valstorm_create_drip_cadence",
             "valstorm_enroll_in_drip",
             "valstorm_send_sms",
+            "valstorm_marketplace_list_apps",
+            "valstorm_marketplace_install_app",
+            "platform_methods_search",
+            "platform_invoke",
             "valstorm_vfs_search",
             "valstorm_vfs_browse",
             "valstorm_vfs_get_file",

@@ -44,9 +44,9 @@ def _normalize_gemini_finish(raw: Any) -> Optional[str]:
 _GEMINI_RE = re.compile(r"^(google/)?gemini-[a-z0-9.\-]+$", re.IGNORECASE)
 
 VERTEX_MODEL_MAP: Dict[str, str] = {
-    "gemini-flash-latest": "gemini-3.8-flash",
+    "gemini-flash-latest": "gemini-4-hydrogen",
     "gemini-flash-lite-latest": "gemini-3.5-flash-lite",
-    "gemini-pro-latest": "gemini-4-argon",
+    "gemini-pro-latest": "gemini-4-neon",
 }
 
 def is_gemini_model(model_name: Optional[str]) -> bool:
@@ -229,7 +229,11 @@ class GeminiProvider(BaseProvider):
         if explicit_flag is None:
             env_flag = os.environ.get("VALSTORM_GEMINI_EXPLICIT_CACHE", "").strip().lower()
             explicit_flag = env_flag in ("1", "true", "yes", "on")
-        if not explicit_flag or model_name in self._explicit_cache_unsupported_models:
+        if (
+            not explicit_flag
+            or model_name in self._explicit_cache_unsupported_models
+            or model_name.lower().startswith("gemini-4")
+        ):
             return None
 
         prefix_key, _, prefix_chars = self._compute_prefix_cache_key(model_name, system_instruction, tools)
@@ -835,6 +839,11 @@ class GeminiProvider(BaseProvider):
         use_vertex = self.backend == "vertex" or (self.backend != "aistudio" and self.is_enterprise_mode())
         if use_vertex:
             model_name = VERTEX_MODEL_MAP.get(model_name.lower(), model_name)
+        wire_model = (
+            VERTEX_MODEL_MAP.get(model_name.lower(), model_name)
+            if self.backend in ("vertex", "valstorm")
+            else model_name
+        )
 
         # Intelligent routing for Valstorm Gateway backend (GEAP/Partner models)
         if self.backend == "valstorm" and not is_gemini_model(model_name):
@@ -876,7 +885,7 @@ class GeminiProvider(BaseProvider):
                 config = self._build_config(system_instruction, gemini_tools, cfg_kwargs)
                 try:
                     return await client.aio.models.generate_content_stream(
-                        model=model_name,
+                        model=wire_model,
                         contents=contents,
                         config=config,
                     )
@@ -987,7 +996,7 @@ class GeminiProvider(BaseProvider):
                     client = self._get_client()
                     config = self._build_config(system_instruction, gemini_tools, {**kwargs, "model": model_name})
                     full_resp = await client.aio.models.generate_content(
-                        model=model_name,
+                        model=wire_model,
                         contents=contents,
                         config=config,
                     )
@@ -1075,6 +1084,11 @@ class GeminiProvider(BaseProvider):
         use_vertex = self.backend == "vertex" or (self.backend != "aistudio" and self.is_enterprise_mode())
         if use_vertex:
             model_name = VERTEX_MODEL_MAP.get(model_name.lower(), model_name)
+        wire_model = (
+            VERTEX_MODEL_MAP.get(model_name.lower(), model_name)
+            if self.backend in ("vertex", "valstorm")
+            else model_name
+        )
 
         # Intelligent routing for Valstorm Gateway backend (GEAP/Partner models)
         if self.backend == "valstorm" and not is_gemini_model(model_name):
@@ -1111,7 +1125,7 @@ class GeminiProvider(BaseProvider):
                 config = self._build_config(system_instruction, gemini_tools, cfg_kwargs)
                 try:
                     response = await client.aio.models.generate_content(
-                        model=model_name,
+                        model=wire_model,
                         contents=contents,
                         config=config,
                     )

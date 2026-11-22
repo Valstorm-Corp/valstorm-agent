@@ -4,6 +4,7 @@ import json
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from core.tools import ToolRegistry, tool
+from tools.github_tools import create_github_tools
 from tools.valstorm_client import ValstormApiClient
 from tools.slack_tools import create_slack_tools
 
@@ -863,6 +864,213 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         )
         return json.dumps(res, indent=2, default=str)
 
+    @tool
+    async def valstorm_marketplace_list_apps(category: Optional[str] = None) -> str:
+        """Lists all available applications in the Valstorm Marketplace and indicates which are already installed.
+
+        Args:
+            category: Optional category filter (e.g. 'crm', 'communication', 'ai', 'finance', 'marketing', 'productivity', 'developer').
+        """
+        catalog = await api_client.list_marketplace_apps()
+        installed_ids: set[str] = set()
+        installed_names: set[str] = set()
+        try:
+            installed = await api_client.list_installed_apps()
+            for item in installed:
+                if isinstance(item, dict) and item.get("installed", True):
+                    if item.get("id"):
+                        installed_ids.add(str(item["id"]))
+                    if item.get("name"):
+                        installed_names.add(str(item["name"]).strip().lower())
+        except Exception:
+            pass
+
+        results = []
+        for app in catalog:
+            if not isinstance(app, dict):
+                continue
+            if category and str(app.get("category") or "").lower() != category.strip().lower():
+                continue
+            app_id = str(app.get("id") or "")
+            app_name = str(app.get("name") or "")
+            results.append(
+                {
+                    "id": app_id,
+                    "name": app_name,
+                    "category": app.get("category"),
+                    "tagline": app.get("tagline"),
+                    "description": app.get("description"),
+                    "version": app.get("version"),
+                    "schema_count": app.get("schema_count"),
+                    "installed": app_id in installed_ids or app_name.strip().lower() in installed_names,
+                }
+            )
+        return json.dumps(results, indent=2, default=str)
+
+    @tool
+    async def platform_methods_search(
+        query: Optional[str] = None,
+        namespace: Optional[str] = None,
+        limit: int = 25,
+    ) -> str:
+        """Searches all invocable Open Valstorm PlatformContext and active plugin RPC methods.
+
+        Returns canonical target paths, parameter signatures, descriptions, required scopes,
+        and available namespaces. Call this before `platform_invoke` to verify exact method
+        names and parameters for any platform or integration capability not covered by a
+        dedicated tool.
+
+        Args:
+            query: Optional keyword(s) to search method targets, descriptions, or parameters (e.g. 'invoice', 'phone_formatter', 'subscription').
+            namespace: Optional platform or plugin namespace filter (e.g. 'quickbooks', 'stripe', 'github', 'records', 'utils').
+            limit: Maximum number of matching methods to return (default 25, max 100).
+        """
+        clamped_limit = max(1, min(int(limit or 25), 100))
+        res = await api_client.list_platform_methods(
+            query=query,
+            namespace=namespace,
+            limit=clamped_limit,
+        )
+        methods = res.get("methods", []) if isinstance(res, dict) else []
+        if not isinstance(methods, list):
+            methods = []
+
+        # Backwards-compatibility guard: if connected to an older API server that ignores
+        # query/namespace/limit params and returns the full catalog, filter and slice locally.
+        server_filtered = isinstance(res, dict) and "total_available" in res
+        if not server_filtered:
+            all_methods = [m for m in methods if isinstance(m, dict)]
+            ns_counts: Dict[str, int] = {}
+            for m in all_methods:
+                tags = m.get("tags") or []
+                ns = str(tags[0]) if tags else str(m.get("target", "")).split(".", 1)[0]
+                if ns:
+                    ns_counts[ns] = ns_counts.get(ns, 0) + 1
+
+            candidates = all_methods
+            clean_ns = (namespace or "").strip().lower().replace("-", "_")
+            if clean_ns:
+                candidates = [
+                    m
+                    for m in candidates
+                    if (m.get("tags") and str(m["tags"][0]).lower() == clean_ns)
+                    or str(m.get("target", "")).lower().startswith(f"{clean_ns}.")
+                ]
+
+            clean_q = (query or "").strip().lower()
+            if clean_q:
+                import re as _re
+
+                tokens = [t for t in _re.split(r"[\s./:_-]+", clean_q) if t]
+                scored = []
+                for m in candidates:
+                    target_l = str(m.get("target", "")).lower()
+                    desc_l = str(m.get("description", "")).lower()
+                    scope_l = str(m.get("scope", "")).lower()
+                    score = 0
+                    if target_l == clean_q or target_l.replace(".", "/") == clean_q:
+                        score += 120
+                    elif clean_q in target_l:
+                        score += 60
+                    elif clean_q in desc_l:
+                        score += 25
+                    for tok in tokens:
+                        if tok in target_l:
+                            score += 20
+                        if tok in scope_l:
+                            score += 12
+                        if tok in desc_l:
+                            score += 10
+                    if score > 0:
+                        scored.append((score, target_l, m))
+                scored.sort(key=lambda row: (-row[0], row[1]))
+                filtered = [row[2] for row in scored]
+            else:
+                filtered = sorted(candidates, key=lambda m: str(m.get("target", "")))
+
+            sliced = filtered[:clamped_limit]
+            res = {
+                "methods": sliced,
+                "count": len(sliced),
+                "total_matched": len(filtered),
+                "total_available": len(all_methods),
+                "namespaces": dict(sorted(ns_counts.items())),
+            }
+
+        return json.dumps(res, indent=2, default=str)
+
+    @tool
+    async def platform_invoke(
+        target: str,
+        kwargs: Optional[Union[Dict[str, Any], str]] = None,
+        args: Optional[Union[List[Any], str]] = None,
+    ) -> str:
+        """Dynamically invokes any exposed Open Valstorm PlatformContext or active plugin RPC method.
+
+        Calls `POST /v1/platform/invoke/{target}`, enforcing all server-side allowlists,
+        `@platform_method(exposed=False)` blocks, fine-grained `api_scopes`, and billing tiers.
+        Call `platform_methods_search` first if you need to verify exact target names and parameters.
+
+        Args:
+            target: Canonical dot or slash target path (e.g. 'utils.phone_formatter', 'quickbooks.list_invoices', 'stripe/list_subscriptions').
+            kwargs: Optional dictionary (or JSON object string) of keyword arguments to pass to the method.
+            args: Optional list (or JSON array string) of positional arguments to pass to the method.
+        """
+        clean_target = (target or "").strip()
+        if not clean_target:
+            return "Error: 'target' is required for platform_invoke."
+
+        parsed_kwargs: Dict[str, Any] = {}
+        if kwargs is not None:
+            if isinstance(kwargs, str):
+                stripped = kwargs.strip()
+                if stripped:
+                    try:
+                        loaded = json.loads(stripped)
+                    except Exception as exc:
+                        return f"Error: 'kwargs' must be a valid JSON object: {exc}"
+                    if not isinstance(loaded, dict):
+                        return "Error: 'kwargs' must be a JSON object."
+                    parsed_kwargs = loaded
+            elif isinstance(kwargs, dict):
+                parsed_kwargs = dict(kwargs)
+            else:
+                return "Error: 'kwargs' must be a JSON object."
+
+        parsed_args: List[Any] = []
+        if args is not None:
+            if isinstance(args, str):
+                stripped = args.strip()
+                if stripped:
+                    try:
+                        loaded = json.loads(stripped)
+                    except Exception as exc:
+                        return f"Error: 'args' must be a valid JSON array: {exc}"
+                    if not isinstance(loaded, list):
+                        return "Error: 'args' must be a JSON array."
+                    parsed_args = loaded
+            elif isinstance(args, list):
+                parsed_args = list(args)
+            else:
+                return "Error: 'args' must be a JSON array."
+
+        res = await api_client.invoke_platform_method(clean_target, *parsed_args, **parsed_kwargs)
+        return json.dumps(res, indent=2, default=str)
+
+    @tool
+    async def valstorm_marketplace_install_app(app_id_or_name: str) -> str:
+        """Installs an application from the Valstorm Marketplace into the current organization workspace.
+
+        Compiles all database tables/schemas, foreign keys, permissions, pages, and default records for the app.
+
+        Args:
+            app_id_or_name: The Marketplace App ID or exact name (e.g. 'ValRM', 'ValPhone', 'B2B Sales', 'SendGrid', 'Service').
+        """
+        if not app_id_or_name or not app_id_or_name.strip():
+            return "Error: app_id_or_name cannot be empty."
+        res = await api_client.install_marketplace_app(app_id_or_name.strip())
+        return json.dumps(res, indent=2, default=str)
+
     core_tools = [
         valstorm_sql_query,
         valstorm_mongo_query,
@@ -888,9 +1096,14 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         valstorm_create_drip_cadence,
         valstorm_enroll_in_drip,
         valstorm_send_sms,
+        valstorm_marketplace_list_apps,
+        valstorm_marketplace_install_app,
+        platform_methods_search,
+        platform_invoke,
     ]
     slack_tools = create_slack_tools(client=api_client)
-    return core_tools + slack_tools
+    github_tools = create_github_tools(client=api_client)
+    return core_tools + slack_tools + github_tools
 
 
 def register_valstorm_tools(

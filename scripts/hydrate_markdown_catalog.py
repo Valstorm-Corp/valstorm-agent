@@ -153,8 +153,8 @@ PROFILE_TIER_DEFAULTS: Dict[str, str] = {
 }
 
 PROFILE_MODEL_DEFAULTS: Dict[str, str] = {
-    "tier_1": "gemini-4-argon",
-    "tier_2": "gemini-4-argon",
+    "tier_1": "gemini-4-neon",
+    "tier_2": "gemini-4-hydrogen",
     "tier_3": "gemini-flash-lite-latest",
 }
 
