@@ -5,6 +5,7 @@ matching Valstorm Desktop Electron IPC bridge. Runs on port 8643 by default.
 """
 
 import asyncio
+import base64
 from contextlib import asynccontextmanager
 import contextvars
 from datetime import datetime, timezone
@@ -230,6 +231,48 @@ app.add_middleware(
 active_run_event_queues: Dict[str, asyncio.Queue] = {}
 active_run_tasks: Dict[str, asyncio.Task] = {}
 active_chat_runs: Dict[str, str] = {}
+# Tenant ownership per active run: run_id -> (org_id, user_id)
+active_run_tenants: Dict[str, tuple[Optional[str], Optional[str]]] = {}
+
+
+def _is_cloud_server_mode() -> bool:
+    """Returns True when the server process is operating in multi-tenant Cloud mode."""
+    from tools.valstorm_client import is_cloud_runtime_mode
+    return is_cloud_runtime_mode()
+
+
+def _extract_bearer_or_header_token(
+    authorization: Optional[str],
+    x_valstorm_token: Optional[str],
+) -> Optional[str]:
+    """Extracts a non-placeholder Valstorm bearer or header token."""
+    if x_valstorm_token and x_valstorm_token.strip():
+        return x_valstorm_token.strip()
+    if authorization and authorization.startswith("Bearer "):
+        bearer_val = authorization.split("Bearer ", 1)[1].strip()
+        if bearer_val and bearer_val.lower() not in ("dummy", "none", "null", "undefined", "test", "zed"):
+            return bearer_val
+    return None
+
+
+def _verify_run_tenant_access(
+    resolved_run_id: str,
+    authorization: Optional[str],
+    x_valstorm_token: Optional[str],
+) -> None:
+    """When a caller supplies a Valstorm token for a run endpoint, verify it matches the run's tenant."""
+    caller_token = _extract_bearer_or_header_token(authorization, x_valstorm_token)
+    if not caller_token:
+        return
+    owner = active_run_tenants.get(resolved_run_id)
+    if not owner:
+        return
+    owner_org, owner_user = owner
+    caller_org, caller_user = _extract_jwt_identity(caller_token)
+    if owner_org and caller_org and caller_org != owner_org:
+        raise HTTPException(status_code=403, detail="Forbidden: run belongs to a different organization.")
+    if owner_user and caller_user and caller_user != owner_user:
+        raise HTTPException(status_code=403, detail="Forbidden: run belongs to a different user.")
 
 
 class RunRequestPayload(BaseModel):
@@ -252,6 +295,8 @@ class RunRequestPayload(BaseModel):
     valstorm_token: Optional[str] = None
     valstorm_base_url: Optional[str] = None
     desktop_sync_url: Optional[str] = None
+    organization_id: Optional[str] = None
+    user_id: Optional[str] = None
     user_context: Optional[Dict[str, Any]] = None
     user_message_id: Optional[str] = None
     workdir: Optional[str] = None
@@ -420,15 +465,33 @@ def _get_provider_instance(
     return chain, resolved_model, resolved_provider
 
 
+_LOCAL_HOST_ONLY_TOOLS = frozenset({
+    "terminal_exec",
+    "read_file",
+    "write_file",
+    "patch_file",
+    "search_files",
+    "read_local_file",
+    "code_outline",
+    "find_symbols",
+    "package_blast_radius",
+    "process_manage",
+    "execute_code",
+    "computer_use",
+})
+
+
 def _build_server_tool_registry(
     valstorm_token: Optional[str] = None,
     override_base_url: Optional[str] = None,
     valstorm_env: Optional[str] = None,
     memory_store: Optional[MemoryStore] = None,
     session_store: Optional[SessionStore] = None,
+    allow_local_host_tools: bool = True,
 ) -> ToolRegistry:
     registry = get_default_registry()
-    register_developer_tools(registry)
+    if allow_local_host_tools:
+        register_developer_tools(registry)
     register_tier1_tools(registry)
     register_ui_navigator_tools(registry)
     register_memory_tools(registry, memory_store=memory_store, session_store=session_store)
@@ -446,98 +509,22 @@ def _build_server_tool_registry(
             client = ValstormApiClient(token=token, base_url=base_url, refresh_token=refresh_token, auth_file_path=auth_file_path)
             platform = RemotePlatformContext(client=client)
             register_valstorm_tools(registry=registry, client=client)
-            register_execute_code_tools(registry=registry, client=client, platform=platform)
+            if allow_local_host_tools:
+                register_execute_code_tools(registry=registry, client=client, platform=platform)
         except Exception as err:
             logger.warning(f"Failed to register platform context tools: {err}")
+
+    if not allow_local_host_tools:
+        for host_tool in _LOCAL_HOST_ONLY_TOOLS:
+            registry._tools.pop(host_tool, None)
+
     return registry
 
 
-def _make_remote_plugin_tool(
-    tool_name: str,
-    tool_desc: str,
-    tool_params: Dict[str, Any],
-    base_url: str,
-    valstorm_token: str,
-):
-    async def _remote_plugin_tool_runner(**kwargs) -> str:
-        clean_base = base_url.rstrip("/")
-        if not clean_base.endswith("/v1") and "/v1" not in clean_base:
-            clean_base = f"{clean_base}/v1"
-        exec_url = f"{clean_base}/ai/tools/execute"
-        auth_hdr = valstorm_token if valstorm_token.startswith("Bearer ") else f"Bearer {valstorm_token}"
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                exec_url,
-                json={"tool_name": tool_name, "arguments": kwargs},
-                headers={"Authorization": auth_hdr, "Content-Type": "application/json"},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            result = data.get("result", data) if isinstance(data, dict) else data
-            return json.dumps(result, indent=2, default=str) if not isinstance(result, str) else result
-
-    _remote_plugin_tool_runner.__name__ = tool_name
-    setattr(_remote_plugin_tool_runner, "_is_tool", True)
-    setattr(_remote_plugin_tool_runner, "_tool_name", tool_name)
-    setattr(_remote_plugin_tool_runner, "_tool_description", tool_desc)
-    setattr(
-        _remote_plugin_tool_runner,
-        "_tool_schema",
-        {
-            "name": tool_name,
-            "description": tool_desc,
-            "parameters": tool_params or {"type": "object", "properties": {}},
-        },
-    )
-    return _remote_plugin_tool_runner
-
-
-async def _discover_and_register_remote_plugin_tools(
-    registry: ToolRegistry,
-    valstorm_token: Optional[str],
-    valstorm_base_url: Optional[str],
-) -> List[str]:
-    """Discovers cross-plugin AI tools from Open Valstorm (`GET /v1/ai/tools`) and registers any missing tools."""
-    effective_base = valstorm_base_url or os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL")
-    if not valstorm_token or not effective_base:
-        return []
-
-    clean_base = effective_base.rstrip("/")
-    if not clean_base.endswith("/v1") and "/v1" not in clean_base:
-        clean_base = f"{clean_base}/v1"
-    tools_url = f"{clean_base}/ai/tools"
-    auth_hdr = valstorm_token if valstorm_token.startswith("Bearer ") else f"Bearer {valstorm_token}"
-
-    discovered_names: List[str] = []
-    try:
-        async with httpx.AsyncClient(timeout=2.5) as client:
-            resp = await client.get(tools_url, headers={"Authorization": auth_hdr})
-            if resp.status_code != 200:
-                return []
-            data = resp.json()
-            remote_tools = data.get("tools", []) if isinstance(data, dict) else []
-            for t_def in remote_tools:
-                if not isinstance(t_def, dict):
-                    continue
-                t_name = str(t_def.get("name") or "").strip()
-                if not t_name:
-                    continue
-                discovered_names.append(t_name)
-                if registry.get(t_name) is not None:
-                    continue
-                t_desc = str(t_def.get("description") or f"Tool: {t_name}")
-                t_params = t_def.get("parameters") if isinstance(t_def.get("parameters"), dict) else {"type": "object", "properties": {}}
-                runner = _make_remote_plugin_tool(
-                    tool_name=t_name,
-                    tool_desc=t_desc,
-                    tool_params=t_params,
-                    base_url=clean_base,
-                    valstorm_token=valstorm_token,
-                )
-                registry.register(runner)
-    except Exception as exc:
-        logger.debug(f"Cross-plugin tool discovery from {tools_url} skipped: {exc}")
-    return discovered_names
+from tools.remote_plugins import (
+    discover_and_register_remote_plugin_tools_async as _discover_and_register_remote_plugin_tools,
+    make_remote_plugin_tool as _make_remote_plugin_tool,
+)
 
 
 _MAX_SAFE_INTEGER = 9_007_199_254_740_991
@@ -552,6 +539,41 @@ def _safe_token_count(value: object) -> int:
 
 def _optional_non_empty_string(value: object) -> Optional[str]:
     return value if isinstance(value, str) and value.strip() else None
+
+
+def _extract_jwt_identity(token: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Best-effort extraction of (org_id, user_id) from a Valstorm Bearer JWT or pat_ token."""
+    raw = (token or "").strip()
+    if raw.lower().startswith("bearer "):
+        raw = raw.split(" ", 1)[1].strip()
+    if not raw:
+        return None, None
+    try:
+        if raw.startswith("vst_pat_"):
+            body = raw[len("vst_pat_"):]
+            parts = body.split("_", 1)
+            if parts and parts[0]:
+                padded = parts[0] + "=" * (-len(parts[0]) % 4)
+                return base64.urlsafe_b64decode(padded).decode("utf-8").strip() or None, None
+        elif raw.startswith("pat_"):
+            parts = raw.split("_", 2)
+            if len(parts) == 3:
+                padded = parts[1] + "=" * (-len(parts[1]) % 4)
+                return base64.urlsafe_b64decode(padded).decode("utf-8").strip() or None, None
+        elif raw.count(".") == 2:
+            seg = raw.split(".")[1]
+            padded = seg + "=" * (-len(seg) % 4)
+            claims = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+            if isinstance(claims, dict):
+                org_id = claims.get("org_id") or claims.get("organization_id") or claims.get("org")
+                user_id = claims.get("sub") or claims.get("user_id") or claims.get("user")
+                return (
+                    str(org_id).strip() if org_id else None,
+                    str(user_id).strip() if user_id else None,
+                )
+    except Exception:
+        pass
+    return None, None
 
 
 async def _sync_turn_to_valstorm(
@@ -574,6 +596,8 @@ async def _sync_turn_to_valstorm(
     user_text: Optional[str] = None,
     user_message_id: Optional[str] = None,
     desktop_sync_url: Optional[str] = None,
+    organization_id: Optional[str] = None,
+    user_id: Optional[str] = None,
 ):
     """Directly synchronizes terminal turn execution state, messages, and token telemetry to Valstorm backend.
     
@@ -635,11 +659,24 @@ async def _sync_turn_to_valstorm(
         payload["subagent_results"] = subagents
         payload["child_syncs"] = subagents
 
+    jwt_org_id, jwt_user_id = _extract_jwt_identity(valstorm_token)
+    resolved_org_id = (organization_id or "").strip() or jwt_org_id
+    resolved_user_id = (user_id or "").strip() or jwt_user_id
+
+    if resolved_org_id:
+        payload["organization_id"] = resolved_org_id
+    if resolved_user_id:
+        payload["user_id"] = resolved_user_id
+
     auth_header = valstorm_token if valstorm_token.startswith("Bearer ") else f"Bearer {valstorm_token}"
     headers = {
         "Content-Type": "application/json",
         "Authorization": auth_header,
     }
+    if resolved_org_id:
+        headers["X-Organization-ID"] = resolved_org_id
+    if resolved_user_id:
+        headers["X-User-ID"] = resolved_user_id
 
     logger.info(f"[{run_id}] Direct runtime daemon syncing to Valstorm: {endpoint} (status={status}, tokens={input_tokens}+{output_tokens})")
     for attempt in range(1, 4):
@@ -786,10 +823,19 @@ async def _execute_agent_run(
 
     # Instantiate requested execution sandbox
     sandbox: Optional[BaseSandbox] = None
+    subreg_tok = None
+    procreg_tok = None
+    ephemeral_run_dir: Optional[str] = None
+    has_isolated_sandbox = False
     from_pool = False
     pool = get_global_sandbox_pool()
+    cloud_server = _is_cloud_server_mode()
     default_env = os.environ.get("VALSTORM_DEFAULT_SANDBOX", "host").strip().lower()
-    exec_env = (payload.execution_environment or default_env or "host").strip().lower()
+    if cloud_server:
+        req_env = (payload.execution_environment or "cloud").strip().lower()
+        exec_env = "cloud" if req_env in ("", "host", "device", "local") else req_env
+    else:
+        exec_env = (payload.execution_environment or default_env or "host").strip().lower()
     target_model: Optional[str] = payload.model
     resolved_provider: Optional[str] = payload.provider
 
@@ -797,10 +843,10 @@ async def _execute_agent_run(
         f"[{run_id}] Run initiated | prompt='{payload.input[:80]}' | env={exec_env} | profile={payload.profile} | model={payload.model} | chat_id={effective_chat_id}"
     )
 
-    req_workdir = payload.workdir or payload.workspace_dir
+    req_workdir = None if cloud_server else (payload.workdir or payload.workspace_dir)
     req_os_target = None
     if isinstance(payload.user_context, dict):
-        if not req_workdir:
+        if not cloud_server and not req_workdir:
             req_workdir = payload.user_context.get("workspace_dir") or payload.user_context.get("workdir")
         req_os_target = payload.user_context.get("os_target")
 
@@ -810,11 +856,14 @@ async def _execute_agent_run(
             try:
                 sandbox = CloudMicroVMSandbox()
                 await sandbox.start()
+                has_isolated_sandbox = True
             except (ValueError, RuntimeError) as e:
+                import tempfile
+                ephemeral_run_dir = tempfile.mkdtemp(prefix=f"vsagent_run_{run_id}_")
                 logger.warning(
-                    f"[{run_id}] Cloud microVM sandbox unavailable ({e}). Falling back to HostSandbox."
+                    f"[{run_id}] Cloud microVM sandbox unavailable ({e}). Falling back to ephemeral sandbox dir with host tools disabled."
                 )
-                sandbox = HostSandbox(base_dir=req_workdir)
+                sandbox = HostSandbox(base_dir=ephemeral_run_dir)
                 await sandbox.start()
         elif exec_env in ("docker", "container"):
             if pool is not None:
@@ -823,13 +872,14 @@ async def _execute_agent_run(
             else:
                 sandbox = DockerSandbox()
                 await sandbox.start()
+            has_isolated_sandbox = True
         else:
             sandbox = HostSandbox(base_dir=req_workdir, os_target=req_os_target)
             await sandbox.start()
 
         sb_latency_ms = (time.perf_counter() - t_sb_start) * 1000
         logger.info(
-            f"[{run_id}] Sandbox ready: type={exec_env} ({sandbox.__class__.__name__}) in {sb_latency_ms:.1f}ms (from_pool={from_pool})"
+            f"[{run_id}] Sandbox ready: type={exec_env} ({sandbox.__class__.__name__}) in {sb_latency_ms:.1f}ms (from_pool={from_pool}, isolated={has_isolated_sandbox})"
         )
 
         token = set_current_sandbox(sandbox)
@@ -848,16 +898,22 @@ async def _execute_agent_run(
             valstorm_base_url,
             org_id=str(ctx_org_id) if ctx_org_id else None,
             user_id=str(ctx_user_id) if ctx_user_id else None,
-            is_cloud_mode=(exec_env in ("cloud", "e2b", "serverless") or os.environ.get("VALSTORM_AGENT_MODE", "host").lower() == "cloud"),
+            is_cloud_mode=(exec_env in ("cloud", "e2b", "serverless") or cloud_server),
             has_working_memory_injected=has_wm,
         )
         q_tok = set_current_event_queue(queue)
 
         try:
-            from tools.delegation import SubagentRegistry
-            SubagentRegistry.get_instance().clear()
+            from tools.delegation import SubagentRegistry, set_current_subagent_registry
+            subreg_tok = set_current_subagent_registry(SubagentRegistry())
         except Exception:
-            pass
+            subreg_tok = None
+
+        try:
+            from tools.process_manager import ProcessRegistry, set_current_process_registry
+            procreg_tok = set_current_process_registry(ProcessRegistry())
+        except Exception:
+            procreg_tok = None
 
         session_store = SessionStore()
         memory_store = MemoryStore()
@@ -884,30 +940,27 @@ async def _execute_agent_run(
             valstorm_token,
             valstorm_base_url,
         )
+        allow_local_host_tools = (not cloud_server) or has_isolated_sandbox
         full_tools = _build_server_tool_registry(
             valstorm_token=valstorm_token,
             override_base_url=valstorm_base_url,
             memory_store=memory_store,
             session_store=session_store,
+            allow_local_host_tools=allow_local_host_tools,
         )
-        discovered_plugin_tools = await _discover_and_register_remote_plugin_tools(
+        await _discover_and_register_remote_plugin_tools(
             registry=full_tools,
             valstorm_token=valstorm_token,
             valstorm_base_url=valstorm_base_url,
         )
 
+        # Strictly scope tools (including discovered Open Valstorm plugin tools &
+        # platform_invoke) against payload.allowed_tools or profile_cfg.allowed_tools.
+        # Supports exact names, globs ('quickbooks_*'), 'plugin:<slug>', and '!exclude'.
         if payload.allowed_tools and hasattr(full_tools, "filter_by_whitelist"):
-            merged_whitelist = list(dict.fromkeys([
-                *(profile_cfg.get("allowed_tools") or []),
-                *payload.allowed_tools,
-            ]))
-            tools = full_tools.filter_by_whitelist(merged_whitelist)
+            tools = full_tools.filter_by_whitelist(list(payload.allowed_tools))
         elif profile_cfg and profile_cfg.get("allowed_tools") and hasattr(full_tools, "filter_by_whitelist"):
-            merged_whitelist = list(dict.fromkeys([
-                *(profile_cfg.get("allowed_tools") or []),
-                *discovered_plugin_tools,
-            ]))
-            tools = full_tools.filter_by_whitelist(merged_whitelist)
+            tools = full_tools.filter_by_whitelist(list(profile_cfg["allowed_tools"]))
         else:
             tools = full_tools
 
@@ -1240,6 +1293,12 @@ async def _execute_agent_run(
         effective_sync_url = payload.desktop_sync_url
         if not effective_sync_url and isinstance(payload.user_context, dict):
             effective_sync_url = payload.user_context.get("desktop_sync_url") or payload.user_context.get("sync_url")
+        effective_org_id = payload.organization_id or (
+            payload.user_context.get("organization_id") if isinstance(payload.user_context, dict) else None
+        )
+        effective_user_id = payload.user_id or (
+            payload.user_context.get("user_id") if isinstance(payload.user_context, dict) else None
+        )
 
         await _sync_turn_to_valstorm(
             chat_id=effective_chat_id,
@@ -1260,6 +1319,8 @@ async def _execute_agent_run(
             user_text=payload.input,
             user_message_id=getattr(payload, "user_message_id", None),
             desktop_sync_url=effective_sync_url,
+            organization_id=effective_org_id,
+            user_id=effective_user_id,
         )
 
         # Smart Context, Memory & Hermes Skill Curator: Asynchronously extract facts and curate procedural skills
@@ -1318,6 +1379,12 @@ async def _execute_agent_run(
         effective_sync_url = payload.desktop_sync_url
         if not effective_sync_url and isinstance(payload.user_context, dict):
             effective_sync_url = payload.user_context.get("desktop_sync_url") or payload.user_context.get("sync_url")
+        effective_org_id = payload.organization_id or (
+            payload.user_context.get("organization_id") if isinstance(payload.user_context, dict) else None
+        )
+        effective_user_id = payload.user_id or (
+            payload.user_context.get("user_id") if isinstance(payload.user_context, dict) else None
+        )
 
         await _sync_turn_to_valstorm(
             chat_id=effective_chat_id,
@@ -1334,6 +1401,8 @@ async def _execute_agent_run(
             user_text=payload.input,
             user_message_id=getattr(payload, "user_message_id", None),
             desktop_sync_url=effective_sync_url,
+            organization_id=effective_org_id,
+            user_id=effective_user_id,
         )
     except Exception as e:
         logger.error(f"[{run_id}] Run failed with exception: {e}", exc_info=True)
@@ -1352,6 +1421,12 @@ async def _execute_agent_run(
         effective_sync_url = payload.desktop_sync_url
         if not effective_sync_url and isinstance(payload.user_context, dict):
             effective_sync_url = payload.user_context.get("desktop_sync_url") or payload.user_context.get("sync_url")
+        effective_org_id = payload.organization_id or (
+            payload.user_context.get("organization_id") if isinstance(payload.user_context, dict) else None
+        )
+        effective_user_id = payload.user_id or (
+            payload.user_context.get("user_id") if isinstance(payload.user_context, dict) else None
+        )
 
         await _sync_turn_to_valstorm(
             chat_id=effective_chat_id,
@@ -1369,6 +1444,8 @@ async def _execute_agent_run(
             user_text=payload.input,
             user_message_id=getattr(payload, "user_message_id", None),
             desktop_sync_url=effective_sync_url,
+            organization_id=effective_org_id,
+            user_id=effective_user_id,
         )
     finally:
         try:
@@ -1382,13 +1459,37 @@ async def _execute_agent_run(
         for cid_key in (payload.chat_id, payload.session_id, effective_chat_id):
             if cid_key and active_chat_runs.get(cid_key) == run_id:
                 active_chat_runs.pop(cid_key, None)
+        if subreg_tok is not None:
+            try:
+                from tools.delegation import reset_current_subagent_registry
+                reset_current_subagent_registry(subreg_tok)
+            except Exception:
+                pass
+        if procreg_tok is not None:
+            try:
+                from tools.process_manager import reset_current_process_registry
+                reset_current_process_registry(procreg_tok)
+            except Exception:
+                pass
+        if ephemeral_run_dir:
+            try:
+                import shutil
+                shutil.rmtree(ephemeral_run_dir, ignore_errors=True)
+            except Exception:
+                pass
+        set_current_valstorm_auth(None, None)
         set_current_sandbox(None)
         setattr(queue, "_sentinel_pushed", True)
         await queue.put(None)  # Sentinel to close SSE stream
 
 
 def _resolve_active_run_id(target_id: str) -> Optional[str]:
-    """Resolves an in-flight run ID with exact, chat_id/session_id, prefix, or timestamp-prefix tolerance."""
+    """Resolves an in-flight run ID.
+
+    In multi-tenant Cloud mode, strictly allows exact run_id or exact active_chat_runs
+    lookup only (disabling timestamp-prefix and single-active-run fallbacks so concurrent
+    tenants can never attach to or cancel another tenant's run).
+    """
     if not target_id:
         return None
     if target_id in active_run_event_queues:
@@ -1397,7 +1498,10 @@ def _resolve_active_run_id(target_id: str) -> Optional[str]:
     if mapped_run_id and (mapped_run_id in active_run_event_queues or mapped_run_id in active_run_tasks):
         return mapped_run_id
 
-    # Prefix or timestamp match (e.g. run_1787177896434 matching run_1787177896438_e21f71)
+    if _is_cloud_server_mode():
+        return None
+
+    # Local/host-only fuzzy tolerance: prefix or timestamp match
     parts = target_id.split("_")
     ts_prefix = parts[1][:10] if len(parts) > 1 and len(parts[1]) >= 10 else None
 
@@ -1407,7 +1511,7 @@ def _resolve_active_run_id(target_id: str) -> Optional[str]:
         if ts_prefix and ts_prefix in r_id:
             return r_id
 
-    # If only 1 run active, return it as single-session fallback
+    # Host-mode single-session fallback
     if len(active_run_event_queues) == 1:
         return next(iter(active_run_event_queues.keys()))
 
@@ -1430,17 +1534,52 @@ async def health_check():
     }
 
 
+def _resolve_memories_store_for_request(
+    authorization: Optional[str],
+    x_valstorm_token: Optional[str],
+) -> MemoryStore:
+    """Resolves a tenant-scoped MemoryStore in Cloud mode (requiring auth) or default local MemoryStore in Host mode."""
+    token = _extract_bearer_or_header_token(authorization, x_valstorm_token)
+    if _is_cloud_server_mode():
+        if not token:
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication required for /v1/memories in cloud mode.",
+            )
+        org_id, user_id = _extract_jwt_identity(token)
+        if not org_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Valid tenant token with organization scope required in cloud mode.",
+            )
+        return MemoryStore(org_id=org_id, user_id=user_id, is_cloud_mode=True)
+
+    if token:
+        org_id, user_id = _extract_jwt_identity(token)
+        if org_id and user_id:
+            return MemoryStore(org_id=org_id, user_id=user_id)
+    return MemoryStore()
+
+
 @app.get("/v1/memories")
-async def get_memories_endpoint(target: str = "all"):
+async def get_memories_endpoint(
+    target: str = "all",
+    authorization: Optional[str] = Header(None),
+    x_valstorm_token: Optional[str] = Header(None, alias="x-valstorm-token"),
+):
     """Returns persistent declarative memory facts."""
-    mem_store = MemoryStore()
+    mem_store = _resolve_memories_store_for_request(authorization, x_valstorm_token)
     return mem_store.get_facts(target=target)
 
 
 @app.post("/v1/memories")
-async def add_memory_endpoint(payload: MemoryRequestPayload):
+async def add_memory_endpoint(
+    payload: MemoryRequestPayload,
+    authorization: Optional[str] = Header(None),
+    x_valstorm_token: Optional[str] = Header(None, alias="x-valstorm-token"),
+):
     """Directly commits a fact to agent persistent memory."""
-    mem_store = MemoryStore()
+    mem_store = _resolve_memories_store_for_request(authorization, x_valstorm_token)
     content = payload.content.strip()
     if not content:
         raise HTTPException(status_code=400, detail="Content cannot be empty.")
@@ -1463,9 +1602,13 @@ async def add_memory_endpoint(payload: MemoryRequestPayload):
 
 
 @app.delete("/v1/memories")
-async def remove_memory_endpoint(payload: MemoryRemovePayload):
+async def remove_memory_endpoint(
+    payload: MemoryRemovePayload,
+    authorization: Optional[str] = Header(None),
+    x_valstorm_token: Optional[str] = Header(None, alias="x-valstorm-token"),
+):
     """Removes a declarative memory fact containing old_text."""
-    mem_store = MemoryStore()
+    mem_store = _resolve_memories_store_for_request(authorization, x_valstorm_token)
     target = payload.target or "all"
     removed = mem_store.remove_fact(target=target, old_text=payload.old_text)
     return {
@@ -1484,6 +1627,21 @@ async def create_run(
     x_valstorm_api_url: Optional[str] = Header(None, alias="x-valstorm-api-url"),
 ):
     """Creates a new agent execution run and queues it for SSE streaming."""
+    # Resolve Valstorm platform token & API URL before allocating run queues
+    v_token = x_valstorm_token or getattr(payload, "valstorm_token", None)
+    if not v_token and payload.user_context and isinstance(payload.user_context, dict):
+        v_token = payload.user_context.get("access_token")
+    if not v_token and authorization and authorization.startswith("Bearer "):
+        bearer_val = authorization.split("Bearer ", 1)[1].strip()
+        if bearer_val and bearer_val.lower() not in ("dummy", "none", "null", "undefined", "test", "zed"):
+            v_token = bearer_val
+
+    if _is_cloud_server_mode() and not (v_token and str(v_token).strip()):
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required for /v1/runs in cloud mode.",
+        )
+
     run_id = (payload.run_id and payload.run_id.strip()) or f"run_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
     queue = asyncio.Queue()
     active_run_event_queues[run_id] = queue
@@ -1491,18 +1649,28 @@ async def create_run(
         if cid_key:
             active_chat_runs[cid_key] = run_id
 
-    # Resolve Valstorm platform token & API URL
-    v_token = x_valstorm_token or getattr(payload, "valstorm_token", None)
-    if not v_token and payload.user_context and isinstance(payload.user_context, dict):
-        v_token = payload.user_context.get("access_token")
-    if not v_token and authorization and authorization.startswith("Bearer "):
-        v_token = authorization.split("Bearer ", 1)[1].strip()
-
     v_base_url = x_valstorm_api_url or getattr(payload, "valstorm_base_url", None)
     if not v_base_url and payload.user_context and isinstance(payload.user_context, dict):
         v_base_url = payload.user_context.get("sync_url") or payload.user_context.get("api_url")
     if not v_base_url:
         v_base_url = os.environ.get("VALSTORM_BASE_URL") or os.environ.get("VALSTORM_API_URL")
+
+    # Record tenant ownership for this run_id so cross-tenant callers cannot stream or cancel it
+    tok_org, tok_user = _extract_jwt_identity(v_token)
+    ctx_org = (
+        payload.user_context.get("organization_id") or payload.user_context.get("org_id")
+        if isinstance(payload.user_context, dict)
+        else None
+    )
+    ctx_user = (
+        payload.user_context.get("user_id") or payload.user_context.get("id")
+        if isinstance(payload.user_context, dict)
+        else None
+    )
+    owner_org = str(ctx_org).strip() if ctx_org else tok_org
+    owner_user = str(ctx_user).strip() if ctx_user else tok_user
+    if owner_org or owner_user:
+        active_run_tenants[run_id] = (owner_org, owner_user)
 
     task = asyncio.create_task(
         _execute_agent_run(
@@ -1535,11 +1703,17 @@ async def create_run(
 
 
 @app.get("/v1/runs/{run_id}/events")
-async def stream_run_events(run_id: str):
+async def stream_run_events(
+    run_id: str,
+    authorization: Optional[str] = Header(None),
+    x_valstorm_token: Optional[str] = Header(None, alias="x-valstorm-token"),
+):
     """Server-Sent Events (SSE) stream for real-time typewriter chunks and tool badges."""
     resolved_id = _resolve_active_run_id(run_id)
     if not resolved_id:
         raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found or already closed.")
+
+    _verify_run_tenant_access(resolved_id, authorization, x_valstorm_token)
 
     queue = active_run_event_queues.get(resolved_id)
     if not queue:
@@ -1562,6 +1736,7 @@ async def stream_run_events(run_id: str):
         finally:
             active_run_event_queues.pop(resolved_id, None)
             active_run_tasks.pop(resolved_id, None)
+            active_run_tenants.pop(resolved_id, None)
 
     return StreamingResponse(
         sse_generator(),
@@ -1575,9 +1750,15 @@ async def stream_run_events(run_id: str):
 
 
 @app.delete("/v1/runs/{run_id}")
-async def cancel_run(run_id: str):
+async def cancel_run(
+    run_id: str,
+    authorization: Optional[str] = Header(None),
+    x_valstorm_token: Optional[str] = Header(None, alias="x-valstorm-token"),
+):
     """Cancels an in-flight agent run."""
     resolved_id = _resolve_active_run_id(run_id)
+    if resolved_id:
+        _verify_run_tenant_access(resolved_id, authorization, x_valstorm_token)
 
     task = active_run_tasks.get(resolved_id) if resolved_id else None
     queue = active_run_event_queues.get(resolved_id) if resolved_id else None
@@ -1708,13 +1889,20 @@ async def chat_completions_endpoint(
     elif raw_m.lower() == "vsagent":
         profile_slug = "developer"
 
-    v_token = x_valstorm_token
-    if not v_token and authorization and authorization.startswith("Bearer "):
-        bearer_val = authorization.split("Bearer ", 1)[1].strip()
-        if bearer_val and bearer_val.lower() not in ("dummy", "none", "null", "undefined", "test", "zed"):
-            v_token = bearer_val
+    v_token = _extract_bearer_or_header_token(authorization, x_valstorm_token)
+    cloud_mode = _is_cloud_server_mode()
+    if cloud_mode and not v_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required for /v1/chat/completions in cloud mode.",
+        )
 
-    set_current_valstorm_auth(v_token, x_valstorm_api_url)
+    set_current_valstorm_auth(v_token, x_valstorm_api_url, is_cloud_mode=cloud_mode)
+    from tools.delegation import SubagentRegistry, reset_current_subagent_registry, set_current_subagent_registry
+    from tools.process_manager import ProcessRegistry, reset_current_process_registry, set_current_process_registry
+    run_subreg = SubagentRegistry()
+    subreg_tok = set_current_subagent_registry(run_subreg)
+    procreg_tok = set_current_process_registry(ProcessRegistry())
     profile_cfg = load_profile(profile_slug)
 
     provider_inst, target_model, resolved_provider = _get_provider_instance(
@@ -1723,8 +1911,21 @@ async def chat_completions_endpoint(
         x_valstorm_api_url,
     )
 
-    sandbox: BaseSandbox = HostSandbox()
-    await sandbox.start()
+    has_isolated_sandbox = False
+    ephemeral_chat_dir: Optional[str] = None
+    if cloud_mode:
+        try:
+            sandbox: BaseSandbox = CloudMicroVMSandbox()
+            await sandbox.start()
+            has_isolated_sandbox = True
+        except (ValueError, RuntimeError):
+            import tempfile
+            ephemeral_chat_dir = tempfile.mkdtemp(prefix="vsagent_chat_")
+            sandbox = HostSandbox(base_dir=ephemeral_chat_dir)
+            await sandbox.start()
+    else:
+        sandbox = HostSandbox()
+        await sandbox.start()
     set_current_sandbox(sandbox)
 
     session_store = SessionStore()
@@ -1735,9 +1936,15 @@ async def chat_completions_endpoint(
         override_base_url=x_valstorm_api_url,
         memory_store=memory_store,
         session_store=session_store,
+        allow_local_host_tools=(not cloud_mode or has_isolated_sandbox),
+    )
+    await _discover_and_register_remote_plugin_tools(
+        registry=full_tools,
+        valstorm_token=v_token,
+        valstorm_base_url=x_valstorm_api_url,
     )
     if profile_cfg and profile_cfg.get("allowed_tools") and hasattr(full_tools, "filter_by_whitelist"):
-        tools = full_tools.filter_by_whitelist(profile_cfg["allowed_tools"])
+        tools = full_tools.filter_by_whitelist(list(profile_cfg["allowed_tools"]))
     else:
         tools = full_tools
 
@@ -1855,6 +2062,19 @@ async def chat_completions_endpoint(
                 }
                 yield f"data: {json.dumps(err_chunk)}\n\n"
                 yield "data: [DONE]\n\n"
+            finally:
+                try:
+                    await sandbox.close()
+                except Exception:
+                    pass
+                if ephemeral_chat_dir:
+                    try:
+                        import shutil
+                        shutil.rmtree(ephemeral_chat_dir, ignore_errors=True)
+                    except Exception:
+                        pass
+                set_current_valstorm_auth(None, None)
+                set_current_sandbox(None)
 
         return StreamingResponse(
             sse_chat_generator(),
@@ -1871,35 +2091,51 @@ async def chat_completions_endpoint(
     input_tokens = 0
     output_tokens = 0
 
-    async for event in engine.run_turn_stream(
-        session=session,
-        user_input=user_input,
-        images=images or None,
-        model=target_model,
-    ):
-        if event.event_type == StreamEventType.TEXT_CHUNK and event.delta:
-            if not event.metadata.get("failover"):
-                full_content += event.delta
-        elif event.event_type == StreamEventType.TURN_COMPLETE and event.message:
-            usage = getattr(event.message, "usage", None)
-            if usage:
-                input_tokens = _safe_token_count(getattr(usage, "prompt_tokens", 0))
-                output_tokens = _safe_token_count(getattr(usage, "completion_tokens", 0))
-
     try:
-        from core.memory_extractor import extract_and_commit_turn_memory
-        asyncio.create_task(
-            extract_and_commit_turn_memory(
-                user_input=user_input,
-                assistant_output=full_content,
-                memory_store=memory_store,
-                provider=provider_inst,
-                model=target_model,
-                chat_id=session_id,
+        async for event in engine.run_turn_stream(
+            session=session,
+            user_input=user_input,
+            images=images or None,
+            model=target_model,
+        ):
+            if event.event_type == StreamEventType.TEXT_CHUNK and event.delta:
+                if not event.metadata.get("failover"):
+                    full_content += event.delta
+            elif event.event_type == StreamEventType.TURN_COMPLETE and event.message:
+                usage = getattr(event.message, "usage", None)
+                if usage:
+                    input_tokens = _safe_token_count(getattr(usage, "prompt_tokens", 0))
+                    output_tokens = _safe_token_count(getattr(usage, "completion_tokens", 0))
+
+        try:
+            from core.memory_extractor import extract_and_commit_turn_memory
+            asyncio.create_task(
+                extract_and_commit_turn_memory(
+                    user_input=user_input,
+                    assistant_output=full_content,
+                    memory_store=memory_store,
+                    provider=provider_inst,
+                    model=target_model,
+                    chat_id=session_id,
+                )
             )
-        )
-    except Exception:
-        pass
+        except Exception:
+            pass
+    finally:
+        try:
+            await sandbox.close()
+        except Exception:
+            pass
+        if ephemeral_chat_dir:
+            try:
+                import shutil
+                shutil.rmtree(ephemeral_chat_dir, ignore_errors=True)
+            except Exception:
+                pass
+        reset_current_subagent_registry(subreg_tok)
+        reset_current_process_registry(procreg_tok)
+        set_current_valstorm_auth(None, None)
+        set_current_sandbox(None)
 
     return {
         "id": chunk_id,
@@ -1998,8 +2234,21 @@ async def ollama_show_endpoint(request: Request):
 
 
 @app.post("/api/chat")
-async def ollama_chat_endpoint(request: Request):
+async def ollama_chat_endpoint(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_valstorm_token: Optional[str] = Header(None, alias="x-valstorm-token"),
+    x_valstorm_api_url: Optional[str] = Header(None, alias="x-valstorm-api-url"),
+):
     """Ollama-compatible chat endpoint streaming NDJSON chunks."""
+    v_token = _extract_bearer_or_header_token(authorization, x_valstorm_token)
+    cloud_mode = _is_cloud_server_mode()
+    if cloud_mode and not v_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required for /api/chat in cloud mode.",
+        )
+
     try:
         body = await request.json()
     except Exception:
@@ -2064,19 +2313,43 @@ async def ollama_chat_endpoint(request: Request):
             elif raw_m.lower() in ("chief-of-staff", "orchestrator", "developer", "architect", "slack-agent", "writer", "backend-tester", "researcher", "marketer"):
                 profile_slug = raw_m.lower()
 
-            profile_cfg = load_profile(profile_slug)
-            provider_inst, target_model, resolved_provider = _get_provider_instance(None, None, profile_slug)
+            set_current_valstorm_auth(v_token, x_valstorm_api_url, is_cloud_mode=cloud_mode)
+            from tools.delegation import SubagentRegistry, reset_current_subagent_registry, set_current_subagent_registry
+            from tools.process_manager import ProcessRegistry, reset_current_process_registry, set_current_process_registry
+            subreg_tok = set_current_subagent_registry(SubagentRegistry())
+            procreg_tok = set_current_process_registry(ProcessRegistry())
 
-            sandbox: BaseSandbox = HostSandbox()
-            await sandbox.start()
+            profile_cfg = load_profile(profile_slug)
+            provider_inst, target_model, resolved_provider = _get_provider_instance(
+                None, None, profile_slug, v_token, x_valstorm_api_url
+            )
+
+            has_isolated_sandbox = False
+            ephemeral_ollama_dir: Optional[str] = None
+            if cloud_mode:
+                try:
+                    sandbox: BaseSandbox = CloudMicroVMSandbox()
+                    await sandbox.start()
+                    has_isolated_sandbox = True
+                except (ValueError, RuntimeError):
+                    import tempfile
+                    ephemeral_ollama_dir = tempfile.mkdtemp(prefix="vsagent_ollama_")
+                    sandbox = HostSandbox(base_dir=ephemeral_ollama_dir)
+                    await sandbox.start()
+            else:
+                sandbox = HostSandbox()
+                await sandbox.start()
             set_current_sandbox(sandbox)
 
             session_store = SessionStore()
             memory_store = MemoryStore()
 
             full_tools = _build_server_tool_registry(
+                valstorm_token=v_token,
+                override_base_url=x_valstorm_api_url,
                 memory_store=memory_store,
                 session_store=session_store,
+                allow_local_host_tools=(not cloud_mode or has_isolated_sandbox),
             )
             if profile_cfg and profile_cfg.get("allowed_tools") and hasattr(full_tools, "filter_by_whitelist"):
                 tools = full_tools.filter_by_whitelist(profile_cfg["allowed_tools"])
@@ -2157,6 +2430,21 @@ async def ollama_chat_endpoint(request: Request):
                     "done": True,
                 }
                 yield json.dumps(err_obj) + "\n"
+            finally:
+                try:
+                    await sandbox.close()
+                except Exception:
+                    pass
+                if ephemeral_ollama_dir:
+                    try:
+                        import shutil
+                        shutil.rmtree(ephemeral_ollama_dir, ignore_errors=True)
+                    except Exception:
+                        pass
+                reset_current_subagent_registry(subreg_tok)
+                reset_current_process_registry(procreg_tok)
+                set_current_valstorm_auth(None, None)
+                set_current_sandbox(None)
 
         return StreamingResponse(
             ndjson_generator(),
@@ -2168,7 +2456,12 @@ async def ollama_chat_endpoint(request: Request):
         )
 
     # Non-streaming
-    resp = await chat_completions_endpoint(openai_payload)
+    resp = await chat_completions_endpoint(
+        openai_payload,
+        authorization=authorization,
+        x_valstorm_token=x_valstorm_token,
+        x_valstorm_api_url=x_valstorm_api_url,
+    )
     content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
     usage = resp.get("usage", {})
     return {

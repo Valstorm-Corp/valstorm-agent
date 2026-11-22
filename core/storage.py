@@ -6,6 +6,8 @@ token usage ledgers, and FTS5 full-text search across historical turns.
 
 import base64
 import json
+import os
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +16,53 @@ from typing import Any, Dict, List, Optional, Union
 from core.models import Message, SessionState, ToolCall, ToolResult, UsageMetadata
 
 DEFAULT_DB_PATH = Path.home() / ".valstorm" / "agent_state.db"
+
+
+def _sanitize_scope_segment(segment: Optional[str], fallback: str) -> str:
+    """Sanitizes org_id / user_id strings for safe filesystem path construction."""
+    if not segment or not str(segment).strip():
+        return fallback
+    cleaned = re.sub(r"[^a-zA-Z0-9_\-]", "_", str(segment).strip())
+    return cleaned or fallback
+
+
+def _resolve_scoped_db_path(
+    db_path: Optional[Union[str, Path]] = None,
+    org_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    is_cloud_mode: Optional[bool] = None,
+) -> Path:
+    """Resolves SQLite session DB path with tenant isolation in Cloud mode and ~/.valstorm/agent_state.db in Host mode."""
+    if db_path is not None:
+        return Path(db_path).expanduser().resolve()
+
+    try:
+        from tools.valstorm_client import get_current_tenant_context, is_cloud_runtime_mode
+        ctx = get_current_tenant_context()
+        env_cloud = is_cloud_runtime_mode()
+    except Exception:
+        ctx = None
+        env_cloud = (
+            os.environ.get("VALSTORM_AGENT_MODE", "host").strip().lower() == "cloud"
+            or os.environ.get("VALSTORM_DEFAULT_SANDBOX", "host").strip().lower() in ("cloud", "e2b", "serverless")
+        )
+
+    eff_org = org_id or (ctx.org_id if ctx else None)
+    eff_user = user_id or (ctx.user_id if ctx else None)
+    if is_cloud_mode is not None:
+        eff_cloud = bool(is_cloud_mode)
+    elif ctx is not None:
+        eff_cloud = bool(ctx.is_cloud_mode)
+    else:
+        eff_cloud = env_cloud
+
+    home_dir = Path(os.environ.get("HOME") or str(Path.home())).expanduser().resolve()
+    if eff_cloud or (org_id and user_id):
+        safe_org = _sanitize_scope_segment(eff_org, "org_anonymous")
+        safe_user = _sanitize_scope_segment(eff_user, "user_default")
+        return home_dir / ".valstorm" / "tenants" / safe_org / safe_user / "agent_state.db"
+
+    return home_dir / ".valstorm" / "agent_state.db"
 
 
 def _json_serial_default(o: Any) -> Any:
@@ -46,8 +95,22 @@ def _restore_bytes_recursive(data: Any) -> Any:
 class SessionStore:
     """Manages SQLite storage for ai_chat and ai_chat_message tables with FTS5 search."""
 
-    def __init__(self, db_path: Optional[Union[str, Path]] = None):
-        self.db_path = Path(db_path).expanduser().resolve() if db_path else DEFAULT_DB_PATH
+    def __init__(
+        self,
+        db_path: Optional[Union[str, Path]] = None,
+        org_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        is_cloud_mode: Optional[bool] = None,
+    ):
+        self.org_id = org_id
+        self.user_id = user_id
+        self.is_cloud_mode = is_cloud_mode
+        self.db_path = _resolve_scoped_db_path(
+            db_path=db_path,
+            org_id=org_id,
+            user_id=user_id,
+            is_cloud_mode=is_cloud_mode,
+        )
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 

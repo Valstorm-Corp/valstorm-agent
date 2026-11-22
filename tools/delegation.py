@@ -9,6 +9,7 @@ Provides:
 """
 
 import asyncio
+import contextvars
 from datetime import datetime, timezone
 import json
 import os
@@ -31,6 +32,39 @@ from core.models import Message, SessionState, ToolCall, ToolResult
 from core.tools import ToolRegistry, get_default_registry, tool
 
 
+_LOCAL_HOST_ONLY_TOOLS = frozenset({
+    "terminal_exec",
+    "read_file",
+    "write_file",
+    "patch_file",
+    "search_files",
+    "read_local_file",
+    "code_outline",
+    "find_symbols",
+    "package_blast_radius",
+    "process_manage",
+    "execute_code",
+    "computer_use",
+})
+
+
+def _subagent_allows_local_host_tools() -> bool:
+    """Returns False on multi-tenant Cloud pods when no isolated microVM/container sandbox is active."""
+    try:
+        from core.sandbox import HostSandbox, get_current_sandbox
+        from tools.valstorm_client import get_current_tenant_context, is_cloud_runtime_mode
+
+        ctx = get_current_tenant_context()
+        in_cloud = bool(ctx and ctx.is_cloud_mode) or is_cloud_runtime_mode()
+        if not in_cloud:
+            return True
+        sb = get_current_sandbox()
+        # Only permit shell/FS/code tools in cloud mode when backed by an isolated non-HostSandbox
+        return sb is not None and not isinstance(sb, HostSandbox)
+    except Exception:
+        return True
+
+
 def _build_base_subagent_tool_registry() -> ToolRegistry:
     """Builds a full tool registry that can be whitelisted for subagents."""
     from tools.clarify import register_clarify_tools
@@ -48,17 +82,24 @@ def _build_base_subagent_tool_registry() -> ToolRegistry:
     from tools.valstorm_tools import register_valstorm_tools
     from tools.web_tools import register_web_tools
 
+    allow_local_host_tools = _subagent_allows_local_host_tools()
+
     registry = get_default_registry()
-    register_developer_tools(registry)
+    if allow_local_host_tools:
+        register_developer_tools(registry)
+        register_computer_use_tools(registry)
+        register_execute_code_tools(registry)
+        register_process_manager_tools(registry)
+    else:
+        for host_tool in _LOCAL_HOST_ONLY_TOOLS:
+            registry._tools.pop(host_tool, None)
+
     register_web_tools(registry)
     register_ui_navigator_tools(registry)
-    register_computer_use_tools(registry)
     register_clarify_tools(registry)
     register_confirmation_tools(registry)
     register_vision_tools(registry)
     register_media_generation_tools(registry)
-    register_execute_code_tools(registry)
-    register_process_manager_tools(registry)
     register_skill_tools(registry)
     register_memory_tools(registry)
 
@@ -68,6 +109,15 @@ def _build_base_subagent_tool_registry() -> ToolRegistry:
             from tools.valstorm_client import ValstormApiClient
             client = ValstormApiClient(token=token, base_url=base_url)
             register_valstorm_tools(registry=registry, client=client)
+        except Exception:
+            pass
+        try:
+            from tools.remote_plugins import discover_and_register_remote_plugin_tools_sync
+            discover_and_register_remote_plugin_tools_sync(
+                registry=registry,
+                valstorm_token=token,
+                valstorm_base_url=base_url,
+            )
         except Exception:
             pass
 
@@ -224,8 +274,29 @@ class SubagentTaskSession:
         return "\n".join(summary_lines)
 
 
+_current_subagent_registry: contextvars.ContextVar[Optional["SubagentRegistry"]] = contextvars.ContextVar(
+    "_current_subagent_registry", default=None
+)
+
+
+def set_current_subagent_registry(registry: Optional["SubagentRegistry"]) -> contextvars.Token:
+    """Binds a task-local SubagentRegistry for the active agent run (isolated across concurrent tenants)."""
+    return _current_subagent_registry.set(registry)
+
+
+def reset_current_subagent_registry(token: contextvars.Token) -> None:
+    """Resets the task-local SubagentRegistry ContextVar."""
+    _current_subagent_registry.reset(token)
+
+
 class SubagentRegistry:
-    """In-memory registry managing tracked subagent task sessions."""
+    """In-memory registry managing tracked subagent task sessions.
+
+    When a per-run registry is bound via `set_current_subagent_registry(...)`,
+    `SubagentRegistry.get_instance()` returns that task-scoped instance (which is
+    automatically inherited by child subagent asyncio tasks) so concurrent tenant
+    runs on the same pod never collide or wipe each other's subagents.
+    """
 
     _instance: Optional["SubagentRegistry"] = None
 
@@ -234,6 +305,9 @@ class SubagentRegistry:
 
     @classmethod
     def get_instance(cls) -> "SubagentRegistry":
+        scoped = _current_subagent_registry.get()
+        if scoped is not None:
+            return scoped
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -423,14 +497,20 @@ async def delegate_task(
       - 'list': Lists all active and recent subagent tasks.
       - 'kill': Cancels a running background subagent task.
 
-    Named profiles available:
-      - 'developer': Specialized in monorepo coding, refactoring, test execution, and debugging.
-      - 'researcher': Specialized in codebase search, architecture exploration, and data synthesis.
-      - 'backend-tester': Specialized in test execution, regression diagnosis, and test suite verification.
-      - 'writer': Specialized in technical documentation, API specifications, and architecture specs.
-      - 'valstorm-assistant': General assistant for platform queries.
-      - 'slack-agent': Specialist in Slack messaging, channel discovery, and notifications.
-      - Any custom profile defined in ~/.valstorm/profiles/<name>.json.
+    Named specialist profiles available:
+      - 'marketer': Growth marketing, paid/organic social (Meta, LinkedIn, YouTube, Google Ads/GA4/GSC/GTM), SendGrid/Email, campaigns & drips.
+      - 'finance': QuickBooks Online (P&L, invoices, bills, vendors, COA), Stripe billing/subscriptions, and Valstorm usage/credits ledger.
+      - 'revops': External CRM sync (Salesforce, HubSpot), telephony/SMS (Telnyx, Twilio), Deepgram transcription, booking links, and CRM dedupe/hygiene.
+      - 'devops': Cloud infrastructure & CI/CD across Azure Container Apps/ARM, Cloudflare DNS, DigitalOcean App Platform, GCP, and GitHub Actions.
+      - 'workspace-comms': Gmail/Google Calendar/Meet/Drive, Microsoft 365 Outlook/Calendar/Teams, Slack channels/messaging, and booking links.
+      - 'data-analyst': BigQuery SQL, Valstorm SQL/Mongo analytics, pandas/Excel/Jinja2 reporting, KPI dashboards, and attribution analysis.
+      - 'creative-director': Visual strategy, Gemini 3 Pro image generation, Veo 3.1 video generation, ad creatives, and slide decks.
+      - 'video-editor': Hands-on FFmpeg video/audio editing, TTS, Remotion renders, and visual QC.
+      - 'valstorm-developer': On-platform Valstorm schemas, AST-sandboxed Python functions, triggers, scheduled tasks, drips, and platform RPCs.
+      - 'software-engineer': Monorepo full-stack engineering (Next.js/React/Python/Go/Rust), TDD, GitHub PRs, and code reviews.
+      - 'researcher': Deep web research, scraping, competitor intelligence, citations, and Knowledge Vault curation.
+      - 'architect': Read-only system architecture and monorepo design reviews.
+      - Any custom profile defined in Valstorm `ai_agent` or `~/.valstorm/profiles/<name>.json`.
 
     Args:
         profile: Name of the profile to execute the subagent under (e.g. 'developer', 'researcher').

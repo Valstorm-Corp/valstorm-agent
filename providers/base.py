@@ -481,6 +481,21 @@ class BaseProvider(ABC):
         """Generate response non-streaming."""
         pass
 
+    async def chat_complete(
+        self,
+        messages: List[Message],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        model: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Message:
+        """Convenience single-turn chat completion helper returning the assistant `Message`.
+
+        Used by background curators (`SkillCurator`, `MemoryExtractor`) and compatible with
+        `ChainedFallbackProvider` as well as all concrete `BaseProvider` implementations.
+        """
+        msg, _usage = await self.generate(messages=messages, tools=tools, model=model, **kwargs)
+        return msg
+
     async def generate_stream(
         self,
         messages: List[Message],

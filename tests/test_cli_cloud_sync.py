@@ -125,3 +125,43 @@ async def test_sync_cli_turn_to_valstorm_handles_network_error_gracefully():
         )
 
     assert success is False
+
+
+@pytest.mark.asyncio
+async def test_server_sync_turn_to_valstorm_forwards_tenant_identity():
+    import base64
+    import json
+    from server import _sync_turn_to_valstorm, _extract_jwt_identity
+
+    claims = {"org_id": "org_wTDwofWNeCBWGLMw", "sub": "user_eQygG0ZvPBH9iKqX"}
+    hdr = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode().rstrip("=")
+    bdy = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
+    fake_jwt = f"{hdr}.{bdy}.sig"
+
+    assert _extract_jwt_identity(f"Bearer {fake_jwt}") == ("org_wTDwofWNeCBWGLMw", "user_eQygG0ZvPBH9iKqX")
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock, return_value=mock_resp) as mock_post:
+        await _sync_turn_to_valstorm(
+            chat_id="aich_rTOnc2AwUFknqcyE",
+            run_id="run_test_tenant",
+            output_text="Listed Twilio conversations.",
+            status="completed",
+            input_tokens=500,
+            output_tokens=100,
+            model="gemini-4-neon",
+            provider="valstorm",
+            valstorm_token=fake_jwt,
+            valstorm_base_url="http://api-service/v1",
+            desktop_sync_url="http://io-worker-go-service/v1",
+        )
+
+    mock_post.assert_awaited_once()
+    sent_json = mock_post.await_args.kwargs["json"]
+    sent_headers = mock_post.await_args.kwargs["headers"]
+    assert sent_json["organization_id"] == "org_wTDwofWNeCBWGLMw"
+    assert sent_json["user_id"] == "user_eQygG0ZvPBH9iKqX"
+    assert sent_headers["X-Organization-ID"] == "org_wTDwofWNeCBWGLMw"
+    assert sent_headers["X-User-ID"] == "user_eQygG0ZvPBH9iKqX"

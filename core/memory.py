@@ -99,7 +99,14 @@ def _resolve_scoped_memory_path(
     elif ctx is not None:
         eff_cloud = bool(ctx.is_cloud_mode)
     else:
-        eff_cloud = os.environ.get("VALSTORM_AGENT_MODE", "host").strip().lower() == "cloud"
+        try:
+            from tools.valstorm_client import is_cloud_runtime_mode
+            eff_cloud = is_cloud_runtime_mode()
+        except Exception:
+            eff_cloud = (
+                os.environ.get("VALSTORM_AGENT_MODE", "host").strip().lower() == "cloud"
+                or os.environ.get("VALSTORM_DEFAULT_SANDBOX", "host").strip().lower() in ("cloud", "e2b", "serverless")
+            )
 
     home_dir = Path(os.environ.get("HOME") or str(Path.home())).expanduser().resolve()
     if eff_cloud or (org_id and user_id):

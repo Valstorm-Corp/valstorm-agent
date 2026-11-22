@@ -234,6 +234,84 @@ def _sanitize_and_window_output(
     return raw_str, raw_bytes, item_count, False, raw_bytes
 
 
+_GOOGLE_MARKETING_UNPREFIXED_TOOLS = frozenset({
+    "get_setup_guide",
+    "verify_connection",
+    "list_ads_campaigns",
+    "list_gsc_sites",
+    "get_ga4_realtime_report",
+    "get_gtm_container_details",
+})
+
+_KNOWN_PLUGIN_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("google_workspace_", "google-workspace"),
+    ("google_marketing_", "google-marketing"),
+    ("google_youtube_", "google-marketing"),
+    ("digitalocean_", "digitalocean"),
+    ("quickbooks_", "quickbooks"),
+    ("salesforce_", "salesforce"),
+    ("cloudflare_", "cloudflare"),
+    ("microsoft_", "microsoft"),
+    ("marketing_", "marketing"),
+    ("sendgrid_", "sendgrid"),
+    ("deepgram_", "deepgram"),
+    ("linkedin_", "linkedin"),
+    ("hubspot_", "hubspot"),
+    ("billing_", "billing"),
+    ("booking_", "booking"),
+    ("support_", "support"),
+    ("telnyx_", "telnyx"),
+    ("twilio_", "twilio"),
+    ("stripe_", "stripe"),
+    ("github_", "github"),
+    ("azure_", "azure"),
+    ("email_", "email"),
+    ("slack_", "slack"),
+    ("meta_", "meta"),
+    ("gcp_", "gcp"),
+    ("ai_", "ai"),
+)
+
+
+def infer_plugin_from_tool_name(tool_name: str) -> Optional[str]:
+    """Best-effort plugin slug inference from a tool name when explicit metadata is absent."""
+    if not tool_name:
+        return None
+    if tool_name in _GOOGLE_MARKETING_UNPREFIXED_TOOLS:
+        return "google-marketing"
+    for prefix, plugin_slug in _KNOWN_PLUGIN_PREFIXES:
+        if tool_name.startswith(prefix):
+            return plugin_slug
+    return None
+
+
+def matches_tool_pattern(
+    tool_name: str,
+    pattern: str,
+    tool_plugin: Optional[str] = None,
+) -> bool:
+    """Match a tool name/plugin against an exact name, fnmatch glob, or 'plugin:<slug>' selector."""
+    import fnmatch
+
+    pat = (pattern or "").strip()
+    if not pat:
+        return False
+    if pat == "*":
+        return True
+    if pat.startswith("plugin:"):
+        target_plugin = pat[len("plugin:"):].strip().lower().replace("_", "-")
+        norm_plugin = (tool_plugin or infer_plugin_from_tool_name(tool_name) or "").strip().lower().replace("_", "-")
+        if target_plugin == "*":
+            return bool(norm_plugin)
+        if norm_plugin and fnmatch.fnmatchcase(norm_plugin, target_plugin):
+            return True
+        prefix = target_plugin.replace("-", "_") + "_"
+        return tool_name.startswith(prefix)
+    if any(ch in pat for ch in ("*", "?", "[")):
+        return fnmatch.fnmatchcase(tool_name, pat)
+    return tool_name == pat
+
+
 class ToolRegistry:
     """Registry managing tool definitions, schema extraction, and safe execution."""
 
@@ -285,15 +363,27 @@ class ToolRegistry:
         return list(self._tools.keys())
 
     def filter_by_whitelist(self, allowed_tools: List[str]) -> "ToolRegistry":
-        """Return a new ToolRegistry instance containing only the tools in allowed_tools."""
+        """Return a new ToolRegistry instance containing only tools matching allowed_tools.
+
+        Supports:
+          - Exact tool names: 'valstorm_sql_query'
+          - Glob/wildcard patterns: 'quickbooks_*', 'azure_*', '*'
+          - Plugin namespace selectors: 'plugin:quickbooks', 'plugin:google-marketing', 'plugin:*'
+          - Negated exclusions: '!cloudflare_delete_dns_record', '!*_delete_*'
+        """
         scoped = ToolRegistry(
             default_timeout_sec=self.default_timeout_sec,
             max_payload_bytes=self.max_payload_bytes,
         )
-        allowed_set = set(allowed_tools)
+        raw_patterns = [str(p).strip() for p in (allowed_tools or []) if isinstance(p, str) and p.strip()]
+        include_patterns = [p for p in raw_patterns if not p.startswith("!")]
+        exclude_patterns = [p[1:].strip() for p in raw_patterns if p.startswith("!") and p[1:].strip()]
+
         for name, fn in self._tools.items():
-            if name in allowed_set:
-                scoped.register(fn)
+            tool_plugin = getattr(fn, "_tool_plugin", None) or infer_plugin_from_tool_name(name)
+            if any(matches_tool_pattern(name, pat, tool_plugin) for pat in include_patterns):
+                if not any(matches_tool_pattern(name, ex, tool_plugin) for ex in exclude_patterns):
+                    scoped.register(fn)
         return scoped
 
     def get_schemas(self) -> List[Dict[str, Any]]:

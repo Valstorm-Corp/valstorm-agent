@@ -51,6 +51,41 @@ def set_current_tenant_context(ctx: Optional[TenantRuntimeContext]) -> contextva
     return _current_tenant_context.set(ctx)
 
 
+def is_cloud_runtime_mode() -> bool:
+    """Returns True when running in multi-tenant Cloud/serverless runtime mode."""
+    mode_env = os.environ.get("VALSTORM_AGENT_MODE", "host").strip().lower()
+    sb_env = os.environ.get("VALSTORM_DEFAULT_SANDBOX", "host").strip().lower()
+    return mode_env == "cloud" or sb_env in ("cloud", "e2b", "serverless")
+
+
+def extract_org_id_from_pat(token: str) -> Optional[str]:
+    """Extracts the embedded org_id from a Valstorm PAT (`pat_<b64_org>_<secret>` or `vst_pat_<b64_org>_<secret>`)."""
+    import base64
+    if not token or not isinstance(token, str):
+        return None
+    raw = token.strip()
+    if raw.lower().startswith("bearer "):
+        raw = raw[7:].strip()
+    if raw.startswith("vst_pat_"):
+        body = raw[len("vst_pat_"):]
+    elif raw.startswith("pat_"):
+        body = raw[len("pat_"):]
+    else:
+        return None
+    parts = body.split("_", 1)
+    if not parts or not parts[0]:
+        return None
+    b64_org = parts[0]
+    rem = len(b64_org) % 4
+    if rem:
+        b64_org += "=" * (4 - rem)
+    try:
+        decoded = base64.urlsafe_b64decode(b64_org.encode("ascii")).decode("utf-8").strip()
+        return decoded or None
+    except Exception:
+        return None
+
+
 def set_current_valstorm_auth(
     token: Optional[str],
     base_url: Optional[str],
@@ -69,16 +104,20 @@ def set_current_valstorm_auth(
     resolved_user = user_id
     if token and (not resolved_org or not resolved_user):
         claims = decode_jwt_payload(token)
-        if isinstance(claims, dict):
+        if isinstance(claims, dict) and claims:
             if not resolved_org:
-                resolved_org = str(claims.get("organization_id") or claims.get("org_id") or "").strip() or None
+                resolved_org = str(
+                    claims.get("organization_id") or claims.get("org_id") or claims.get("org") or ""
+                ).strip() or None
             if not resolved_user:
-                resolved_user = str(claims.get("user_id") or claims.get("id") or claims.get("sub") or "").strip() or None
+                resolved_user = str(
+                    claims.get("user_id") or claims.get("id") or claims.get("sub") or claims.get("user") or ""
+                ).strip() or None
+        if not resolved_org:
+            resolved_org = extract_org_id_from_pat(token)
 
     if is_cloud_mode is None:
-        mode_env = os.environ.get("VALSTORM_AGENT_MODE", "host").strip().lower()
-        sb_env = os.environ.get("VALSTORM_DEFAULT_SANDBOX", "host").strip().lower()
-        resolved_cloud = mode_env == "cloud" or sb_env in ("cloud", "e2b", "serverless")
+        resolved_cloud = is_cloud_runtime_mode()
     else:
         resolved_cloud = bool(is_cloud_mode)
 
@@ -353,6 +392,27 @@ def resolve_valstorm_auth_context(
         token_source = "explicit_override_argument"
         log_auth_debug(f"Found token from explicit override argument (length={len(token)})")
 
+    # Step 1b: In Cloud multi-tenant mode, NEVER fall back to pod-level ~/.valstorm/auth*.json,
+    # Desktop tokens.json, or environment/KeyStore VALSTORM_TOKEN. Only use explicit override
+    # or the active task-scoped ContextVar token.
+    active_ctx = get_current_tenant_context()
+    cloud_isolation_active = bool(active_ctx and active_ctx.is_cloud_mode) or is_cloud_runtime_mode()
+    if not token and cloud_isolation_active:
+        scoped_auth = get_current_valstorm_auth()
+        if scoped_auth and scoped_auth[0]:
+            token = scoped_auth[0].strip()
+            if not override_base_url and scoped_auth[1]:
+                base_url = scoped_auth[1].rstrip("/")
+                if not base_url.endswith("/v1") and "/v1" not in base_url:
+                    base_url = f"{base_url}/v1"
+            token_source = "scoped_cloud_context"
+            log_auth_debug(f"Found token from scoped cloud ContextVar (length={len(token)})")
+        else:
+            log_auth_debug(
+                "Cloud multi-tenant mode active with no request token; refusing pod-level/filesystem fallback."
+            )
+            return "", base_url, None, None
+
     # Step 2: Valstorm CLI Auth Profiles (~/.valstorm/auth_{env}_{profile}.json)
     if not token:
         valstorm_dir = Path.home() / ".valstorm"
@@ -565,6 +625,8 @@ class ValstormApiClient:
         """Sends HTTP request and automatically retries with refreshed token on 401."""
         self._ensure_authenticated()
         clean_endpoint = endpoint.lstrip("/")
+        if self.base_url.rstrip("/").endswith("/v1") and clean_endpoint.startswith("v1/"):
+            clean_endpoint = clean_endpoint[3:]
 
         # 1. Proactive Token Refresh Check (before sending the request)
         if self.refresh_token and is_jwt_expired(self.token, margin_seconds=60):

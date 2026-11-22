@@ -7,6 +7,7 @@ Provides:
 """
 
 import asyncio
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -222,7 +223,10 @@ def _get_cached_cloud_skills(force_refresh: bool = False) -> Tuple[List[Dict[str
         return [], False
 
     token, base_url = scoped_auth
-    org_key = (ctx.org_id if (ctx and ctx.org_id) else token[:16]) or "default"
+    if ctx and ctx.org_id:
+        org_key = ctx.org_id
+    else:
+        org_key = f"tok_{hashlib.sha256(token.encode('utf-8')).hexdigest()[:24]}"
     is_cloud_mode = bool(ctx.is_cloud_mode) if ctx else False
     cache_key = f"{org_key}:{base_url}"
 

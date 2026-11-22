@@ -6,6 +6,7 @@ Provides:
 """
 
 import asyncio
+import contextvars
 from datetime import datetime, timezone
 import os
 from pathlib import Path
@@ -93,8 +94,28 @@ class ProcessSession:
         return round(end - self.start_time, 2)
 
 
+_current_process_registry: contextvars.ContextVar[Optional["ProcessRegistry"]] = contextvars.ContextVar(
+    "_current_process_registry", default=None
+)
+
+
+def set_current_process_registry(registry: Optional["ProcessRegistry"]) -> contextvars.Token:
+    """Binds a task-local ProcessRegistry for the active agent run (isolated across concurrent tenants)."""
+    return _current_process_registry.set(registry)
+
+
+def reset_current_process_registry(token: contextvars.Token) -> None:
+    """Resets the task-local ProcessRegistry ContextVar."""
+    _current_process_registry.reset(token)
+
+
 class ProcessRegistry:
-    """In-memory registry managing all background process sessions."""
+    """In-memory registry managing background process sessions.
+
+    When a per-run registry is bound via `set_current_process_registry(...)`,
+    `ProcessRegistry.get_instance()` returns that task-scoped instance so concurrent
+    runs on the same server never share or see each other's background processes.
+    """
 
     _instance: Optional["ProcessRegistry"] = None
 
@@ -103,6 +124,9 @@ class ProcessRegistry:
 
     @classmethod
     def get_instance(cls) -> "ProcessRegistry":
+        scoped = _current_process_registry.get()
+        if scoped is not None:
+            return scoped
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance

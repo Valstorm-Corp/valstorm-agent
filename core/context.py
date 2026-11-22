@@ -8,6 +8,7 @@ Discovers project rules, architecture guidelines, repository manifests, and agen
 """
 
 import contextvars
+import hashlib
 import json
 import os
 import sys
@@ -838,7 +839,10 @@ def _get_cached_cloud_profiles(force_refresh: bool = False) -> Tuple[List[Dict[s
         return [], False
 
     token, base_url = scoped_auth
-    org_key = (ctx.org_id if (ctx and ctx.org_id) else token[:16]) or "default"
+    if ctx and ctx.org_id:
+        org_key = ctx.org_id
+    else:
+        org_key = f"tok_{hashlib.sha256(token.encode('utf-8')).hexdigest()[:24]}"
     is_cloud_mode = bool(ctx.is_cloud_mode) if ctx else False
     cache_key = f"{org_key}:{base_url}"
 
@@ -930,56 +934,91 @@ def _ensure_profile_media_tools(prof: Dict[str, Any]) -> Dict[str, Any]:
     return prof
 
 
+PROFILE_ALIASES: Dict[str, str] = {
+    "developer": "valstorm-developer",
+    "growth-marketer": "marketer",
+    "marketing-specialist": "marketer",
+    "finance-ops": "finance",
+    "revops-crm": "revops",
+    "cloud-infra-devops": "devops",
+    "slack-agent": "workspace-comms",
+    "orchestrator": "chief-of-staff",
+    "browser-scraper": "researcher",
+    "scraper": "researcher",
+    "archivist": "researcher",
+    "video": "video-editor",
+}
+
+
 def load_profile(profile_name_or_slug: str) -> Dict[str, Any]:
     """Loads a named profile configuration from tenant cloud ai_agent records, ~/.valstorm/profiles/<slug>.json, or built-in fallbacks."""
     clean_name = (profile_name_or_slug or "").strip().lower()
     if not clean_name:
         clean_name = "chief-of-staff"
 
-    prof_dir = _resolve_profiles_dir()
-    cloud_profiles, is_cloud_mode = _get_cached_cloud_profiles()
-
-    if is_cloud_mode:
-        # 1. In Cloud mode: Tenant DB ai_agent takes priority over static disk
-        c_match = _find_cloud_profile(clean_name, cloud_profiles)
-        if c_match:
-            return _ensure_profile_media_tools(c_match)
-        d_match = _find_disk_profile(clean_name, prof_dir)
-        if d_match:
-            return _ensure_profile_media_tools(d_match)
-    else:
-        # 1. In Host mode: Local disk takes priority, followed by tenant cloud ai_agent
-        d_match = _find_disk_profile(clean_name, prof_dir)
-        if d_match:
-            return _ensure_profile_media_tools(d_match)
-        c_match = _find_cloud_profile(clean_name, cloud_profiles)
-        if c_match:
-            return _ensure_profile_media_tools(c_match)
-
     KNOWN_AGENT_ID_MAP = {
         "aia_software_engineer": "software-engineer",
-        "aia_s0a637uhmn1ndwjp": "developer",
-        "aia_s0a637umhn1ndwjp": "developer",
-        "aia_cmkgl0dqewqudyvz": "developer",
+        "aia_s0a637uhmn1ndwjp": "valstorm-developer",
+        "aia_s0a637umhn1ndwjp": "valstorm-developer",
+        "aia_cmkgl0dqewqudyvz": "valstorm-developer",
         "aia_f9be92e788ac501d": "chief-of-staff",
         "aia_nrn3gmjtvlo0hytu": "architect",
-        "aia_gwbfllycza4xbwzo": "orchestrator",
-        "aia_3efdpozu5d6dihuj": "scraper",
-        "aia_38ho3ff75ivfhebc": "video",
+        "aia_gwbfllycza4xbwzo": "chief-of-staff",
+        "aia_3efdpozu5d6dihuj": "researcher",
+        "aia_archivist": "researcher",
+        "aia_38ho3ff75ivfhebc": "video-editor",
         "aia_growth_marketer": "marketer",
         "aia_lrh594tqzummtjdo": "marketer",
+        "aia_creative_director": "creative-director",
+        "aia_finance": "finance",
+        "aia_revops": "revops",
+        "aia_devops": "devops",
+        "aia_workspace_comms": "workspace-comms",
+        "aia_data_analyst": "data-analyst",
+        "aia_researcher": "researcher",
     }
     if clean_name in KNOWN_AGENT_ID_MAP:
         clean_name = KNOWN_AGENT_ID_MAP[clean_name]
 
-    # 2. Try builtin profiles
-    if clean_name in BUILTIN_PROFILES:
-        return dict(BUILTIN_PROFILES[clean_name])
+    prof_dir = _resolve_profiles_dir()
+    cloud_profiles, is_cloud_mode = _get_cached_cloud_profiles()
+
+    candidate_names = [clean_name]
+    aliased = PROFILE_ALIASES.get(clean_name)
+    if aliased and aliased not in candidate_names:
+        candidate_names.append(aliased)
+
+    if is_cloud_mode:
+        # 1. In Cloud mode: Tenant DB ai_agent takes priority over static disk
+        for cand in candidate_names:
+            c_match = _find_cloud_profile(cand, cloud_profiles)
+            if c_match:
+                return _ensure_profile_media_tools(c_match)
+        for cand in candidate_names:
+            d_match = _find_disk_profile(cand, prof_dir)
+            if d_match:
+                return _ensure_profile_media_tools(d_match)
+    else:
+        # 1. In Host mode: Local disk takes priority, followed by tenant cloud ai_agent
+        for cand in candidate_names:
+            d_match = _find_disk_profile(cand, prof_dir)
+            if d_match:
+                return _ensure_profile_media_tools(d_match)
+        for cand in candidate_names:
+            c_match = _find_cloud_profile(cand, cloud_profiles)
+            if c_match:
+                return _ensure_profile_media_tools(c_match)
+
+    # 2. Try builtin profiles (preferring alias target if exact slug not in builtins)
+    for cand in candidate_names:
+        if cand in BUILTIN_PROFILES:
+            return dict(BUILTIN_PROFILES[cand])
 
     # 3. Fuzzy match builtin profiles
-    for k, v in BUILTIN_PROFILES.items():
-        if clean_name in k or k in clean_name:
-            return dict(v)
+    for cand in candidate_names:
+        for k, v in BUILTIN_PROFILES.items():
+            if cand in k or k in cand:
+                return dict(v)
 
     # 4. Fallback profile
     return {
