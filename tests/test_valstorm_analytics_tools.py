@@ -244,5 +244,5 @@ def test_chief_of_staff_and_developer_profiles_include_dashboard_tool():
         assert "valstorm_generate_dashboard" in prof["system_prompt"], f"Prompt missing in {slug}"
 
     assert "valstorm_generate_dashboard" in BUILTIN_PROFILES["chief-of-staff"]["allowed_tools"]
-    assert "valstorm_generate_dashboard" in BUILTIN_PROFILES["developer"]["allowed_tools"]
+    assert "valstorm_generate_dashboard" in BUILTIN_PROFILES["valstorm-developer"]["allowed_tools"]
 

@@ -161,18 +161,17 @@ async def test_valstorm_client_list_platform_methods_http_params():
 
 
 def test_builtin_profiles_include_platform_rpc_tools():
-    expected_profiles = [
-        "chief-of-staff",
-        "software-engineer",
-        "developer",
-        "orchestrator",
-        "marketer",
-        "marketing-specialist",
-    ]
-    for slug in expected_profiles:
+    # platform_methods_search / platform_invoke are explicitly gated to technical RPC specialists
+    rpc_enabled = ["valstorm-developer", "data-analyst"]
+    for slug in rpc_enabled:
         allowed = BUILTIN_PROFILES[slug]["allowed_tools"]
         assert "platform_methods_search" in allowed, f"Missing platform_methods_search in {slug}"
         assert "platform_invoke" in allowed, f"Missing platform_invoke in {slug}"
+
+    # Scoped non-RPC personas must NOT receive the universal platform_invoke escape hatch
+    for slug in ("chief-of-staff", "marketer", "finance", "workspace-comms", "researcher", "architect"):
+        allowed = BUILTIN_PROFILES[slug]["allowed_tools"]
+        assert "platform_invoke" not in allowed, f"Unexpected platform_invoke escape hatch on {slug}"
 
 
 @pytest.mark.asyncio

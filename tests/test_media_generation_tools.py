@@ -255,9 +255,10 @@ def test_agent_profiles_whitelist_generate_image_and_generate_video():
     assert "generate_image" in tier1_names
     assert "generate_video" in tier1_names
 
-    for profile_slug in ("creative-director", "video-editor", "marketing-specialist", "software-engineer"):
+    for profile_slug in ("creative-director", "video-editor", "marketer", "marketing-specialist"):
         prof = load_profile(profile_slug)
         assert prof is not None, f"Profile {profile_slug} should load"
         allowed = prof.get("allowed_tools", [])
         assert "generate_image" in allowed, f"generate_image missing from {profile_slug}"
-        assert "generate_video" in allowed, f"generate_video missing from {profile_slug}"
+        if profile_slug in ("creative-director", "video-editor"):
+            assert "generate_video" in allowed, f"generate_video missing from {profile_slug}"

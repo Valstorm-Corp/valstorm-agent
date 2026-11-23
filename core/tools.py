@@ -247,6 +247,10 @@ _KNOWN_PLUGIN_PREFIXES: tuple[tuple[str, str], ...] = (
     ("google_workspace_", "google-workspace"),
     ("google_marketing_", "google-marketing"),
     ("google_youtube_", "google-marketing"),
+    ("google_ads_", "google-marketing"),
+    ("google_gsc_", "google-marketing"),
+    ("google_ga4_", "google-marketing"),
+    ("google_gtm_", "google-marketing"),
     ("digitalocean_", "digitalocean"),
     ("quickbooks_", "quickbooks"),
     ("salesforce_", "salesforce"),
@@ -300,7 +304,11 @@ def matches_tool_pattern(
         return True
     if pat.startswith("plugin:"):
         target_plugin = pat[len("plugin:"):].strip().lower().replace("_", "-")
+        if target_plugin.startswith("valstorm-plugin-"):
+            target_plugin = target_plugin[len("valstorm-plugin-"):]
         norm_plugin = (tool_plugin or infer_plugin_from_tool_name(tool_name) or "").strip().lower().replace("_", "-")
+        if norm_plugin.startswith("valstorm-plugin-"):
+            norm_plugin = norm_plugin[len("valstorm-plugin-"):]
         if target_plugin == "*":
             return bool(norm_plugin)
         if norm_plugin and fnmatch.fnmatchcase(norm_plugin, target_plugin):

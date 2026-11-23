@@ -72,20 +72,21 @@ def test_keystore_digitalocean_resolution(monkeypatch, tmp_path):
 
 
 def test_build_fallback_chain_tier_selection(monkeypatch):
-    """Test fallback chain construction across tiers."""
+    """Test fallback chain construction across tiers (GEAP-only: AI Studio excluded from default cascades)."""
     monkeypatch.setenv("GEMINI_API_KEY", "AIzaSy_fake_test_gemini")
     monkeypatch.setenv("DIGITALOCEAN_AI_KEY", "dop_v1_fake_test_do")
 
     # Reasoner tier
     chain_reasoner = build_fallback_chain(tier="reasoner")
     labels = [t.label for t in chain_reasoner.tiers]
-    assert any("Gemini" in l for l in labels)
+    assert not any("AI Studio" in l for l in labels)
+    assert any("DO GPT-oss-120b" in l for l in labels)
     assert any("DO DeepSeek" in l for l in labels)
 
     # Worker tier
     chain_worker = build_fallback_chain(tier="worker")
     w_labels = [t.label for t in chain_worker.tiers]
-    assert any("Gemini 3.5 Flash-Lite" in l for l in w_labels)
+    assert not any("AI Studio" in l for l in w_labels)
     assert any("DO DeepSeek V4 Flash" in l for l in w_labels)
 
 
@@ -260,7 +261,7 @@ def test_build_fallback_chain_with_primary_gemini(monkeypatch):
 
 
 def test_build_fallback_chain_with_primary_anthropic(monkeypatch):
-    """Verify specifying primary Anthropic places Anthropic first, followed by Gemini and DO."""
+    """Verify specifying primary Anthropic places Anthropic first, followed by DO backups (no AI Studio)."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", ("sk-ant-" + "fake_test"))
     monkeypatch.setenv("GEMINI_API_KEY", "AIzaSy_fake_test_gemini")
     monkeypatch.setenv("DIGITALOCEAN_AI_KEY", "dop_v1_fake_test_do")
@@ -273,7 +274,7 @@ def test_build_fallback_chain_with_primary_anthropic(monkeypatch):
     assert chain.tiers[0].model == "claude-3-7-sonnet-20250219"
 
     backup_labels = [t.label for t in chain.tiers[1:]]
-    assert any("Gemini" in l for l in backup_labels)
+    assert not any("AI Studio" in l for l in backup_labels)
     assert any("DO DeepSeek" in l for l in backup_labels)
 
 

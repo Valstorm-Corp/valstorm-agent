@@ -1327,7 +1327,7 @@ wheels = [
 
 [[package]]
 name = "valstorm-agent"
-version = "4.3.12"
+version = "4.3.13"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },

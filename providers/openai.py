@@ -10,6 +10,14 @@ from core.retry import execute_stream_with_retry, execute_with_retry
 from providers.base import BaseProvider, extract_and_resolve_images
 
 
+class UpstreamAPIStreamError(RuntimeError):
+    """Raised when an OpenAI-compatible SSE stream returns an inline error payload or closes with 0 chunks."""
+
+    def __init__(self, message: str, status_code: Optional[int] = None):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 def _normalize_finish_reason(raw: Any) -> Optional[str]:
     """Maps OpenAI-style finish reasons to the runtime's normalized vocabulary."""
     if not isinstance(raw, str) or not raw:
@@ -450,8 +458,31 @@ class OpenAIProvider(BaseProvider):
             tool_calls_builder: Dict[int, Dict[str, Any]] = {}
             usage = UsageMetadata()
             stream_finish_reason: Optional[str] = None
+            chunk_count = 0
 
             async for chunk in stream:
+                chunk_count += 1
+
+                # Detect inline SSE error payloads (e.g. HTTP 200 SSE stream carrying {"error": {...}})
+                # instead of silently skipping them as chunks with no choices.
+                chunk_err = getattr(chunk, "error", None)
+                if chunk_err is None:
+                    chunk_extra = getattr(chunk, "model_extra", None)
+                    if isinstance(chunk_extra, dict):
+                        chunk_err = chunk_extra.get("error")
+                if chunk_err:
+                    err_code = chunk_err.get("code") if isinstance(chunk_err, dict) else getattr(chunk_err, "code", None)
+                    err_msg = chunk_err.get("message", str(chunk_err)) if isinstance(chunk_err, dict) else str(chunk_err)
+                    try:
+                        parsed_code = int(err_code) if err_code is not None else None
+                    except (TypeError, ValueError):
+                        parsed_code = None
+                    prefix = f"HTTP {parsed_code}: " if parsed_code is not None else ""
+                    raise UpstreamAPIStreamError(
+                        f"{prefix}Upstream stream error ({model_name}): {err_msg}",
+                        status_code=parsed_code,
+                    )
+
                 raw_usage = getattr(chunk, "usage", None)
                 if raw_usage is not None:
                     usage.prompt_tokens = getattr(raw_usage, "prompt_tokens", 0) or usage.prompt_tokens
@@ -518,6 +549,12 @@ class OpenAIProvider(BaseProvider):
                                 tool_calls_builder[idx]["thought_signature"] = func.thought_signature
                             elif isinstance(func, dict) and func.get("thought_signature"):
                                 tool_calls_builder[idx]["thought_signature"] = func["thought_signature"]
+
+            if chunk_count == 0:
+                raise UpstreamAPIStreamError(
+                    f"Upstream closed SSE stream for {model_name} without sending any chunks",
+                    status_code=502,
+                )
 
             # NOTE: an empty stream used to trigger a silent second, non-streaming request (double
             # billing, and it hid the real finish reason). Now the empty message is returned with its

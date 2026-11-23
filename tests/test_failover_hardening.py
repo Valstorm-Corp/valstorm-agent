@@ -366,11 +366,8 @@ def test_tier2_is_an_explicit_ai_studio_gemini_tier_when_primary_is_valstorm(tmp
     )
 
     studio = [t for t in chain.tiers[1:] if t.provider_name == "gemini"]
-    assert len(studio) == 1
-    assert studio[0].provider.backend == "aistudio"  # forced: never silently Vertex, which shares GEAP's quota
-    assert studio[0].provider.backend_label() == "aistudio"
-    assert studio[0].key_source == "env:GEMINI_API_KEY"
-    assert chain.tiers[1] is studio[0]  # right after the primary, ahead of every DO tier
+    assert len(studio) == 0  # Google AI Studio is no longer used in default cascades (GEAP-only)
+    assert any(t.provider_name == "do" for t in chain.tiers[1:])
 
 
 def test_ai_studio_tier_is_skipped_without_a_gemini_key(tmp_path, monkeypatch):
@@ -671,4 +668,90 @@ def test_permanent_tier_failure_reason_detects_do_404_message():
         '404: DigitalOcean upstream error: {"error":{"message":"model not found","type":"not_found_error"},"message":"model not found","status_code":404}'
     )
     assert permanent_tier_failure_reason(err) == "HTTP 404"
+
+
+def test_no_ai_studio_tier_in_default_cascades(tmp_path, monkeypatch):
+    """We never use Google AI Studio anymore — only GEAP. Even if a local gemini key exists,
+    default fallback chains rooted on valstorm/GEAP must NOT insert an AI Studio tier."""
+    _clear_key_env(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("GEMINI_API_KEY", "AQ.Ab8RN_fake_vertex_express_key")
+    monkeypatch.setenv("DIGITALOCEAN_AI_KEY", "dop_v1_" + "a" * 40)
+    ks = KeyStore(config_path=tmp_path / "keys.json", env_file_path=tmp_path / ".env.ai.keys")
+
+    for specs in (DEFAULT_REASONER_CASCADE_SPECS, DEFAULT_THINKER_CASCADE_SPECS, DEFAULT_WORKER_CASCADE_SPECS):
+        assert not any(s["provider"] == "aistudio" for s in specs)
+
+    chain = build_fallback_chain(
+        tier="thinker", primary_provider="valstorm", primary_model="gemini-4-neon", keystore=ks, api_key="test_token_" + "x" * 20
+    )
+    assert not [
+        t for t in chain.tiers[1:] if t.provider_name == "gemini" or getattr(t.provider, "backend", None) == "aistudio"
+    ]
+    assert any(t.provider_name == "do" for t in chain.tiers[1:])
+
+
+@pytest.mark.asyncio
+async def test_openai_stream_raises_failover_error_on_inline_error_chunk():
+    from types import SimpleNamespace
+    from providers.fallback import is_provider_failover_candidate
+    from providers.openai import OpenAIProvider
+
+    class _FakeStream:
+        def __aiter__(self):
+            return self
+
+        def __init__(self):
+            self._emitted = False
+
+        async def __anext__(self):
+            if self._emitted:
+                raise StopAsyncIteration
+            self._emitted = True
+            return SimpleNamespace(
+                choices=None,
+                usage=None,
+                model_extra={"error": {"code": 503, "message": "DigitalOcean Serverless Inference is not configured"}},
+            )
+
+    class _FakeCompletions:
+        async def create(self, **kwargs):
+            return _FakeStream()
+
+    fake_client = SimpleNamespace(chat=SimpleNamespace(completions=_FakeCompletions()))
+    prov = OpenAIProvider(api_key="k" * 20, default_model="deepseek-v4-pro", provider_name="valstorm", max_retries=0)
+    prov._client = fake_client
+
+    with pytest.raises(Exception, match="DigitalOcean Serverless Inference") as exc_info:
+        async for _ in prov.generate_stream(messages=[Message(role="user", content="hi")]):
+            pass
+    assert is_provider_failover_candidate(exc_info.value) is True
+
+
+@pytest.mark.asyncio
+async def test_openai_stream_raises_failover_error_on_zero_chunk_aborted_stream():
+    from types import SimpleNamespace
+    from providers.fallback import is_provider_failover_candidate
+    from providers.openai import OpenAIProvider
+
+    class _EmptyAbortedStream:
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            raise StopAsyncIteration
+
+    class _FakeCompletions:
+        async def create(self, **kwargs):
+            return _EmptyAbortedStream()
+
+    fake_client = SimpleNamespace(chat=SimpleNamespace(completions=_FakeCompletions()))
+    prov = OpenAIProvider(api_key="k" * 20, default_model="deepseek-v4-pro", provider_name="valstorm", max_retries=0)
+    prov._client = fake_client
+
+    with pytest.raises(Exception, match="without sending any chunks") as exc_info:
+        async for _ in prov.generate_stream(messages=[Message(role="user", content="hi")]):
+            pass
+    assert is_provider_failover_candidate(exc_info.value) is True
+
 

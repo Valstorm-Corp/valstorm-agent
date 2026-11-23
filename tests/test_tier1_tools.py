@@ -336,8 +336,9 @@ class TestDelegateTaskTool:
         assert dev_profile["provider"].lower() in ("gemini", "valstorm")
 
         researcher_profile = load_profile("researcher")
-        assert researcher_profile.get("api_name") == "researcher" or "Researcher" in researcher_profile["name"]
-        assert "mock_db_lookup" in researcher_profile["allowed_tools"]
+        assert researcher_profile.get("api_name") == "researcher" or "Research" in researcher_profile["name"]
+        assert "web_search" in researcher_profile["allowed_tools"]
+        assert "valstorm_vfs_search" in researcher_profile["allowed_tools"]
 
         tester_profile = load_profile("backend-tester")
         assert tester_profile.get("api_name") == "backend-tester" or "Tester" in tester_profile["name"]

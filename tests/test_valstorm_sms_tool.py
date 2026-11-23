@@ -63,17 +63,16 @@ async def test_valstorm_send_sms_tool_validation(mock_valstorm_client):
 
 
 def test_agent_profiles_include_valstorm_send_sms():
-    """Verify Chief of Staff, Marketer, and Developer profiles include valstorm_send_sms."""
+    """Verify telephony/SMS tools are scoped to the revops specialist (not leaked onto CoS/SE)."""
+    revops_tools = BUILTIN_PROFILES["revops"]["allowed_tools"]
     cos_tools = BUILTIN_PROFILES["chief-of-staff"]["allowed_tools"]
-    marketer_tools = BUILTIN_PROFILES["marketer"]["allowed_tools"]
-    dev_tools = BUILTIN_PROFILES["developer"]["allowed_tools"]
+    se_tools = BUILTIN_PROFILES["software-engineer"]["allowed_tools"]
 
-    assert "valstorm_send_sms" in cos_tools
-    assert "valstorm_send_sms" in marketer_tools
-    assert "valstorm_send_sms" in dev_tools
+    assert "valstorm_send_sms" in revops_tools
+    assert "plugin:twilio" in revops_tools
+    assert "plugin:telnyx" in revops_tools
+    assert "valstorm_send_sms" not in cos_tools
+    assert "valstorm_send_sms" not in se_tools
 
-    # Verify attached skills
-    assert "twilio-conversations-sms" in BUILTIN_PROFILES["chief-of-staff"]["attached_skill_slugs"]
-    assert "sms-marketing-and-conversational-outreach" in BUILTIN_PROFILES["chief-of-staff"]["attached_skill_slugs"]
-    assert "twilio-conversations-sms" in BUILTIN_PROFILES["marketer"]["attached_skill_slugs"]
-    assert "sms-marketing-and-conversational-outreach" in BUILTIN_PROFILES["marketer"]["attached_skill_slugs"]
+    # Verify telephony SOP skill is attached to revops
+    assert "telephony-and-crm-sync" in BUILTIN_PROFILES["revops"]["attached_skill_slugs"]

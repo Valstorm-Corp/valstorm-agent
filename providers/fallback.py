@@ -92,8 +92,8 @@ def is_provider_failover_candidate(exc: BaseException) -> bool:
 # exactly, e.g. "openai-gpt-oss-120b" (not "openai/gpt-oss-120b"). Run `vsagent doctor` to verify them.
 
 # Default Tier 2 (Reasoner / Monorepo Dev / QA) Cascade Hierarchy
+# Google AI Studio is intentionally excluded: Gemini traffic runs exclusively through GEAP/Vertex.
 DEFAULT_REASONER_CASCADE_SPECS = [
-    {"provider": "aistudio", "model": "gemini-flash-latest", "label": "Gemini 4 Hydrogen (AI Studio)"},
     {"provider": "do", "model": "openai-gpt-oss-120b", "label": "DO GPT-oss-120b"},
     {"provider": "do", "model": "kimi-k2.6", "label": "DO Kimi K2.6"},
     {"provider": "do", "model": "deepseek-v4-pro", "label": "DO DeepSeek V4 Pro"},
@@ -105,7 +105,6 @@ DEFAULT_REASONER_CASCADE_SPECS = [
 # Default Tier 1 (Heavy Thinker / Architecture / RFC) Cascade Hierarchy
 # Never auto-cascade into expensive uncached commercial pass-throughs (e.g. Claude Opus).
 DEFAULT_THINKER_CASCADE_SPECS = [
-    {"provider": "aistudio", "model": "gemini-pro-latest", "label": "Gemini 4 Neon (AI Studio)"},
     {"provider": "do", "model": "deepseek-v4-pro", "label": "DO DeepSeek V4 Pro"},
     {"provider": "do", "model": "kimi-k2.6", "label": "DO Kimi K2.6"},
     {"provider": "do", "model": "qwen3.8-max", "label": "DO Qwen 3.8 Max"},
@@ -115,7 +114,6 @@ DEFAULT_THINKER_CASCADE_SPECS = [
 
 # Default Tier 3 (Worker Bee / Subagent / CUD / Grep) Cascade Hierarchy
 DEFAULT_WORKER_CASCADE_SPECS = [
-    {"provider": "aistudio", "model": "gemini-flash-lite-latest", "label": "Gemini 3.5 Flash-Lite (AI Studio)"},
     {"provider": "do", "model": "deepseek-4-flash", "label": "DO DeepSeek V4 Flash"},
     {"provider": "do", "model": "openai-gpt-oss-120b", "label": "DO GPT-oss-120b"},
     {"provider": "do", "model": "openai-gpt-5-nano", "label": "DO GPT-5 Nano"},

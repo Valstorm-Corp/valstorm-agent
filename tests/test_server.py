@@ -478,15 +478,18 @@ async def test_openai_models_endpoint():
         assert data1["object"] == "list"
         model_ids = [m["id"] for m in data1["data"]]
         assert "vsagent" in model_ids
-        assert "vsagent-developer" in model_ids
+        assert "vsagent-valstorm-developer" in model_ids
+        assert "vsagent-finance" in model_ids
+        assert "vsagent-revops" in model_ids
+        assert "vsagent-devops" in model_ids
 
         res2 = await ac.get("/models")
         assert res2.status_code == 200
         assert res2.json()["object"] == "list"
 
-        res3 = await ac.get("/v1/models/vsagent-developer")
+        res3 = await ac.get("/v1/models/vsagent-valstorm-developer")
         assert res3.status_code == 200
-        assert res3.json()["id"] == "vsagent-developer"
+        assert res3.json()["id"] == "vsagent-valstorm-developer"
 
 
 @pytest.mark.asyncio

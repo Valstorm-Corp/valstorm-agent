@@ -924,7 +924,25 @@ async def _execute_agent_run(
         if not profile_slug:
             if raw_m.startswith("profile:"):
                 profile_slug = raw_m.split(":", 1)[1].strip().lower()
-            elif raw_m.lower() in ("chief-of-staff", "orchestrator", "developer", "architect", "slack-agent", "default"):
+            elif raw_m.lower() in (
+                "chief-of-staff",
+                "orchestrator",
+                "developer",
+                "valstorm-developer",
+                "software-engineer",
+                "architect",
+                "marketer",
+                "finance",
+                "revops",
+                "devops",
+                "workspace-comms",
+                "data-analyst",
+                "creative-director",
+                "video-editor",
+                "researcher",
+                "slack-agent",
+                "default",
+            ):
                 profile_slug = raw_m.lower()
             elif exec_env in ("host", "device"):
                 profile_slug = "software-engineer"
@@ -2350,6 +2368,11 @@ async def ollama_chat_endpoint(
                 memory_store=memory_store,
                 session_store=session_store,
                 allow_local_host_tools=(not cloud_mode or has_isolated_sandbox),
+            )
+            await _discover_and_register_remote_plugin_tools(
+                registry=full_tools,
+                valstorm_token=v_token,
+                valstorm_base_url=x_valstorm_api_url,
             )
             if profile_cfg and profile_cfg.get("allowed_tools") and hasattr(full_tools, "filter_by_whitelist"):
                 tools = full_tools.filter_by_whitelist(profile_cfg["allowed_tools"])
