@@ -88,6 +88,27 @@ class ToolResult(BaseModel):
         return self.duration_ms / 1000.0
 
 
+class ExecutionTraceEntry(BaseModel):
+    """A single chronological working-trace item (intermediate narration, tool call, or subagent)."""
+
+    kind: Literal["narration", "tool_call", "subagent"]
+    step_id: str
+    run_id: Optional[str] = None
+    iteration: int = 0
+    timestamp: Optional[int] = None
+    end_timestamp: Optional[int] = None
+    text: Optional[str] = None
+    tool_name: Optional[str] = None
+    args: Optional[Any] = None
+    status: Optional[str] = None
+    duration: Optional[float] = None
+    result: Optional[Any] = None
+    error: Optional[bool] = None
+    role: Optional[str] = None
+    goal: Optional[str] = None
+    summary: Optional[str] = None
+
+
 class Message(BaseModel):
     """A single message in conversation history mirroring Valstorm ai_chat_message schema."""
 
@@ -102,6 +123,7 @@ class Message(BaseModel):
     images: Optional[List[str]] = None
     tool_calls: Optional[List[ToolCall]] = None
     tool_result: Optional[ToolResult] = None
+    execution_trace: Optional[List[Dict[str, Any]]] = None
     usage: Optional[UsageMetadata] = None
     # Why generation stopped, normalized: "stop", "tool_calls", "length", "malformed_tool_call",
     # "safety", or the provider's raw value. None when the provider didn't report one.

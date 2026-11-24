@@ -11,14 +11,25 @@ from core.tools import ToolRegistry, tool
 
 logger = logging.getLogger("vsagent.web_tools")
 
-DEFAULT_SCRAPER_SERVICE_URL = os.environ.get("WEB_SCRAPER_SERVICE_URL", "http://127.0.0.1:8661/v1")
+def _resolve_default_scraper_service_url() -> str:
+    env_override = os.environ.get("WEB_SCRAPER_SERVICE_URL") or os.environ.get("VALSTORM_WEB_SCRAPER_URL")
+    if env_override:
+        clean = env_override.rstrip("/")
+        return clean if clean.endswith("/v1") else f"{clean}/v1"
+    if os.environ.get("KUBERNETES_SERVICE_HOST"):
+        return "http://valstorm-web-scraper.app-open.svc.cluster.local:8661/v1"
+    return "http://127.0.0.1:8661/v1"
+
+
+DEFAULT_SCRAPER_SERVICE_URL = _resolve_default_scraper_service_url()
 
 
 class WebScraperClient:
     """Client for the Valstorm Web Intelligence & Scraping Microservice."""
 
     def __init__(self, base_url: Optional[str] = None):
-        self.base_url = (base_url or DEFAULT_SCRAPER_SERVICE_URL).rstrip("/")
+        raw_url = (base_url or _resolve_default_scraper_service_url()).rstrip("/")
+        self.base_url = raw_url if raw_url.endswith("/v1") else f"{raw_url}/v1"
 
     async def scrape(
         self,

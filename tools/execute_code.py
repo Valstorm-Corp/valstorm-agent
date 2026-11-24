@@ -148,13 +148,14 @@ def _exec_script_worker(code_str: str, global_scope: Dict[str, Any]) -> tuple[st
     stdout_buf = io.StringIO()
     stderr_buf = io.StringIO()
 
-    local_scope: Dict[str, Any] = {}
+    # Use a single unified module namespace dict so top-level imports and variables
+    # are visible to functions, comprehensions, and classes defined in the same script.
+    exec_namespace: Dict[str, Any] = dict(global_scope)
 
     try:
         with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
-            # Parse AST to check if last statement is an expression
             parsed = compile(code_str, "<execute_code>", "exec")
-            exec(parsed, global_scope, local_scope)
+            exec(parsed, exec_namespace, exec_namespace)
 
         out = stdout_buf.getvalue()
         err = stderr_buf.getvalue()

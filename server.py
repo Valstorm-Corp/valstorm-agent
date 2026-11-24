@@ -598,6 +598,8 @@ async def _sync_turn_to_valstorm(
     desktop_sync_url: Optional[str] = None,
     organization_id: Optional[str] = None,
     user_id: Optional[str] = None,
+    execution_trace: Optional[List[Dict[str, Any]]] = None,
+    duration_sec: Optional[float] = None,
 ):
     """Directly synchronizes terminal turn execution state, messages, and token telemetry to Valstorm backend.
     
@@ -655,6 +657,10 @@ async def _sync_turn_to_valstorm(
         payload["cached_input_tokens"] = int(min(cached_input_tokens, input_tokens or cached_input_tokens))
     if tool_calls:
         payload["tool_calls"] = tool_calls
+    if execution_trace:
+        payload["execution_trace"] = execution_trace
+    if duration_sec is not None and duration_sec > 0:
+        payload["duration_sec"] = round(float(duration_sec), 2)
     if subagents:
         payload["subagent_results"] = subagents
         payload["child_syncs"] = subagents
@@ -809,12 +815,25 @@ async def _execute_agent_run(
     valstorm_base_url: Optional[str] = None,
 ):
     """Executes ReActEngine in background and streams SSE events to the queue."""
+    run_started_at = time.time()
     full_output = ""
+    current_iter_text = ""
+    last_text_only_output = ""
+    iteration_index = 0
+    iter_invoked_tools = False
+    awaiting_new_iteration = False
+    saw_tool_result_in_iter = False
+    iteration_limit_reached = False
+    tool_seq = 0
+    narration_seq = 0
     input_tokens = 0
     output_tokens = 0
     cached_input_tokens = 0
     tool_calls_map: Dict[str, Dict[str, Any]] = {}
+    call_id_to_step_id: Dict[str, str] = {}
+    execution_trace: List[Dict[str, Any]] = []
     subagents_list: List[Dict[str, Any]] = []
+    turn_complete_msg: Optional[Message] = None
 
     # Resolve effective chat ID for direct background cloud sync
     effective_chat_id = payload.chat_id
@@ -1113,7 +1132,43 @@ async def _execute_agent_run(
                     "Briefly explain how to use `/memorize <fact or rule>` to commit facts to persistent memory, and provide 2-3 helpful examples.]"
                 )
 
-        iter_output_checkpoint = 0
+        async def _demote_current_iter_narration(emit_boundary: bool = False, boundary_reason: Optional[str] = None):
+            nonlocal current_iter_text, narration_seq
+            narration_text = current_iter_text.strip()
+            if narration_text:
+                narration_seq += 1
+                ts_ms = int(time.time() * 1000)
+                narration_step_id = f"narration_{iteration_index}_{narration_seq}_{ts_ms}"
+                narration_entry: Dict[str, Any] = {
+                    "kind": "narration",
+                    "step_id": narration_step_id,
+                    "run_id": run_id,
+                    "iteration": iteration_index,
+                    "text": narration_text,
+                    "timestamp": ts_ms,
+                }
+                execution_trace.append(narration_entry)
+                await queue.put({
+                    "event": "activity.narration",
+                    "run_id": run_id,
+                    "step_id": narration_step_id,
+                    "iteration": iteration_index,
+                    "text": narration_text,
+                    "timestamp": ts_ms,
+                })
+                current_iter_text = ""
+            if emit_boundary:
+                boundary_evt: Dict[str, Any] = {
+                    "event": "iteration.boundary",
+                    "run_id": run_id,
+                    "iteration": iteration_index,
+                    "has_tools": iter_invoked_tools,
+                    "timestamp": int(time.time() * 1000),
+                }
+                if boundary_reason:
+                    boundary_evt["reason"] = boundary_reason
+                await queue.put(boundary_evt)
+
         async for event in engine.run_turn_stream(
             session=session,
             user_input=effective_input,
@@ -1125,7 +1180,15 @@ async def _execute_agent_run(
         ):
             if event.event_type == StreamEventType.TEXT_CHUNK and (event.delta is not None):
                 if event.metadata.get("stream_reset"):
-                    full_output = full_output[:iter_output_checkpoint]
+                    current_iter_text = ""
+                    await queue.put({
+                        "event": "iteration.boundary",
+                        "run_id": run_id,
+                        "iteration": iteration_index,
+                        "has_tools": iter_invoked_tools,
+                        "reason": "stream_reset",
+                        "timestamp": int(time.time() * 1000),
+                    })
                 if event.metadata.get("failover"):
                     await queue.put({
                         "event": "provider.failover",
@@ -1138,24 +1201,66 @@ async def _execute_agent_run(
                     continue
                 if not event.delta:
                     continue
-                full_output += event.delta
+                if awaiting_new_iteration:
+                    # A new iteration began after a tool-less LLM_CALL_COMPLETE (e.g. action-nudge retry).
+                    # Demote the prior iteration's text so it never glues onto the next iteration's prose.
+                    await _demote_current_iter_narration(emit_boundary=True)
+                    iteration_index += 1
+                    awaiting_new_iteration = False
+                    iter_invoked_tools = False
+                    saw_tool_result_in_iter = False
+                elif saw_tool_result_in_iter:
+                    # Fallback boundary when a stream emits tool results and then next-turn text without LLM_CALL_COMPLETE.
+                    await _demote_current_iter_narration(emit_boundary=True)
+                    iteration_index += 1
+                    iter_invoked_tools = False
+                    saw_tool_result_in_iter = False
+
+                current_iter_text += event.delta
                 await queue.put({
                     "event": "message.delta",
                     "run_id": run_id,
                     "delta": event.delta,
+                    "iteration": iteration_index,
                 })
 
             elif event.event_type == StreamEventType.TOOL_CALL_DETECTED and event.tool_call:
+                if awaiting_new_iteration:
+                    await _demote_current_iter_narration(emit_boundary=True)
+                    iteration_index += 1
+                    awaiting_new_iteration = False
+                    iter_invoked_tools = False
+                    saw_tool_result_in_iter = False
+                elif saw_tool_result_in_iter:
+                    await _demote_current_iter_narration(emit_boundary=True)
+                    iteration_index += 1
+                    iter_invoked_tools = False
+                    saw_tool_result_in_iter = False
+
+                # Demote any narration spoken in this iteration before invoking tools so the live UI
+                # moves it out of the final-reply stream into the chronological activity trace.
+                await _demote_current_iter_narration(emit_boundary=False)
+                iter_invoked_tools = True
+
                 tc = event.tool_call
                 args_preview = json.dumps(tc.arguments) if isinstance(tc.arguments, dict) else str(tc.arguments)
-                step_id = f"step_{int(time.time() * 1000)}"
-                tool_calls_map[step_id] = {
+                tool_seq += 1
+                ts_ms = int(time.time() * 1000)
+                step_id = f"step_{ts_ms}_{tool_seq}"
+                tool_entry: Dict[str, Any] = {
+                    "kind": "tool_call",
                     "step_id": step_id,
                     "run_id": run_id,
+                    "iteration": iteration_index,
                     "tool_name": tc.name,
                     "args": args_preview,
                     "status": "running",
+                    "timestamp": ts_ms,
                 }
+                tool_calls_map[step_id] = tool_entry
+                if getattr(tc, "id", None):
+                    call_id_to_step_id[tc.id] = step_id
+                execution_trace.append(tool_entry)
                 logger.info(f"[{run_id}] Tool call start: {tc.name}({args_preview[:150]})")
                 await queue.put({
                     "event": "tool.started",
@@ -1163,16 +1268,31 @@ async def _execute_agent_run(
                     "step_id": step_id,
                     "tool": tc.name,
                     "preview": args_preview,
-                    "timestamp": int(time.time() * 1000),
+                    "iteration": iteration_index,
+                    "timestamp": ts_ms,
                 })
 
             elif event.event_type == StreamEventType.TOOL_EXECUTION_RESULT and event.tool_result:
                 tr = event.tool_result
-                last_step = list(tool_calls_map.keys())[-1] if tool_calls_map else f"step_{int(time.time() * 1000)}"
-                if last_step in tool_calls_map:
-                    tool_calls_map[last_step]["status"] = "failed" if tr.is_error else "completed"
-                    tool_calls_map[last_step]["duration"] = tr.duration_sec
-                    tool_calls_map[last_step]["result"] = tr.output
+                saw_tool_result_in_iter = True
+                target_step_id = call_id_to_step_id.get(getattr(tr, "call_id", "") or "")
+                if not target_step_id or target_step_id not in tool_calls_map:
+                    # Fallback: match most recent running tool call with same name, else last entry
+                    for cand_id in reversed(list(tool_calls_map.keys())):
+                        cand = tool_calls_map[cand_id]
+                        if cand.get("tool_name") == tr.name and cand.get("status") == "running":
+                            target_step_id = cand_id
+                            break
+                if not target_step_id:
+                    target_step_id = list(tool_calls_map.keys())[-1] if tool_calls_map else f"step_{int(time.time() * 1000)}"
+
+                end_ts_ms = int(time.time() * 1000)
+                if target_step_id in tool_calls_map:
+                    tool_calls_map[target_step_id]["status"] = "failed" if tr.is_error else "completed"
+                    tool_calls_map[target_step_id]["duration"] = tr.duration_sec
+                    tool_calls_map[target_step_id]["result"] = tr.output
+                    tool_calls_map[target_step_id]["error"] = bool(tr.is_error)
+                    tool_calls_map[target_step_id]["end_timestamp"] = end_ts_ms
 
                 logger.info(
                     f"[{run_id}] Tool call complete: {tr.name} in {tr.duration_sec:.3f}s (error={tr.is_error})"
@@ -1180,22 +1300,37 @@ async def _execute_agent_run(
                 await queue.put({
                     "event": "tool.completed",
                     "run_id": run_id,
-                    "step_id": last_step,
+                    "step_id": target_step_id,
                     "tool": tr.name,
                     "duration": tr.duration_sec,
                     "error": tr.is_error,
                     "result": tr.output,
+                    "timestamp": end_ts_ms,
                 })
 
             elif event.event_type == StreamEventType.LLM_CALL_COMPLETE:
-                iter_output_checkpoint = len(full_output)
+                if iter_invoked_tools:
+                    await _demote_current_iter_narration(emit_boundary=True)
+                    iteration_index += 1
+                    iter_invoked_tools = False
+                    current_iter_text = ""
+                    awaiting_new_iteration = False
+                    saw_tool_result_in_iter = False
+                else:
+                    if current_iter_text.strip():
+                        last_text_only_output = current_iter_text
+                    awaiting_new_iteration = True
                 # Persist progress after every model call so a crash mid-turn doesn't lose work.
                 try:
                     session_store.save_session(session)
                 except Exception as save_err:
                     logger.debug(f"[{run_id}] Mid-turn session save failed: {save_err}")
 
+            elif event.event_type == StreamEventType.ITERATION_LIMIT_REACHED:
+                iteration_limit_reached = True
+
             elif event.event_type == StreamEventType.TURN_COMPLETE and event.message:
+                turn_complete_msg = event.message
                 usage = getattr(event.message, "usage", None)
                 input_tokens = _safe_token_count(getattr(usage, "prompt_tokens", None))
                 output_tokens = _safe_token_count(getattr(usage, "completion_tokens", None))
@@ -1204,6 +1339,52 @@ async def _execute_agent_run(
                     f"[{run_id}] Turn complete | tokens: {input_tokens}in / {output_tokens}out"
                 )
                 session_store.save_session(session)
+
+        # Resolve final human-readable reply strictly from the final text-only iteration,
+        # with safe fallbacks when max iterations are reached without a final text-only turn.
+        if current_iter_text.strip():
+            full_output = current_iter_text.strip() if execution_trace else current_iter_text
+            if (
+                turn_complete_msg is not None
+                and not getattr(turn_complete_msg, "tool_calls", None)
+                and getattr(turn_complete_msg, "content", None)
+                and len(turn_complete_msg.content) < len(full_output)
+            ):
+                full_output = turn_complete_msg.content
+        elif (
+            turn_complete_msg is not None
+            and not getattr(turn_complete_msg, "tool_calls", None)
+            and getattr(turn_complete_msg, "content", None)
+            and turn_complete_msg.content.strip()
+        ):
+            full_output = turn_complete_msg.content.strip()
+        elif last_text_only_output.strip():
+            full_output = last_text_only_output.strip()
+        elif execution_trace:
+            narrations = [
+                str(e.get("text") or "").strip()
+                for e in execution_trace
+                if e.get("kind") == "narration" and str(e.get("text") or "").strip()
+            ]
+            tool_count = sum(1 for e in execution_trace if e.get("kind") == "tool_call")
+            if narrations:
+                full_output = narrations[-1]
+                if iteration_limit_reached:
+                    full_output += "\n\n*(Reached maximum iterations before generating a final summary.)*"
+            elif (
+                turn_complete_msg is not None
+                and getattr(turn_complete_msg, "content", None)
+                and turn_complete_msg.content.strip()
+            ):
+                full_output = turn_complete_msg.content.strip()
+            else:
+                full_output = (
+                    f"Reached maximum iterations after executing {tool_count} action(s)."
+                    if iteration_limit_reached
+                    else f"Completed {tool_count} action(s)."
+                )
+        else:
+            full_output = current_iter_text
 
         # Collect all subagent sessions executed during this run
         try:
@@ -1280,7 +1461,14 @@ async def _execute_agent_run(
                     "duration_sec": 0,
                 })
 
-        tool_calls_list = list(tool_calls_map.values()) if tool_calls_map else None
+        # Store chronological trace (interleaved narrations + tool calls) in both `execution_trace`
+        # and `tool_calls` for zero-downtime backwards compatibility across existing Mongo/SQL projections.
+        tool_calls_list = (
+            execution_trace
+            if execution_trace
+            else (list(tool_calls_map.values()) if tool_calls_map else None)
+        )
+        run_duration_sec = round(max(0.0, time.time() - run_started_at), 2) if execution_trace else None
 
         completed_event: Dict[str, Any] = {
             "event": "run.completed",
@@ -1296,6 +1484,10 @@ async def _execute_agent_run(
             completed_event["auto_tune"] = session.metadata["last_autotune_decision"]
         if tool_calls_list:
             completed_event["tool_calls"] = tool_calls_list
+        if execution_trace:
+            completed_event["execution_trace"] = execution_trace
+        if run_duration_sec is not None:
+            completed_event["duration_sec"] = run_duration_sec
         if subagents_list:
             completed_event["subagent_results"] = subagents_list
 
@@ -1331,6 +1523,8 @@ async def _execute_agent_run(
             valstorm_base_url=valstorm_base_url,
             session_id=session_id,
             tool_calls=tool_calls_list,
+            execution_trace=execution_trace if execution_trace else None,
+            duration_sec=run_duration_sec,
             subagents=subagents_list if subagents_list else None,
             message_id=last_asst_msg_id,
             cached_input_tokens=cached_input_tokens or None,
@@ -1382,7 +1576,7 @@ async def _execute_agent_run(
     except asyncio.CancelledError:
         logger.warning(f"[{run_id}] Run was CANCELLED by user/client")
         cancel_card = "\n\n\033[93m⚠️ [Agent Run Cancelled by User]\033[0m\n"
-        full_output += cancel_card
+        full_output = (full_output or current_iter_text) + cancel_card
         await queue.put({
             "event": "message.delta",
             "run_id": run_id,
@@ -1416,6 +1610,8 @@ async def _execute_agent_run(
             valstorm_token=valstorm_token,
             valstorm_base_url=valstorm_base_url,
             session_id=payload.session_id or effective_chat_id,
+            tool_calls=execution_trace if execution_trace else None,
+            execution_trace=execution_trace if execution_trace else None,
             user_text=payload.input,
             user_message_id=getattr(payload, "user_message_id", None),
             desktop_sync_url=effective_sync_url,
@@ -1425,7 +1621,7 @@ async def _execute_agent_run(
     except Exception as e:
         logger.error(f"[{run_id}] Run failed with exception: {e}", exc_info=True)
         err_card = f"\n\n\033[91m❌ [Agent Run Terminated]: {type(e).__name__}: {str(e)}\033[0m\n"
-        full_output += err_card
+        full_output = (full_output or current_iter_text) + err_card
         await queue.put({
             "event": "message.delta",
             "run_id": run_id,
@@ -1458,6 +1654,8 @@ async def _execute_agent_run(
             valstorm_token=valstorm_token,
             valstorm_base_url=valstorm_base_url,
             session_id=payload.session_id or effective_chat_id,
+            tool_calls=execution_trace if execution_trace else None,
+            execution_trace=execution_trace if execution_trace else None,
             error=str(e),
             user_text=payload.input,
             user_message_id=getattr(payload, "user_message_id", None),

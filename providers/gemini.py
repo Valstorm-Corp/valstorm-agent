@@ -406,7 +406,7 @@ class GeminiProvider(BaseProvider):
             location = (
                 os.getenv("GOOGLE_CLOUD_LOCATION")
                 or os.getenv("VALSTORM_GCP_LOCATION")
-                or "global"
+                or "us-central1"
             )
             client_kwargs = {
                 "vertexai": True,

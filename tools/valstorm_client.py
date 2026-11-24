@@ -8,6 +8,7 @@ Provides fast, authenticated HTTP/2 access to Valstorm platform endpoints:
 - Transparent Auto-Refresh on 401 Unauthorized via /oauth2/refresh
 """
 
+import asyncio
 import contextvars
 from dataclasses import dataclass
 import json
@@ -566,23 +567,79 @@ class ValstormApiClient:
         self.auth_file_path = auth_file_path or auth_file
         self.timeout = timeout
 
+        self._client_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._lock_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._lock: Optional[asyncio.Lock] = None
+
         if client is not None:
             self._client = client
             self._owns_client = False
         else:
-            headers = {
-                "Content-Type": "application/json",
-                "User-Agent": "ValstormAgentRuntime/1.0",
-            }
-            if self.token:
-                headers["Authorization"] = f"Bearer {self.token}"
-
-            self._client = httpx.AsyncClient(
-                base_url=self.base_url,
-                headers=headers,
-                timeout=self.timeout,
-            )
             self._owns_client = True
+            self._client = self._build_http_client()
+            try:
+                self._client_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                self._client_loop = None
+
+    def _build_headers(self) -> Dict[str, str]:
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "ValstormAgentRuntime/1.0",
+        }
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        return headers
+
+    def _build_http_client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            base_url=self.base_url,
+            headers=self._build_headers(),
+            timeout=self.timeout,
+        )
+
+    def _get_active_client(self) -> httpx.AsyncClient:
+        """Returns the injected client or a loop-bound httpx.AsyncClient.
+
+        Automatically recreates the owned client whenever the running asyncio event loop
+        changes (e.g. consecutive sync-bridged calls from execute_code via asyncio.run)
+        or the previous client/loop was closed, preventing RuntimeError: Event loop is closed.
+        """
+        if not self._owns_client:
+            return self._client
+
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        loop_changed = (
+            current_loop is not None
+            and (
+                self._client_loop is not current_loop
+                or (self._client_loop is not None and self._client_loop.is_closed())
+            )
+        )
+        if self._client is None or self._client.is_closed or loop_changed:
+            self._client = self._build_http_client()
+            self._client_loop = current_loop
+        return self._client
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Returns an asyncio.Lock bound to the currently running event loop."""
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if (
+            self._lock is None
+            or self._lock_loop is not current_loop
+            or (self._lock_loop is not None and self._lock_loop.is_closed())
+        ):
+            self._lock = asyncio.Lock()
+            self._lock_loop = current_loop
+        return self._lock
 
     async def _try_refresh_token(self) -> bool:
         """Attempts to refresh an expired access token using refresh_token."""
@@ -598,7 +655,7 @@ class ValstormApiClient:
         )
         if tokens:
             self.token, self.refresh_token = tokens
-            self._client.headers["Authorization"] = f"Bearer {self.token}"
+            self._get_active_client().headers["Authorization"] = f"Bearer {self.token}"
             log_auth_debug(f"Auto-refresh succeeded! New access token prefix={self.token[:10]}...")
             return True
         return False
@@ -614,7 +671,7 @@ class ValstormApiClient:
         if refreshed:
             self.token = refreshed[0]
             self.refresh_token = refreshed[1]
-            self._client.headers["Authorization"] = f"Bearer {self.token}"
+            self._get_active_client().headers["Authorization"] = f"Bearer {self.token}"
         else:
             self.token = "" # Invalidate the access token to ensure no further attempts
             self.refresh_token = "" # Invalidate the refresh token
@@ -631,14 +688,15 @@ class ValstormApiClient:
         # 1. Proactive Token Refresh Check (before sending the request)
         if self.refresh_token and is_jwt_expired(self.token, margin_seconds=60):
             log_auth_debug("Proactive refresh triggered. Token expires in <60s.")
-            async with self._lock:
+            async with self._get_lock():
                 # Re-check inside lock in case another request already refreshed it
                 # If still expired/near-expired, refresh it.
                 if is_jwt_expired(self.token, margin_seconds=60):
                     await self._try_refresh_token()
-        
+
         # 2. Execute Request
-        resp = await self._client.request(method, clean_endpoint, **kwargs)
+        client = self._get_active_client()
+        resp = await client.request(method, clean_endpoint, **kwargs)
 
         if resp.status_code == 401:
             log_auth_debug(f"Received 401 on {method} {clean_endpoint}. Triggering auto-refresh flow...")
@@ -646,15 +704,23 @@ class ValstormApiClient:
             if refreshed:
                 if "headers" in kwargs:
                     kwargs["headers"]["Authorization"] = f"Bearer {self.token}"
-                resp = await self._client.request(method, clean_endpoint, **kwargs)
+                client = self._get_active_client()
+                resp = await client.request(method, clean_endpoint, **kwargs)
 
         resp.raise_for_status()
         return resp
 
     async def close(self):
         """Closes the underlying HTTP client session."""
-        if self._owns_client and not self._client.is_closed:
-            await self._client.aclose()
+        if self._owns_client and self._client is not None and not self._client.is_closed:
+            try:
+                current_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                current_loop = None
+            if self._client_loop is None or self._client_loop is current_loop:
+                await self._client.aclose()
+        if self._owns_client:
+            self._client_loop = None
 
     async def __aenter__(self):
         return self

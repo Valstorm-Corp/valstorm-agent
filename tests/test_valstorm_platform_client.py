@@ -154,3 +154,74 @@ print("Workflow completed successfully")
 """
     output = await execute_code_fn(code=code)
     assert "Workflow completed successfully" in output
+
+
+def test_valstorm_api_client_recreates_http_client_across_closed_event_loops():
+    """Calling ValstormApiClient across separate asyncio.run() loops (as execute_code does for
+    consecutive records_create / records_update calls) must recreate the owned httpx.AsyncClient
+    when the event loop changes instead of failing with RuntimeError: Event loop is closed."""
+    import httpx
+
+    api_client = ValstormApiClient(token="tok_test_loop", base_url="https://api.valstorm.com/v1")
+
+    seen_clients: list[httpx.AsyncClient] = []
+
+    async def _probe_client() -> httpx.AsyncClient:
+        c = api_client._get_active_client()
+        seen_clients.append(c)
+        return c
+
+    c1 = asyncio.run(_probe_client())
+    # First asyncio.run loop is now closed; a second asyncio.run loop must get a fresh client
+    c2 = asyncio.run(_probe_client())
+
+    assert c1 is not c2, "Expected fresh httpx.AsyncClient when running on a new event loop"
+    assert not c2.is_closed
+
+    # Same loop must reuse the same client instance
+    async def _probe_twice_same_loop():
+        a = api_client._get_active_client()
+        b = api_client._get_active_client()
+        await api_client.close()
+        return a, b
+
+    a, b = asyncio.run(_probe_twice_same_loop())
+    assert a is b
+
+
+def test_valstorm_api_client_loop_safe_refresh_lock():
+    """ValstormApiClient must provide an initialized loop-aware asyncio.Lock for proactive refresh."""
+    api_client = ValstormApiClient(token="tok_test_lock", base_url="https://api.valstorm.com/v1")
+
+    async def _get_lock():
+        lock = api_client._get_lock()
+        async with lock:
+            return lock
+
+    lock1 = asyncio.run(_get_lock())
+    lock2 = asyncio.run(_get_lock())
+    assert isinstance(lock1, asyncio.Lock)
+    assert isinstance(lock2, asyncio.Lock)
+    assert lock1 is not lock2
+
+
+@pytest.mark.asyncio
+async def test_execute_code_functions_can_reference_top_level_vars_and_imports(mock_api_client):
+    """Top-level imports and variables defined inside an execute_code script must be visible
+    inside functions and comprehensions defined in the same script (unified globals/locals namespace)."""
+    platform = RemotePlatformContext(client=mock_api_client)
+    execute_tools = create_execute_code_tools(client=mock_api_client, platform=platform)
+    execute_code_fn = execute_tools[0]
+
+    code = """
+import math as _m
+
+payload = {"label": "valstorm", "val": 16}
+
+def compute():
+    return f"{payload['label']}:{int(_m.sqrt(payload['val']))}"
+
+print(compute())
+"""
+    output = await execute_code_fn(code=code)
+    assert "valstorm:4" in output, f"Unexpected output: {output}"

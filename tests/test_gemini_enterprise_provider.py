@@ -41,6 +41,22 @@ def test_gemini_provider_client_initialization_enterprise(monkeypatch):
         )
 
 
+def test_gemini_provider_client_default_location_is_us_central1(monkeypatch):
+    monkeypatch.setenv("GOOGLE_GENAI_USE_ENTERPRISE", "true")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "valstorm-gemini")
+    monkeypatch.delenv("GOOGLE_CLOUD_LOCATION", raising=False)
+    monkeypatch.delenv("VALSTORM_GCP_LOCATION", raising=False)
+
+    with patch("google.genai.Client") as mock_client_cls:
+        provider = GeminiProvider()
+        provider._get_client()
+        mock_client_cls.assert_called_once_with(
+            vertexai=True,
+            project="valstorm-gemini",
+            location="us-central1",
+        )
+
+
 @pytest.mark.asyncio
 async def test_gemini_provider_generate_with_default_model(monkeypatch):
     monkeypatch.setenv("GOOGLE_GENAI_USE_ENTERPRISE", "true")
