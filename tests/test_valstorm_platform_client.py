@@ -25,7 +25,6 @@ def mock_api_client():
     
     # Mock methods
     client.sql_query = AsyncMock(return_value={"records": [{"id": "cont_1", "name": "Alice"}]})
-    client.mongo_query = AsyncMock(return_value={"records": [{"id": "deal_1", "stage": "Closed Won"}]})
     client.records_create = AsyncMock(return_value={"id": "cont_2", "name": "Bob"})
     client.records_update = AsyncMock(return_value={"id": "cont_2", "name": "Bob Updated"})
     client.records_delete = AsyncMock(return_value={"status": "success", "deleted_count": 1})
@@ -57,13 +56,7 @@ def test_remote_platform_query_sql(mock_api_client):
     records = platform.query.sql("SELECT id, name FROM contact")
     assert records == [{"id": "cont_1", "name": "Alice"}]
     mock_api_client.sql_query.assert_called_once_with(query="SELECT id, name FROM contact LIMIT 50", bypass_cache=False)
-
-
-def test_remote_platform_query_mongo(mock_api_client):
-    platform = RemotePlatformContext(client=mock_api_client)
-    records = platform.query.mongo("deal", [{"$match": {"stage": "Closed Won"}}])
-    assert records == [{"id": "deal_1", "stage": "Closed Won"}]
-    mock_api_client.mongo_query.assert_called_once_with(collection="deal", pipeline=[{"$match": {"stage": "Closed Won"}}])
+    assert not hasattr(platform.query, "mongo")
 
 
 def test_remote_platform_records_crud(mock_api_client):
@@ -115,15 +108,12 @@ def test_remote_platform_vfs_file_and_schema(mock_api_client):
 @pytest.mark.asyncio
 async def test_valstorm_direct_tools(mock_api_client):
     tools = {t.__name__: t for t in create_valstorm_tools(client=mock_api_client)}
-    assert "valstorm_mongo_query" in tools
+    assert "valstorm_mongo_query" not in tools
     assert "valstorm_vfs_get_file" in tools
     assert "valstorm_records_hydrate_batch" in tools
 
     res_file = await tools["valstorm_vfs_get_file"](file_id="file_1")
     assert "Hello VFS" in res_file
-
-    res_mongo = await tools["valstorm_mongo_query"](collection="deal", pipeline=[{"$match": {}}])
-    assert "Closed Won" in res_mongo
 
 
 @pytest.mark.asyncio
@@ -225,3 +215,76 @@ print(compute())
 """
     output = await execute_code_fn(code=code)
     assert "valstorm:4" in output, f"Unexpected output: {output}"
+
+
+@pytest.mark.asyncio
+async def test_valstorm_client_analytics_v2_and_dual_format_generators():
+    client = ValstormApiClient(token="tok_123", base_url="http://127.0.0.1:8010/v1")
+
+    # 1. analytics_query_v2 strips /v1 and hits /v2/analytics/query
+    fake_resp = MagicMock()
+    fake_resp.json.return_value = {"columns": [], "rows": [], "totals": {"cnt": 42}}
+    client._request_with_retry = AsyncMock(return_value=fake_resp)
+
+    res = await client.analytics_query_v2(
+        {"source": "deal", "dimensions": [], "measures": [{"agg": "count", "alias": "cnt"}]}
+    )
+    assert res["totals"]["cnt"] == 42
+    client._request_with_retry.assert_awaited_once_with(
+        "POST",
+        "http://127.0.0.1:8010/v2/analytics/query",
+        json={"source": "deal", "dimensions": [], "measures": [{"agg": "count", "alias": "cnt"}]},
+    )
+
+    # 2. generate_report emits both V2 native specs and V1 legacy keys
+    client.schema_get = AsyncMock(return_value={"id": "obj_deal", "api_name": "deal"})
+    client.records_create = AsyncMock(return_value=[{"id": "rep_v2_1", "name": "Monthly Revenue"}])
+    await client.generate_report(
+        name="Monthly Revenue",
+        object_api_name="deal",
+        sql_query="SELECT * FROM deal WHERE stage = 'Won'",
+        chart_type="Area",
+        x_field="close_date",
+        y_field="amount",
+        aggregation="Sum",
+        group_by_time="Month",
+    )
+    _, rep_records = client.records_create.call_args.args
+    rep_payload = rep_records[0]
+    assert rep_payload["query"]["version"] == 2
+    assert rep_payload["query"]["v2_query"]["source"] == "deal"
+    assert rep_payload["query"]["v2_query"]["dimensions"] == [
+        {"field": "close_date", "time_grain": "month", "fill_gaps": True}
+    ]
+    assert rep_payload["query"]["v2_query"]["measures"][0]["agg"] == "sum"
+    assert rep_payload["chart_settings"]["v2_spec"]["type"] == "area"
+    # Legacy keys still preserved
+    assert rep_payload["chart_settings"]["chartType"] == "Area"
+
+    # 3. generate_dashboard emits __v2_config__ with live linked_report bindings
+    client.records_create = AsyncMock(
+        side_effect=[
+            [{"id": "rep_auto_1", "name": "Pipeline KPI"}],
+            [{"id": "dash_v2_1", "name": "Exec Board"}],
+        ]
+    )
+    dash_out = await client.generate_dashboard(
+        name="Exec Board",
+        widgets=[
+            {
+                "title": "Pipeline KPI",
+                "object_api_name": "deal",
+                "chart_type": "Metric",
+                "y_field": "amount",
+                "aggregation": "Sum",
+            }
+        ],
+    )
+    assert dash_out["id"] == "dash_v2_1"
+    dash_call_records = client.records_create.call_args_list[1].args[1]
+    layout_items = dash_call_records[0]["layout_items"]
+    assert layout_items[0]["i"] == "__v2_config__"
+    v2_cfg = layout_items[0]["v2_config"]
+    assert v2_cfg["version"] == 2
+    assert v2_cfg["widgets"][0]["kind"] == "linked_report"
+    assert v2_cfg["widgets"][0]["reportId"] == "rep_auto_1"

@@ -44,7 +44,7 @@ async def test_valstorm_tools_registration_and_execution(mock_api_client):
 
     tool_names = registry.list_tools()
     assert "valstorm_sql_query" in tool_names
-    assert "valstorm_mongo_query" in tool_names
+    assert "valstorm_mongo_query" not in tool_names
     assert "valstorm_vfs_search" in tool_names
     assert "valstorm_vfs_discover_knowledge" in tool_names
     assert "valstorm_vfs_browse" in tool_names

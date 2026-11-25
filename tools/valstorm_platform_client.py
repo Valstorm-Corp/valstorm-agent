@@ -99,7 +99,7 @@ class RemoteRecordContext(RemoteBaseContext):
 
 
 class RemoteQueryContext(RemoteBaseContext):
-    """Context for data querying (SQL, Mongo, GraphQL)."""
+    """Context for data querying (SQL and VFS search)."""
 
     def sql(self, query: str, limit: int = 50, bypass_cache: bool = False, **kwargs) -> list[dict[str, Any]]:
         """Execute a SQL query against the Valstorm query engine."""
@@ -109,14 +109,6 @@ class RemoteQueryContext(RemoteBaseContext):
 
         async def _run():
             res = await self.client.sql_query(query=clean_q, bypass_cache=bypass_cache)
-            return res.get("records", [])
-
-        return _make_sync_async_callable(_run)()
-
-    def mongo(self, collection: str, pipeline: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Execute a structured document aggregation pipeline."""
-        async def _run():
-            res = await self.client.mongo_query(collection=collection, pipeline=pipeline)
             return res.get("records", [])
 
         return _make_sync_async_callable(_run)()

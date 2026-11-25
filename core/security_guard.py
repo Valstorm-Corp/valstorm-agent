@@ -523,7 +523,7 @@ class SecurityGuard:
         trimmed = text.strip()
         already_wrapped = trimmed.startswith(("<untrusted_web_content", "<untrusted_html_content"))
 
-        # Check if payload is valid JSON (e.g. valstorm_sql_query, valstorm_mongo_query, valstorm_vfs_get_file)
+        # Check if payload is valid JSON (e.g. valstorm_sql_query, valstorm_vfs_get_file)
         sanitized_text = text
         if trimmed.startswith(("{", "[")) and trimmed.endswith(("}", "]")):
             try:

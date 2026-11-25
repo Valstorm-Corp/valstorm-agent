@@ -15,13 +15,14 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
 
     @tool
     async def valstorm_sql_query(query: str, limit: int = 50, bypass_cache: bool = False) -> str:
-        """Executes a SQL query against the Valstorm query engine.
+        """Executes a SQL query against the PostgreSQL-native Valstorm query engine.
 
-        Supports standard SQL keywords, dynamic date filters (e.g. today, this_month, last_n_days:7),
+        Supports standard SQL queries, native aggregations (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, `GROUP BY`, `HAVING`, `CASE WHEN`),
+        dynamic date filters (e.g. 'today', 'this_month', 'this_quarter', 'this_year', 'last_n_days:7'),
         JOIN operations, and the ME keyword for user-scoped filtering.
 
         Args:
-            query: The SQL query string (e.g. "SELECT id, name, email FROM contact WHERE status = 'Active' LIMIT 10").
+            query: The SQL query string (e.g. "SELECT status, COUNT(id) AS cnt FROM lead GROUP BY status LIMIT 50").
             limit: Maximum number of records to return (default: 50).
             bypass_cache: Set true to bypass Redis query cache and hit primary database directly.
         """
@@ -29,11 +30,11 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         clean_q = query.strip()
         try:
             from core.tool_healer import heal_sql_query_s1
-            avail_schemas = None
-            if hasattr(api_client, "schema_get"):
-                s_all = await api_client.schema_get(api_name=None)
-                if isinstance(s_all, dict):
-                    avail_schemas = s_all
+            avail_schemas = (
+                api_client.get_cached_schemas()
+                if hasattr(api_client, "get_cached_schemas")
+                else None
+            )
             clean_q, _ = heal_sql_query_s1(clean_q, avail_schemas)
         except Exception:
             pass
@@ -190,21 +191,18 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
             return "Error: records must be a list of dictionaries."
 
         # P6 (FI-566): System-1 self-healing for object api_name, field typos, and lookup/picklist formatting
+        # Uses cached schemas only (zero extra network roundtrips on every CUD call)
         try:
             from core.tool_healer import heal_object_api_name_s1, heal_record_payload_s1
-            avail_schemas = None
+            avail_schemas = (
+                api_client.get_cached_schemas()
+                if hasattr(api_client, "get_cached_schemas")
+                else None
+            )
             schema_spec = None
-            if hasattr(api_client, "schema_get"):
-                s_all = await api_client.schema_get(api_name=None)
-                if isinstance(s_all, dict):
-                    avail_schemas = s_all
             api_name, _ = heal_object_api_name_s1(api_name, avail_schemas)
-            if avail_schemas and api_name in avail_schemas:
-                schema_spec = avail_schemas[api_name]
-            elif hasattr(api_client, "schema_get"):
-                s_one = await api_client.schema_get(api_name=api_name)
-                if isinstance(s_one, dict) and s_one.get("fields"):
-                    schema_spec = s_one
+            if isinstance(avail_schemas, dict):
+                schema_spec = avail_schemas.get(api_name) or avail_schemas.get(api_name.lower())
             if action in ("create", "update"):
                 healed_list = []
                 for rec_item in data_records:
@@ -305,31 +303,6 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
             return json.dumps(summary, indent=2)
 
         return json.dumps(res, indent=2, default=str)
-
-    @tool
-    async def valstorm_mongo_query(
-        collection: str,
-        pipeline: Union[str, List[Dict[str, Any]]],
-    ) -> str:
-        """Executes a document aggregation pipeline directly against the tenant database.
-
-        Args:
-            collection: The collection API name (e.g. 'contact', 'task', 'deal').
-            pipeline: List of aggregation pipeline stages (e.g. [{"$match": {"status": "Active"}}, {"$limit": 10}]). Can be a JSON string.
-        """
-        data_pipeline = pipeline
-        if isinstance(pipeline, str):
-            try:
-                data_pipeline = json.loads(pipeline)
-            except Exception as e:
-                return f"Error: pipeline argument must be valid JSON: {e}"
-
-        if not isinstance(data_pipeline, list):
-            return "Error: pipeline must be a list of stage dictionaries."
-
-        res = await api_client.mongo_query(collection=collection, pipeline=data_pipeline)
-        records = res.get("records", [])
-        return json.dumps(records, indent=2, default=str)
 
     @tool
     async def valstorm_vfs_get_file(file_id: str) -> str:
@@ -689,18 +662,18 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
         group_by_time: Optional[str] = None,
         bypass_cache: bool = False,
     ) -> str:
-        """Executes server-side pandas statistical aggregation via /analytics/report and returns calculated data points.
+        """Executes server-side PostgreSQL analytical aggregation via POST /v2/analytics/query and returns calculated data points.
 
-        Use this tool to compute statistical rollups (averages, sums, time-series distributions) without fetching raw record sets.
+        Use this tool (or `valstorm_sql_query` with `COUNT`/`SUM`/`AVG`/`GROUP BY`) to compute statistical rollups and time-series distributions without fetching raw record sets.
 
         Args:
-            sql_query: Base SQL query to pull records for analysis.
-            chart_type: Analytical calculation mode ('Bar', 'Line', 'Pie', 'Donut', 'Funnel', 'Metric').
-            field: Field for Pie/Donut breakdown (e.g. 'status').
-            x_field: Category/dimension field for Bar/Line analysis.
-            y_field: Value metric field for Bar/Line analysis.
-            aggregate: Aggregation operation ('Count', 'Sum', 'Average', 'Min', 'Max', 'Cumulative').
-            group_by_time: Time grouping for date fields ('Day', 'Week', 'Month', 'Quarter', 'Year').
+            sql_query: Base SQL query (e.g. "SELECT id, status, loan_amount FROM lead WHERE created_date = 'this_year'").
+            chart_type: Analytical calculation mode ('Bar', 'Line', 'Area', 'Pie', 'Donut', 'Funnel', 'Metric').
+            field: Dimension field for Pie/Donut breakdown (e.g. 'status'), or numeric metric field for Metric.
+            x_field: Category/dimension field for Bar/Line/Area analysis (e.g. 'status', 'created_date').
+            y_field: Value metric field for Bar/Line/Area/Metric analysis (e.g. 'loan_amount', 'amount').
+            aggregate: Aggregation operation ('Count', 'Count Distinct', 'Sum', 'Average', 'Min', 'Max', 'Median', 'p95', 'Cumulative').
+            group_by_time: Time grouping for date fields ('Hour', 'Day', 'Week', 'Month', 'Quarter', 'Year').
             bypass_cache: Set True to bypass Redis query cache and recompute from live DB.
         """
         field_list = [{"key": field.strip(), "aggregate": aggregate.title()}] if field else None
@@ -1073,7 +1046,6 @@ def create_valstorm_tools(client: Optional[ValstormApiClient] = None):
 
     core_tools = [
         valstorm_sql_query,
-        valstorm_mongo_query,
         valstorm_vfs_search,
         valstorm_vfs_discover_knowledge,
         valstorm_vfs_browse,

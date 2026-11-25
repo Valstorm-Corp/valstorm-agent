@@ -225,8 +225,10 @@ async def test_valstorm_client_generate_dashboard_grid_packing():
         (6, 3, 6, 6),
     ]
 
-    # Verify Dashboard.tsx compatibility fields on layout_items
-    first_comp = dash_payload["layout_items"][0]["component"]
+    # Verify V2 dashboard config + Dashboard.tsx compatibility fields on layout_items
+    assert dash_payload["layout_items"][0]["i"] == "__v2_config__"
+    assert dash_payload["layout_items"][0]["v2_config"]["version"] == 2
+    first_comp = dash_payload["layout_items"][1]["component"]
     assert first_comp["schema"] == "obj_MBZTa8B7SfCFsWQ8"
     assert first_comp["object"] == "obj_MBZTa8B7SfCFsWQ8"
     assert first_comp["query"]["sql_query"] == "SELECT * FROM lead"

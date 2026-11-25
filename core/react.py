@@ -30,7 +30,6 @@ SPECULATIVE_SAFE_TOOLS = frozenset({
     "skill_list",
     "session_search",
     "valstorm_sql_query",
-    "valstorm_mongo_query",
     "valstorm_vfs_search",
     "valstorm_vfs_browse",
     "valstorm_vfs_get_file",

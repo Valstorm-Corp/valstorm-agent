@@ -14,6 +14,7 @@ from dataclasses import dataclass
 import json
 import os
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -570,6 +571,9 @@ class ValstormApiClient:
         self._client_loop: Optional[asyncio.AbstractEventLoop] = None
         self._lock_loop: Optional[asyncio.AbstractEventLoop] = None
         self._lock: Optional[asyncio.Lock] = None
+        # Short-TTL per-client schema cache to avoid redundant GET /v1/schema roundtrips
+        self._schema_cache: Dict[str, Tuple[float, Any]] = {}
+        self._schema_cache_ttl: float = 60.0
 
         if client is not None:
             self._client = client
@@ -707,8 +711,40 @@ class ValstormApiClient:
                 client = self._get_active_client()
                 resp = await client.request(method, clean_endpoint, **kwargs)
 
-        resp.raise_for_status()
+        if resp.is_error:
+            detail_msg = self._extract_http_error_detail(resp)
+            url_str = str(resp.request.url) if resp.request is not None else clean_endpoint
+            reason = resp.reason_phrase or "Error"
+            msg = f"HTTP {resp.status_code} {reason} on {method.upper()} {url_str}"
+            if detail_msg:
+                msg = f"{msg}: {detail_msg}"
+            raise httpx.HTTPStatusError(msg, request=resp.request, response=resp)
         return resp
+
+    @staticmethod
+    def _extract_http_error_detail(resp: httpx.Response) -> str:
+        """Extracts actionable JSON `detail` / `message` / `error` or body snippet from an error response."""
+        try:
+            body = resp.json()
+            if isinstance(body, dict):
+                for key in ("detail", "message", "error", "errors"):
+                    val = body.get(key)
+                    if val:
+                        if isinstance(val, str):
+                            return val.strip()[:1200]
+                        return json.dumps(val, default=str)[:1200]
+                return json.dumps(body, default=str)[:1200]
+            if isinstance(body, list) and body:
+                return json.dumps(body, default=str)[:1200]
+        except Exception:
+            pass
+        try:
+            text = (resp.text or "").strip()
+            if text:
+                return text[:1200]
+        except Exception:
+            pass
+        return ""
 
     async def close(self):
         """Closes the underlying HTTP client session."""
@@ -746,17 +782,6 @@ class ValstormApiClient:
         payload = {"query": query, "bypass_cache": bypass_cache}
         log_auth_debug(f"Sending POST /query: {query}")
         resp = await self._request_with_retry("POST", "/query", json=payload)
-        data = resp.json()
-        return {
-            "records": data if isinstance(data, list) else data.get("records", []),
-            "headers": dict(resp.headers),
-        }
-
-    async def mongo_query(self, collection: str, pipeline: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Executes a direct MongoDB aggregation pipeline."""
-        payload = {"collection": collection, "pipeline": pipeline}
-        log_auth_debug(f"Sending POST /query/mongo on {collection}")
-        resp = await self._request_with_retry("POST", "/query/mongo", json=payload)
         data = resp.json()
         return {
             "records": data if isinstance(data, list) else data.get("records", []),
@@ -885,9 +910,20 @@ class ValstormApiClient:
 
     async def records_delete(self, api_name: str, ids: List[str]) -> Dict[str, Any]:
         """Deletes records by ID from a collection."""
+        clean_ids = [str(i).strip() for i in (ids or []) if str(i).strip()]
+        if not clean_ids:
+            return {"status": "success", "deleted_count": 0}
         endpoint = f"/object/{api_name}"
-        resp = await self._request_with_retry("DELETE", endpoint, params={"ids": ids})
-        return {"status": "success", "deleted_count": len(ids)}
+        # Comma-separated ids avoids FastAPI scalar Query truncation when multiple IDs are passed
+        resp = await self._request_with_retry("DELETE", endpoint, params={"ids": ",".join(clean_ids)})
+        if resp.content:
+            try:
+                body = resp.json()
+                if isinstance(body, dict) and "deleted_count" in body:
+                    return body
+            except Exception:
+                pass
+        return {"status": "success", "deleted_count": len(clean_ids), "deleted_ids": clean_ids}
 
     async def records_hydrate_batch(self, ids: List[str]) -> Dict[str, Any]:
         """Resolves a batch of prefixed IDs (e.g. ['cont_123', 'task_456']) into names and schemas."""
@@ -919,33 +955,95 @@ class ValstormApiClient:
     # 4. Schema Discovery & Metadata (/schema)
     # ==========================================
 
-    async def schema_get(self, api_name: Optional[str] = None) -> Any:
-        """Fetches all schemas or a specific object schema."""
+    def _schema_cache_key(self, api_name: Optional[str] = None) -> str:
+        tctx = get_current_tenant_context()
+        scope = (tctx.org_id if tctx else None) or (self.token[:16] if self.token else "anon")
+        return f"{scope}:{(api_name or '__all__').strip().lower()}"
+
+    def invalidate_schema_cache(self, api_name: Optional[str] = None) -> None:
+        """Clears cached schema entries (specific object or full cache)."""
+        if not api_name:
+            self._schema_cache.clear()
+            return
+        target = api_name.strip().lower()
+        for k in list(self._schema_cache.keys()):
+            if k.endswith(f":{target}") or k.endswith(":__all__"):
+                self._schema_cache.pop(k, None)
+
+    def get_cached_schemas(self) -> Optional[Dict[str, Any]]:
+        """Returns cached schema map without making a network call if warm and fresh."""
+        now = time.monotonic()
+        all_key = self._schema_cache_key(None)
+        entry = self._schema_cache.get(all_key)
+        if entry and (now - entry[0]) < self._schema_cache_ttl:
+            data = entry[1]
+            if isinstance(data, dict):
+                return data
+            if isinstance(data, list):
+                return {
+                    str(s.get("api_name") or "").lower(): s
+                    for s in data
+                    if isinstance(s, dict) and s.get("api_name")
+                }
+        # Assemble from individually cached object schemas if any are warm
+        prefix = self._schema_cache_key("__sentinel__").rsplit(":", 1)[0] + ":"
+        merged: Dict[str, Any] = {}
+        for k, (ts, val) in list(self._schema_cache.items()):
+            if k.startswith(prefix) and not k.endswith(":__all__") and (now - ts) < self._schema_cache_ttl:
+                if isinstance(val, dict):
+                    obj_name = str(val.get("api_name") or k.split(":", 1)[1]).lower()
+                    merged[obj_name] = val
+        return merged or None
+
+    async def schema_get(self, api_name: Optional[str] = None, bypass_cache: bool = False) -> Any:
+        """Fetches all schemas or a specific object schema (with 60s TTL cache)."""
+        cache_key = self._schema_cache_key(api_name)
+        now = time.monotonic()
+        if not bypass_cache:
+            cached = self._schema_cache.get(cache_key)
+            if cached and (now - cached[0]) < self._schema_cache_ttl:
+                return cached[1]
+            # If asking for a specific object and full schema map is already warm, serve from it
+            if api_name:
+                all_cached = self._schema_cache.get(self._schema_cache_key(None))
+                if all_cached and (now - all_cached[0]) < self._schema_cache_ttl:
+                    all_data = all_cached[1]
+                    if isinstance(all_data, dict):
+                        hit = all_data.get(api_name) or all_data.get(api_name.lower())
+                        if isinstance(hit, dict):
+                            return hit
+
         if api_name:
             endpoint = f"/schema/{api_name}"
         else:
             endpoint = "/schema"
         resp = await self._request_with_retry("GET", endpoint)
-        return resp.json()
+        data = resp.json()
+        self._schema_cache[cache_key] = (now, data)
+        return data
 
     async def schema_create(self, data: Dict[str, Any]) -> Any:
         """Creates a new custom object schema."""
         resp = await self._request_with_retry("POST", "/schema", json=data)
+        self.invalidate_schema_cache()
         return resp.json()
 
     async def schema_update(self, data: Dict[str, Any]) -> Any:
         """Updates an existing object schema."""
         resp = await self._request_with_retry("PATCH", "/schema", json=data)
+        self.invalidate_schema_cache()
         return resp.json()
 
     async def schema_create_field(self, data: Dict[str, Any]) -> Any:
         """Creates a field in an object schema."""
         resp = await self._request_with_retry("POST", "/schema/field", json=data)
+        self.invalidate_schema_cache()
         return resp.json()
 
     async def schema_delete(self, schema_id: str) -> Any:
         """Deletes a custom object schema."""
         resp = await self._request_with_retry("DELETE", f"/schema/{schema_id}")
+        self.invalidate_schema_cache()
         return resp.json()
 
     # ==========================================
@@ -1028,25 +1126,49 @@ class ValstormApiClient:
         aggregate: str = "count",
         group_by_date_time: Optional[str] = None,
         bypass_cache: bool = False,
+        object_api_name: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Calls /analytics/report to compute server-side pandas statistical aggregations."""
-        payload: Dict[str, Any] = {
-            "query": query,
-            "chartType": chart_type,
-            "aggregate": aggregate,
-            "bypass_cache": bypass_cache,
-        }
-        if field:
-            payload["field"] = field
-        if x:
-            payload["x"] = x
-        if y:
-            payload["y"] = y
-        if group_by_date_time:
-            payload["groupByDateTime"] = group_by_date_time
+        """Executes server-side PostgreSQL analytical aggregation via POST /v2/analytics/query."""
+        def _first_field_name(entries: Optional[List[Dict[str, Any]]]) -> Optional[str]:
+            if not entries:
+                return None
+            first = entries[0]
+            if isinstance(first, str):
+                return first.strip() or None
+            if isinstance(first, dict):
+                return (first.get("key") or first.get("api_name") or first.get("field") or "").strip() or None
+            return None
 
-        resp = await self._request_with_retry("POST", "/analytics/report", json=payload)
-        return resp.json()
+        x_field = _first_field_name(x)
+        field_name = _first_field_name(field)
+        y_field = _first_field_name(y)
+        if not x_field and field_name and chart_type.strip().lower() in ("pie", "donut", "funnel"):
+            x_field = field_name
+        elif not y_field and field_name:
+            y_field = field_name
+
+        resolved_source = (object_api_name or "").strip()
+        if not resolved_source and query:
+            m = re.search(r"\bFROM\s+([a-zA-Z0-9_]+)", query, re.IGNORECASE)
+            if m:
+                resolved_source = m.group(1)
+
+        v2_query, _ = self._build_v2_report_specs(
+            title=f"{aggregate.title()} Analysis",
+            object_api_name=resolved_source,
+            sql_query=query,
+            chart_type=chart_type,
+            x_field=x_field,
+            y_field=y_field,
+            aggregation=aggregate,
+            group_by_time=group_by_date_time,
+        )
+        if not v2_query.get("source") and query:
+            v2_query["base_sql"] = query.strip()
+        if bypass_cache:
+            v2_query["bypass_cache"] = True
+
+        return await self.analytics_query_v2(v2_query)
 
     async def create_list_filter(
         self,
@@ -1073,16 +1195,23 @@ class ValstormApiClient:
             if not resolved_display_fields:
                 resolved_display_fields = list(props.keys())[:6]
 
+        # Align payload to actual Open Valstorm `list_filter` schema columns
+        # (list_fields, table_columns, settings — NOT legacy display_fields/pinned/is_default/app)
+        settings: Dict[str, Any] = {
+            "pinned": bool(is_pinned),
+            "is_default": bool(is_default),
+        }
+        if app_id:
+            settings["app_id"] = app_id
+
         record_payload = {
             "name": name,
             "object": schema_id,
             "query": sql_query,
-            "display_fields": resolved_display_fields,
-            "pinned": is_pinned,
-            "is_default": is_default,
+            "list_fields": resolved_display_fields,
+            "table_columns": [{"field": f} for f in resolved_display_fields],
+            "settings": settings,
         }
-        if app_id:
-            record_payload["app"] = app_id
 
         return await self.records_create("list_filter", [record_payload])
 
@@ -1180,6 +1309,120 @@ class ValstormApiClient:
             },
         }
 
+    @staticmethod
+    def _build_v2_report_specs(
+        *,
+        title: str,
+        object_api_name: str,
+        sql_query: str,
+        chart_type: str = "Bar",
+        x_field: Optional[str] = None,
+        y_field: Optional[str] = None,
+        aggregation: str = "Count",
+        group_by_time: Optional[str] = None,
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Builds native Analytics V2 (`v2_query`, `v2_spec`) payloads matching POST /v2/analytics/query."""
+        type_map = {
+            "bar": "bar",
+            "stacked_bar": "stacked_bar",
+            "percent_bar": "percent_bar",
+            "horizontalbar": "horizontal_bar",
+            "horizontal_bar": "horizontal_bar",
+            "line": "line",
+            "area": "area",
+            "combo": "combo",
+            "pie": "pie",
+            "donut": "donut",
+            "funnel": "funnel",
+            "metric": "kpi",
+            "kpi": "kpi",
+            "guage": "gauge",
+            "gauge": "gauge",
+            "scatter": "scatter",
+            "table": "table",
+        }
+        agg_map = {
+            "count": "count",
+            "count distinct": "count_distinct",
+            "count_distinct": "count_distinct",
+            "sum": "sum",
+            "average": "avg",
+            "avg": "avg",
+            "min": "min",
+            "max": "max",
+            "median": "median",
+            "p95": "p95",
+        }
+        grain_map = {
+            "hour": "hour",
+            "day": "day",
+            "week": "week",
+            "month": "month",
+            "quarter": "quarter",
+            "year": "year",
+        }
+
+        v2_type = type_map.get(chart_type.strip().lower(), "bar")
+        agg_norm = aggregation.strip().lower()
+        is_cumulative = agg_norm == "cumulative"
+        is_value_split = agg_norm == "value"
+        if is_cumulative:
+            v2_agg = "sum" if (y_field and y_field.lower() not in ("id", "name")) else "count"
+        elif is_value_split:
+            v2_agg = "count"
+        else:
+            v2_agg = agg_map.get(agg_norm, "count")
+        v2_grain = grain_map.get((group_by_time or "").strip().lower())
+
+        dimensions: List[Dict[str, Any]] = []
+        if v2_type not in ("kpi", "gauge") and x_field:
+            dim_entry: Dict[str, Any] = {"field": x_field}
+            if v2_grain:
+                dim_entry["time_grain"] = v2_grain
+                dim_entry["fill_gaps"] = True
+            dimensions.append(dim_entry)
+            if is_value_split and y_field and y_field != x_field:
+                dimensions.append({"field": y_field})
+
+        measure_entry: Dict[str, Any] = {
+            "agg": v2_agg,
+            "alias": f"{v2_agg}_{y_field}" if (y_field and not is_value_split) else v2_agg,
+            "label": title if v2_type in ("kpi", "gauge") else ("Count" if is_value_split else (y_field or "Count")),
+        }
+        if y_field and v2_agg != "count":
+            measure_entry["field"] = y_field
+        if is_cumulative:
+            measure_entry["window"] = "cumulative"
+
+        clean_sql = (sql_query or "").strip()
+        has_custom_clauses = bool(re.search(r"\b(WHERE|JOIN)\b", clean_sql, re.IGNORECASE))
+        v2_query: Dict[str, Any] = {
+            "source": object_api_name,
+            "dimensions": dimensions,
+            "measures": [measure_entry],
+            "limit": 500,
+        }
+        if has_custom_clauses and clean_sql:
+            v2_query["base_sql"] = clean_sql
+
+        v2_spec: Dict[str, Any] = {
+            "version": 2,
+            "type": v2_type,
+            "title": title,
+            "paletteName": "valstorm",
+            "showGrid": True,
+        }
+        return v2_query, v2_spec
+
+    async def analytics_query_v2(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Executes a single-pass analytical query against POST /v2/analytics/query."""
+        root_url = self.base_url.rstrip("/")
+        if root_url.endswith("/v1"):
+            root_url = root_url[:-3]
+        v2_endpoint = f"{root_url}/v2/analytics/query"
+        resp = await self._request_with_retry("POST", v2_endpoint, json=payload)
+        return resp.json()
+
     async def generate_report(
         self,
         name: str,
@@ -1192,7 +1435,7 @@ class ValstormApiClient:
         group_by_time: Optional[str] = None,
         app_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Creates and persists a report record with chart_settings and query configuration."""
+        """Creates and persists a report record with native V2 (`v2_query`, `v2_spec`) and V1 compatibility."""
         schema_info = await self.schema_get(object_api_name)
         schema_id = (schema_info.get("id") if isinstance(schema_info, dict) else None) or object_api_name
 
@@ -1205,6 +1448,20 @@ class ValstormApiClient:
             group_by_time=group_by_time,
         )
         query_config = self._build_report_query_config(sql_query=sql_query, object_api_name=object_api_name)
+        v2_query, v2_spec = self._build_v2_report_specs(
+            title=name,
+            object_api_name=object_api_name,
+            sql_query=sql_query,
+            chart_type=chart_type,
+            x_field=x_field,
+            y_field=y_field,
+            aggregation=aggregation,
+            group_by_time=group_by_time,
+        )
+        query_config["version"] = 2
+        query_config["v2_query"] = v2_query
+        chart_settings["version"] = 2
+        chart_settings["v2_spec"] = v2_spec
 
         report_payload = {
             "name": name,
@@ -1213,8 +1470,6 @@ class ValstormApiClient:
             "chart_settings": chart_settings,
             "standard": False,
         }
-        if app_id:
-            report_payload["app"] = app_id
 
         return await self.records_create("report", [report_payload])
 
@@ -1233,6 +1488,7 @@ class ValstormApiClient:
         schema_cache: Dict[str, str] = {}
         layout: List[Dict[str, Any]] = []
         layout_items: List[Dict[str, Any]] = []
+        v2_widgets: List[Dict[str, Any]] = []
         created_reports: List[Dict[str, Any]] = []
 
         cur_x = 0
@@ -1378,6 +1634,20 @@ class ValstormApiClient:
                     sql_query=sql_query,
                     object_api_name=object_api_name,
                 )
+                v2_query, v2_spec = self._build_v2_report_specs(
+                    title=widget_title,
+                    object_api_name=object_api_name,
+                    sql_query=sql_query,
+                    chart_type=chart_type,
+                    x_field=str(x_field).strip() if x_field else None,
+                    y_field=str(y_field).strip() if y_field else None,
+                    aggregation=aggregation,
+                    group_by_time=str(group_by_time).strip() if group_by_time else None,
+                )
+                query_config["version"] = 2
+                query_config["v2_query"] = v2_query
+                chart_settings["version"] = 2
+                chart_settings["v2_spec"] = v2_spec
 
                 if not report_id:
                     report_payload: Dict[str, Any] = {
@@ -1387,8 +1657,6 @@ class ValstormApiClient:
                         "chart_settings": chart_settings,
                         "standard": False,
                     }
-                    if app_id:
-                        report_payload["app"] = app_id
                     rep_res = await self.records_create("report", [report_payload])
                     if isinstance(rep_res, list) and rep_res and isinstance(rep_res[0], dict):
                         report_id = str(rep_res[0].get("id") or "")
@@ -1404,16 +1672,39 @@ class ValstormApiClient:
                 "schema": schema_id,
                 "settings": chart_settings,
                 "query": query_config,
+                "v2_linked_report_id": report_id or None,
             }
             layout_items.append({"i": item_key, "component": component})
+            v2_widgets.append(
+                {
+                    "id": item_key,
+                    "title": widget_title,
+                    "kind": "linked_report" if report_id else "inline_chart",
+                    **(
+                        {"reportId": report_id}
+                        if report_id
+                        else {
+                            "query": query_config.get("v2_query"),
+                            "spec": chart_settings.get("v2_spec"),
+                        }
+                    ),
+                    "enableCrossFilter": True,
+                    "filterBindings": {"gf_date": "created_date"},
+                    "layout": {"x": x, "y": y, "w": w, "h": max(2, min(h, 6))},
+                }
+            )
 
+        v2_dashboard_config: Dict[str, Any] = {
+            "version": 2,
+            "name": name,
+            "globalFilters": [{"id": "gf_date", "label": "Date Range", "type": "date_range"}],
+            "widgets": v2_widgets,
+        }
         dashboard_payload: Dict[str, Any] = {
             "name": name,
             "layout": layout,
-            "layout_items": layout_items,
+            "layout_items": [{"i": "__v2_config__", "v2_config": v2_dashboard_config}, *layout_items],
         }
-        if app_id:
-            dashboard_payload["app"] = app_id
 
         if dashboard_id:
             dashboard_payload["id"] = dashboard_id.strip()

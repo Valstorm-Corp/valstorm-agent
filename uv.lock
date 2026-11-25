@@ -1327,7 +1327,7 @@ wheels = [
 
 [[package]]
 name = "valstorm-agent"
-version = "4.3.14"
+version = "4.3.15"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
@@ -1374,8 +1374,8 @@ requires-dist = [
 
 [[package]]
 name = "valstorm-client"
-version = "0.1.4"
-source = { git = "https://github.com/Valstorm-Corp/valstorm-client-python.git#b0653ed772c46d1a853997869a11b6de07fd4a78" }
+version = "0.1.5"
+source = { git = "https://github.com/Valstorm-Corp/valstorm-client-python.git#25ea4bb105d8fcf8efbc1f7f72b17fe7a6ba375d" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },

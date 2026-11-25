@@ -249,7 +249,6 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {'chief-of-staff': {'name': 'Chief
                     'allowed_tools': ['delegate_task',
                                       'subagent_manage',
                                       'valstorm_sql_query',
-                                      'valstorm_mongo_query',
                                       'valstorm_record_cud',
                                       'valstorm_record_merge',
                                       'valstorm_schema_inspect',
@@ -439,7 +438,6 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {'chief-of-staff': {'name': 'Chief
                                'plugin:stripe',
                                'plugin:billing',
                                'valstorm_sql_query',
-                               'valstorm_mongo_query',
                                'valstorm_schema_inspect',
                                'valstorm_records_hydrate_batch',
                                'valstorm_analytics_compute',
@@ -513,7 +511,6 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {'chief-of-staff': {'name': 'Chief
                               'plugin:booking',
                               'valstorm_send_sms',
                               'valstorm_sql_query',
-                              'valstorm_mongo_query',
                               'valstorm_record_cud',
                               'valstorm_record_merge',
                               'valstorm_schema_inspect',
@@ -697,8 +694,9 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {'chief-of-staff': {'name': 'Chief
                                    '`gcp_bigquery_get_table_schema`) before writing SQL so every '
                                    'column name and filter is exact.\n'
                                    '2. Server-Side Aggregation First: Prefer '
-                                   '`valstorm_analytics_compute`, `valstorm_mongo_query` '
-                                   'aggregation pipelines, and `gcp_bigquery_run_query` over '
+                                   '`valstorm_analytics_compute`, native SQL aggregations '
+                                   '(`COUNT`/`SUM`/`AVG`/`GROUP BY` via `valstorm_sql_query`), '
+                                   'and `gcp_bigquery_run_query` over '
                                    'pulling massive raw record sets into context.\n'
                                    '3. Native Dashboards & Artifacts: Use '
                                    "`valstorm_generate_dashboard` (4 top-row `size='kpi'` Metric "
@@ -715,7 +713,6 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {'chief-of-staff': {'name': 'Chief
                                     'gcp_verify_connection',
                                     'gcp_get_setup_guide',
                                     'valstorm_sql_query',
-                                    'valstorm_mongo_query',
                                     'valstorm_schema_inspect',
                                     'valstorm_records_hydrate_batch',
                                     'valstorm_analytics_compute',
@@ -963,7 +960,7 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {'chief-of-staff': {'name': 'Chief
                                          "`Funnel` for stage pipelines, `aggregation='Value'` for "
                                          'stacked bar breakdowns, and dynamic SQL dates like '
                                          "`'this_year'` or `'last_n_days:30'`), and "
-                                         '`valstorm_analytics_compute` for server-side pandas '
+                                         '`valstorm_analytics_compute` for server-side Analytics V2 '
                                          'metrics. For custom cross-object or scheduled '
                                          'dashboards/scorecards, author an AST-sandboxed Python '
                                          '`function` using `PlatformContext` (`await '
@@ -994,7 +991,6 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {'chief-of-staff': {'name': 'Chief
                         'allowed_tools': ['platform_methods_search',
                                           'platform_invoke',
                                           'valstorm_sql_query',
-                                          'valstorm_mongo_query',
                                           'valstorm_record_cud',
                                           'valstorm_schema_inspect',
                                           'valstorm_records_hydrate_batch',
@@ -1110,7 +1106,6 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {'chief-of-staff': {'name': 'Chief
                                          'web_search',
                                          'web_scrape',
                                          'valstorm_sql_query',
-                                         'valstorm_mongo_query',
                                          'valstorm_schema_inspect',
                                          'valstorm_record_cud',
                                          'valstorm_record_merge',
@@ -1565,7 +1560,6 @@ def load_profile(profile_name_or_slug: str) -> Dict[str, Any]:
             "valstorm_record_cud",
             "valstorm_record_merge",
             "valstorm_schema_inspect",
-            "valstorm_mongo_query",
             "valstorm_records_hydrate_batch",
             "valstorm_create_list_filter",
             "valstorm_generate_report",

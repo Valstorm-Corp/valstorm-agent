@@ -41,6 +41,8 @@ _FIELD_SYNONYM_HINTS: Dict[str, str] = {
     "contact_name": "name",
     "task_name": "name",
     "vault_name": "name",
+    "filename": "name",
+    "file_name": "name",
     "title": "name",
     "amount": "loan_amount",
     "loan_value": "loan_amount",
@@ -143,19 +145,48 @@ def heal_field_name_s1(
     return field_name, False
 
 
+def _extract_schema_fields(schema_spec: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Extracts field definitions from either Open Valstorm (`properties`) or legacy (`fields`) schema dicts."""
+    if not isinstance(schema_spec, dict):
+        return {}
+    props = schema_spec.get("properties")
+    if isinstance(props, dict) and props:
+        return dict(props)
+    fields = schema_spec.get("fields")
+    if isinstance(fields, dict) and fields:
+        return dict(fields)
+    return {}
+
+
+def _normalize_schema_map(available_schemas: Any) -> Dict[str, Any]:
+    """Normalizes schema collections (dict, {'schemas': [...]}, or list) into {api_name: schema_dict}."""
+    if isinstance(available_schemas, dict):
+        if "schemas" in available_schemas and isinstance(available_schemas["schemas"], list):
+            available_schemas = available_schemas["schemas"]
+        else:
+            return {str(k).lower(): v for k, v in available_schemas.items() if isinstance(v, dict)}
+    if isinstance(available_schemas, list):
+        return {
+            str(s.get("api_name") or "").lower(): s
+            for s in available_schemas
+            if isinstance(s, dict) and s.get("api_name")
+        }
+    return {}
+
+
 def heal_record_payload_s1(
     record: Dict[str, Any],
     schema_spec: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], List[str]]:
     """Heals a single record dictionary for `valstorm_record_cud`:
-    1. Heals mismatched field names against `schema_spec['fields']`.
+    1. Heals mismatched field names against `schema_spec['properties']` / `schema_spec['fields']`.
     2. Unwraps dictionary lookups (`{'id': 'user_123'}` -> `'user_123'`) so lookup guardrails never fail.
     3. Normalizes case-insensitive picklist option labels (e.g. `'carousel'` -> `'Carousel'`).
     """
     if not isinstance(record, dict):
         return record, []
 
-    valid_fields = (schema_spec or {}).get("fields") or {}
+    valid_fields = _extract_schema_fields(schema_spec)
     healed: Dict[str, Any] = {}
     healed_notes: List[str] = []
 
@@ -219,8 +250,9 @@ def heal_sql_query_s1(
     if not m_from:
         return clean_q, notes
 
+    norm_schemas = _normalize_schema_map(available_schemas)
     raw_table = m_from.group(1)
-    healed_table, table_changed = heal_object_api_name_s1(raw_table, available_schemas)
+    healed_table, table_changed = heal_object_api_name_s1(raw_table, norm_schemas or None)
     if table_changed and healed_table != raw_table:
         clean_q = re.sub(
             rf"\bFROM\s+{re.escape(raw_table)}\b",
@@ -231,15 +263,18 @@ def heal_sql_query_s1(
         )
         notes.append(f"table '{raw_table}'->'{healed_table}'")
 
-    schema_spec = (available_schemas or {}).get(healed_table) or {}
-    valid_fields = dict((schema_spec.get("fields") or {}))
+    schema_spec = norm_schemas.get(healed_table.lower()) or {}
+    valid_fields = _extract_schema_fields(schema_spec)
     if valid_fields:
         valid_fields["id"] = {"type": "string"}
         # Heal column identifiers in SELECT and WHERE/ORDER BY clauses
         sql_keywords = {
-            "select", "from", "where", "and", "or", "not", "in", "like",
-            "order", "by", "asc", "desc", "limit", "offset", "me", "today",
-            "yesterday", "this_week", "this_month", "this_year", "null", "true", "false",
+            "select", "from", "where", "and", "or", "not", "in", "like", "ilike",
+            "order", "by", "group", "having", "as", "is", "asc", "desc", "limit",
+            "offset", "distinct", "case", "when", "then", "else", "end", "count",
+            "sum", "avg", "min", "max", "coalesce", "cast", "join", "left", "inner",
+            "on", "me", "today", "yesterday", "this_week", "this_month", "this_quarter",
+            "this_year", "null", "true", "false",
         }
         for col_cand in set(re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\b", clean_q)):
             low_col = col_cand.lower()
