@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from core.models import Message, SessionState, ToolCall, ToolResult, UsageMetadata
+from core.sanitizer import sanitize_structure, sanitize_text
 
 DEFAULT_DB_PATH = Path.home() / ".valstorm" / "agent_state.db"
 
@@ -211,6 +212,7 @@ class SessionStore:
                     break
         if not chat_name:
             chat_name = f"Chat {session.session_id}"
+        chat_name = sanitize_text(chat_name)
         session.name = chat_name
 
         with self._get_connection() as conn:
@@ -274,17 +276,18 @@ class SessionStore:
                             pass
 
             for msg in session.messages:
-                msg_body = msg.body or msg.content or ""
+                msg_body = sanitize_text(msg.body or msg.content or "")
                 tool_calls_raw = (
-                    [tc.model_dump() for tc in msg.tool_calls]
+                    sanitize_structure([tc.model_dump() for tc in msg.tool_calls])
                     if msg.tool_calls
                     else None
                 )
                 tool_result_raw = (
-                    msg.tool_result.model_dump()
+                    sanitize_structure(msg.tool_result.model_dump())
                     if msg.tool_result
                     else None
                 )
+                safe_system_prompt = sanitize_text(msg.system_prompt) if msg.system_prompt else None
                 input_tok = msg.usage.prompt_tokens if msg.usage else 0
                 output_tok = msg.usage.completion_tokens if msg.usage else 0
                 created_ts_str = (
@@ -315,7 +318,7 @@ class SessionStore:
                             msg_body,
                             _json_dumps(tool_calls_raw) if tool_calls_raw else None,
                             _json_dumps(tool_result_raw) if tool_result_raw else None,
-                            msg.system_prompt,
+                            safe_system_prompt,
                             input_tok,
                             output_tok,
                             msg.model or session.active_model,

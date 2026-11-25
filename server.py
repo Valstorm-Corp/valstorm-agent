@@ -47,6 +47,7 @@ from core.keystore import KeyStore
 from core.memory import MemoryStore
 from core.models import Message, SessionState, StreamEvent, StreamEventType
 from core.react import ReActEngine
+from core.sanitizer import sanitize_structure, sanitize_text
 from core.storage import SessionStore
 from core.tools import get_default_registry, ToolRegistry
 from core.sandbox import BaseSandbox, HostSandbox, set_current_sandbox
@@ -634,7 +635,7 @@ async def _sync_turn_to_valstorm(
     endpoint = f"{candidate_bases[0]}/ai/chat/{chat_id}/desktop-sync"
 
     payload: Dict[str, Any] = {
-        "text": output_text or "",
+        "text": sanitize_text(output_text or ""),
         "status": status,
         "role": "assistant",
         "session_id": session_id or chat_id,
@@ -646,24 +647,25 @@ async def _sync_turn_to_valstorm(
         "device_pid": os.getpid(),
     }
     if user_text:
-        payload["user_text"] = user_text
+        payload["user_text"] = sanitize_text(user_text)
     if user_message_id and not str(user_message_id).startswith(("temp_", "optimistic_")):
         payload["user_message_id"] = user_message_id
     if error:
-        payload["error"] = error[:4000]
+        payload["error"] = sanitize_text(error)[:4000]
     if message_id:
         payload["message_id"] = message_id
     if cached_input_tokens:
         payload["cached_input_tokens"] = int(min(cached_input_tokens, input_tokens or cached_input_tokens))
     if tool_calls:
-        payload["tool_calls"] = tool_calls
+        payload["tool_calls"] = sanitize_structure(tool_calls)
     if execution_trace:
-        payload["execution_trace"] = execution_trace
+        payload["execution_trace"] = sanitize_structure(execution_trace)
     if duration_sec is not None and duration_sec > 0:
         payload["duration_sec"] = round(float(duration_sec), 2)
     if subagents:
-        payload["subagent_results"] = subagents
-        payload["child_syncs"] = subagents
+        safe_subagents = sanitize_structure(subagents)
+        payload["subagent_results"] = safe_subagents
+        payload["child_syncs"] = safe_subagents
 
     jwt_org_id, jwt_user_id = _extract_jwt_identity(valstorm_token)
     resolved_org_id = (organization_id or "").strip() or jwt_org_id
@@ -746,7 +748,7 @@ async def _hydrate_session_from_cloud_if_needed(
                     has_new = False
                     for r in records:
                         r_id = r.get("id")
-                        body = (r.get("body") or r.get("content") or "").strip()
+                        body = sanitize_text((r.get("body") or r.get("content") or "").strip())
                         role = r.get("role") or "assistant"
                         if role == "ai":
                             role = "assistant"
@@ -859,7 +861,7 @@ async def _execute_agent_run(
     resolved_provider: Optional[str] = payload.provider
 
     logger.info(
-        f"[{run_id}] Run initiated | prompt='{payload.input[:80]}' | env={exec_env} | profile={payload.profile} | model={payload.model} | chat_id={effective_chat_id}"
+        f"[{run_id}] Run initiated | prompt='{sanitize_text(payload.input)[:80]}' | env={exec_env} | profile={payload.profile} | model={payload.model} | chat_id={effective_chat_id}"
     )
 
     req_workdir = None if cloud_server else (payload.workdir or payload.workspace_dir)
@@ -1543,8 +1545,8 @@ async def _execute_agent_run(
             curator_worker_model = resolve_curator_worker_model(provider_inst, target_model)
             asyncio.create_task(
                 extract_and_commit_turn_memory(
-                    user_input=payload.input,
-                    assistant_output=full_output,
+                    user_input=sanitize_text(payload.input),
+                    assistant_output=sanitize_text(full_output),
                     memory_store=memory_store,
                     provider=provider_inst,
                     model=curator_worker_model,
@@ -1562,8 +1564,8 @@ async def _execute_agent_run(
             curator_worker_model = resolve_curator_worker_model(provider_inst, target_model)
             asyncio.create_task(
                 curate_and_commit_turn_trajectory(
-                    user_input=payload.input,
-                    assistant_output=full_output,
+                    user_input=sanitize_text(payload.input),
+                    assistant_output=sanitize_text(full_output),
                     session=session,
                     provider=provider_inst,
                     model=curator_worker_model,

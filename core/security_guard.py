@@ -426,9 +426,11 @@ class SecurityGuard:
 
     @staticmethod
     def redact_secrets(text: str) -> str:
-        """Masks API keys, bearer tokens, and connection credentials from logs and outputs."""
+        """Masks API keys, bearer tokens, PCI payment cards/CVVs, and connection credentials from logs and outputs."""
         if not text:
             return ""
+
+        from core.sanitizer import sanitize_text
 
         redacted = text
         for name, pattern in SECRET_PATTERNS:
@@ -439,6 +441,8 @@ class SecurityGuard:
             else:
                 redacted = pattern.sub(lambda m: m.group(0)[:6] + "..." + "[REDACTED]", redacted)
 
+        # Layer full egress sanitizer (PCI PAN/CVV/expiry, Azure connection strings, x-api-key, passwords, etc.)
+        redacted = sanitize_text(redacted)
         return redacted
 
     # =================================================================

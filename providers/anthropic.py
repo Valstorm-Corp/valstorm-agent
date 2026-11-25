@@ -130,6 +130,9 @@ class AnthropicProvider(BaseProvider):
         return anthropic_tools
 
     def _format_messages(self, messages: List[Message]) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+        from core.sanitizer import sanitize_messages
+
+        messages = sanitize_messages(messages)
         system_parts = [m.content.strip() for m in messages if m.role == "system" and m.content]
         system_prompt = "\n\n".join(system_parts) if system_parts else None
         raw_msgs: List[Dict[str, Any]] = []

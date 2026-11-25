@@ -132,6 +132,9 @@ class OpenAIProvider(BaseProvider):
 
     def _format_messages(self, messages: List[Message]) -> List[Dict[str, Any]]:
         """Convert unified Message list into OpenAI chat messages payload."""
+        from core.sanitizer import sanitize_messages
+
+        messages = sanitize_messages(messages)
         formatted: List[Dict[str, Any]] = []
 
         for msg in messages:

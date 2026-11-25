@@ -9,7 +9,7 @@ import time
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
 
 from .models import Message, SessionState, StreamEvent, StreamEventType, ToolCall, ToolResult, UsageMetadata, collapse_repeating_text
-from .sanitizer import sanitize_text
+from .sanitizer import sanitize_messages, sanitize_text
 from .security_guard import SecurityGuard
 from .keystore import KeyStore
 from .compaction import ContextCompactor
@@ -320,8 +320,16 @@ class ReActEngine:
         locked_turn_tier = "reasoner"
         locked_turn_model = target_model or "gemini-flash-latest"
         locked_deferred_effort: Optional[str] = None
-        # Avoid duplicating user prompt if already hydrated in session
-        if not session.messages or session.messages[-1].content != user_input or session.messages[-1].role != "user":
+
+        # Sanitize user input before adding to session, routing, or transmitting to any LLM provider
+        raw_user_input = user_input
+        user_input = sanitize_text(user_input)
+
+        # Avoid duplicating user prompt if already hydrated in session (and sanitize if raw copy was hydrated)
+        if session.messages and session.messages[-1].role == "user" and session.messages[-1].content in (raw_user_input, user_input):
+            session.messages[-1].content = user_input
+            session.messages[-1].body = user_input
+        else:
             user_msg = Message(role="user", content=user_input, images=images)
             session.add_message(user_msg)
 
@@ -433,7 +441,7 @@ class ReActEngine:
             if self.steer_queue:
                 steer_msgs = list(self.steer_queue)
                 self.steer_queue.clear()
-                combined_steer = "\n".join(steer_msgs)
+                combined_steer = sanitize_text("\n".join(steer_msgs))
                 steer_msg_obj = Message(
                     role="user",
                     content=f"[OUT-OF-BAND USER STEERING INSTRUCTION]\n{combined_steer}\n[/OUT-OF-BAND USER STEERING INSTRUCTION]",
@@ -555,9 +563,11 @@ class ReActEngine:
                 and bool((session.metadata or {}).get("speculative_tools", True))
             )
 
+            egress_messages = sanitize_messages(session.messages)
+
             if hasattr(self.provider, "generate_stream"):
                 stream = self.provider.generate_stream(
-                    messages=session.messages,
+                    messages=egress_messages,
                     tools=schemas,
                     model=target_model,
                 )
@@ -608,13 +618,13 @@ class ReActEngine:
             else:
                 if inspect.iscoroutinefunction(self.provider.generate):
                     res = await self.provider.generate(
-                        messages=session.messages,
+                        messages=egress_messages,
                         tools=schemas,
                         model=target_model,
                     )
                 else:
                     res = self.provider.generate(
-                        messages=session.messages,
+                        messages=egress_messages,
                         tools=schemas,
                         model=target_model,
                     )

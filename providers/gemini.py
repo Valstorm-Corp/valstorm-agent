@@ -471,6 +471,9 @@ class GeminiProvider(BaseProvider):
         import json
         import os
         from google.genai import types
+        from core.sanitizer import sanitize_messages
+
+        messages = sanitize_messages(messages)
 
         system_parts: List[str] = []
         for msg in messages:

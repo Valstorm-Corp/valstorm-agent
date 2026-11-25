@@ -172,12 +172,12 @@ def tool(
 
 
 def _save_tool_artifact(call_id: str, raw_str: str) -> Optional[str]:
-    """Saves raw tool output to ~/.valstorm/artifacts/<call_id>.log for complete traceability."""
+    """Saves sanitized tool output to ~/.valstorm/artifacts/<call_id>.log for complete traceability."""
     try:
         art_dir = Path.home() / ".valstorm" / "artifacts"
         art_dir.mkdir(parents=True, exist_ok=True)
         art_file = art_dir / f"{call_id}.log"
-        art_file.write_text(raw_str, encoding="utf-8")
+        art_file.write_text(sanitize_text(raw_str), encoding="utf-8")
         return str(art_file)
     except Exception:
         return None
@@ -466,7 +466,7 @@ class ToolRegistry:
             return ToolResult(
                 call_id=c_id,
                 name=tool_name,
-                output=f"Error calling '{tool_name}' with arguments {args}: {te}",
+                output=sanitize_text(f"Error calling '{tool_name}' with arguments {args}: {te}"),
                 is_error=True,
                 duration_ms=dur_ms,
             )
@@ -475,7 +475,7 @@ class ToolRegistry:
             return ToolResult(
                 call_id=c_id,
                 name=tool_name,
-                output=f"Error executing tool '{tool_name}': {e}",
+                output=sanitize_text(f"Error executing tool '{tool_name}': {e}"),
                 is_error=True,
                 duration_ms=dur_ms,
             )
@@ -543,7 +543,7 @@ class ToolRegistry:
             return ToolResult(
                 call_id=c_id,
                 name=tool_name,
-                output=f"Error calling '{tool_name}' with arguments {args}: {te}",
+                output=sanitize_text(f"Error calling '{tool_name}' with arguments {args}: {te}"),
                 is_error=True,
                 duration_ms=dur_ms,
             )
@@ -552,7 +552,7 @@ class ToolRegistry:
             return ToolResult(
                 call_id=c_id,
                 name=tool_name,
-                output=f"Error executing tool '{tool_name}': {e}",
+                output=sanitize_text(f"Error executing tool '{tool_name}': {e}"),
                 is_error=True,
                 duration_ms=dur_ms,
             )
